@@ -87,7 +87,7 @@ void main() {
 
 
 
-    float lum = luma4(albedo.rgb);
+  float lum = luma4(albedo.rgb);
 	vec3 diff = albedo.rgb-lum;
 
 
@@ -110,6 +110,7 @@ void main() {
 
 
 //	alpha0 = map(lAlbedoP*255,0,255,116,208);
+//    if(alpha0 >= 209 && alpha0 <= 251)   color.rgb *= 0.5; // Metals
 if(alpha0 <= 128) alpha1 = floor(map( alpha0,  0, 128, 0, 255))/255;
 if(alpha0 >= 128) alpha2 = floor(map( alpha0,  128, 255, 0, 255))/255;
 
