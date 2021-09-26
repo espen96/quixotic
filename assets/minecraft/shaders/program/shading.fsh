@@ -940,11 +940,10 @@ if (depth >=1){
     vec3 atmosphere = ((getSkyColorLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
 
  		if (np3.y > 0.){
-			atmosphere += stars(np3);
-        	(atmosphere += pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*0.001;
-
-            atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0));
-            atmosphere += drawSun(dot(-sunPosition,np3),0, atmosphere,vec3(0.0));
+			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
+        	((atmosphere += pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*0.001)*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(-sunPosition,np3),0, atmosphere,vec3(0.0))*clamp(1-rainStrength,0,1);
 
             
 		}
@@ -1059,6 +1058,7 @@ if (depth >=1){
 
 		shading = ambientLight + mix(vec3(0.0), mix(direct*0.5,direct,sunSpec), shadeDir);
    
+		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
         if(lmx == 1) lmx *= 0.75;

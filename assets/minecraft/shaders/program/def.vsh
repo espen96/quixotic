@@ -81,7 +81,7 @@ vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
 
 vec3 sunPosition = sunDir2;
 const vec3 upPosition = vec3(0,1,0);
-rainStrength = 1-rain.r;
+rainStrength = (1-(rain.r))*0.75;
 
 float normSunVec = sqrt(sunPosition.x*sunPosition.x+sunPosition.y*sunPosition.y+sunPosition.z*sunPosition.z);
 float normUpVec = sqrt(upPosition.x*upPosition.x+upPosition.y*upPosition.y+upPosition.z*upPosition.z);

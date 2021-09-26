@@ -185,7 +185,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 
 		vec3 sunContribution = mieDay*sunColor*3.14;
 		vec3 moonContribution = mieNight*moonColor*3.14;
-		float ambientMult = exp(-(1+0.24+0.8*clamp(rainStrength*0.5,0.75,1))*cdensity*50.0);
+		float ambientMult = exp(-(1+0.24+0.8*clamp(rainStrength,0.75,1))*cdensity*50.0);
 		vec3 skyCol0 = avgAmbient * ambientMult;
 										  
 
@@ -232,6 +232,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 		float cosY = normalize(dV_view).y;
 
 	//	color.rgb*= skycol.rgb*2;
+			color.rgb = mix(color.rgb*vec3(0.5,0.5,1.0),color.rgb,1-rainStrength);	
 		return mix(vec4(color,clamp(total_extinction*(1.0+1/250.)-1/250.,0.0,1.0)),vec4(0.0,0.0,0.0,1.0),1-smoothstep(0.02,0.7,cosY));
 
 }

@@ -142,7 +142,7 @@ void main() {
 
 ////////////////////////////////////////////////
 
-float rainStrength = 1-rain.r;
+float rainStrength = (1-rain.r)*0.75;
 vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
 sunPosition = sunDir2;
 vec3 upPosition = vec3(0,1,0);

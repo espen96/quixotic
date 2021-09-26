@@ -55,10 +55,6 @@ void main() {
     float offset_y = 0.0;
     float wtest = (  texture(Sampler0, UV0).a);
 
-
- //   if(VERTICES_WATER_STILL(UV0.x, UV0.y)) {
-  //  if(wtest >0.7 && wtest <0.9  ) {
-   // if(wtest2 >0.5  && wtest2 <0.8  ) {
     if(wtest*255 == 200) {
 
       

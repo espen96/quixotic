@@ -60,21 +60,7 @@ float Bayer2(vec2 a) {
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
-float sqrt2(float number) {
-    number = 1.0 - number;
-    number *= number;
-    number *= number;
-    return 1.0 - number;
-}
-
-
-
 void main() {
-
-
-
-
-
 
     vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 
@@ -115,7 +101,7 @@ void main() {
 
 
 
-	alpha0 = map(lAlbedoP*255,0,255,116,208);
+//	alpha0 = map(lAlbedoP*255,0,255,116,208);
 if(alpha0 <= 128) alpha1 = floor(map( alpha0,  0, 128, 0, 255))/255;
 if(alpha0 >= 128) alpha2 = floor(map( alpha0,  128, 255, 0, 255))/255;
 

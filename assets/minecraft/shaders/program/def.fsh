@@ -121,17 +121,17 @@ if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
 	if (skyIntensity > 0.00001)
 	{
 	  float L0 = (1.0+a*exp(b/mCosT))*(1.0+c*(exp(d*Y)-exp(d*3.1415/2.))+e*cosY*cosY);
-		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*0.5);
+		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*2);
 		vec3 normalizedSunColor = nsunColor;
 
-		vec3 skyColor = mix(skyColor0,normalizedSunColor,1.0-pow(1.0+L0,-1.2))*(1.0-rainStrength*0.5);
-		daySky = pow(L0,1.0-rainStrength*0.5)*skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*SKY_BRIGHTNESS_DAY;
+		vec3 skyColor = mix(skyColor0,normalizedSunColor,1.0-pow(1.0+L0,-1.2))*(1.0-rainStrength);
+		daySky = pow(L0,1.0-rainStrength)*skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*SKY_BRIGHTNESS_DAY;
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)
 	{
 		float L0Moon = (1.0+a*exp(b/mCosT))*(1.0+c*(exp(d*(PI-Y))-exp(d*3.1415/2.))+e*cosY*cosY);
-		moonSky = pow(L0Moon,1.0-rainStrength*0.5)*skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*SKY_BRIGHTNESS_NIGHT;
+		moonSky = pow(L0Moon,1.0-rainStrength)*skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*SKY_BRIGHTNESS_NIGHT;
 	}
   fragColor.rgb = ( ((daySky + moonSky) ) );
 }
