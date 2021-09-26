@@ -1027,6 +1027,7 @@ if (depth >=1){
 //    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 0.75, 0.5)));
 
    // float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, roughL, 0.05)));		
+   
     float sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount, 0.05, 0.01 * 1.0 + 0.06);
           if(ggxAmmount2 > 0.001)sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount2, 0.8, 0.01 * 1.0 + 0.06)*10;
   //        sunSpec *= 10.0;
@@ -1088,7 +1089,7 @@ if (depth >=1){
 
 
 
-		fragColor.rgb = clamp(vec3(shading),0.01,1); 
+//		fragColor.rgb = clamp(vec3(shading),0.01,1); 
     }
 
 

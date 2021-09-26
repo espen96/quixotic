@@ -338,8 +338,43 @@
             ]
         },
         {
-            "name": "blit",
+            "name": "aa",
             "intarget": "swap2",
+            "outtarget": "swap4",
+            "auxtargets": [
+                {
+                    "name": "temporals3Sampler",
+                    "id": "swap1"
+                },
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "minecraft:main:depth"
+                },
+                {
+                    "name": "cloudsample",
+                    "id": "swap3"
+                },
+                {
+                    "name": "TranslucentSampler",
+                    "id": "translucent"
+                },
+                {
+                    "name": "TranslucentDepthSampler",
+                    "id": "translucent:depth"
+                },
+                {
+                    "name": "FontSampler",
+                    "id": "shader_font",
+                    "width":1,
+                    "height":1,
+                    "bilinear":false
+                }
+            ]
+        },     
+ 
+        {
+            "name": "blit",
+            "intarget": "swap4",
             "outtarget": "minecraft:main"
         }
       

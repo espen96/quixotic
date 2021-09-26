@@ -67,16 +67,16 @@ void main() {
 
         discardControlGLPos(gl_FragCoord.xy, glpos);
                   
-    vec4 albedo =textureLod(Sampler0, texCoord0,0);
+    vec4 albedo =texture(Sampler0, texCoord0,0);
 
-    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+    vec4 color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
  
+    color.a = textureLod(Sampler0, texCoord0,0).a; 
     float lightm = 0;
 
 
     color.rgb = (color.rgb*lm2.rgb);
-
-    color.a = textureLod(Sampler0, texCoord0,0).a;         
+        
     if (color.a*255 <= 17.0) {
         discard;
     }

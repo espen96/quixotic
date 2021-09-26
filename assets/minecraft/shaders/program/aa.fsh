@@ -1067,7 +1067,7 @@ float rainStrength = 1-rain.r;
     //vec4 kernel = vec4(0.399, 0.242, 0.054, 0.004); // Gaussian sigma 1.0
     //vec4 kernel = vec4(0.53, 0.22, 0.015, 0.00018); // Gaussian sigma 0.75
     vec4 kernel = vec4(0.79, 0.11, 0.0026, 0.000001); // Gaussian sigma 0.5
-    int sze = 3; 
+    int sze = 2; 
     
     // Init step size in tex coords
     float dx = 1.0/ScreenSize.x;
