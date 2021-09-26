@@ -1031,13 +1031,13 @@ if (depth >=1){
           if(ggxAmmount2 > 0.001)sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount2, 0.9, 0.01 * 1.0 + 0.06);
   //        sunSpec *= 10.0;
 	vec3 SSS = vec3(0.0);
-    float filter = (1-sssAmount)*0.95;
+    float filt = (1-sssAmount)*0.95;
 	vec3 extinction = 1.0 - OutTexel*0.85;    
 	// Day
 	if (skyIntensity > 0.00001)
 	{
 
-			SSS = exp(-filter*11.0*extinction) + 3.0*exp(-filter*11./3.*extinction);
+			SSS = exp(-filt*11.0*extinction) + 3.0*exp(-filt*11./3.*extinction);
 			float scattering = clamp((0.7+0.3*pi*phaseg(dot(view, sunPosition),0.85))*1.26*0.25*sssAmount,0.0,1.0);
 			SSS *= scattering*3.0;
 			SSS *= clamp(sqrt(lmx*2-1.5),0,1);
