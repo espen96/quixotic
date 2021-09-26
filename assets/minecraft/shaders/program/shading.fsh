@@ -1089,7 +1089,7 @@ if (depth >=1){
 
 
 
-//		fragColor.rgb = clamp(vec3(shading),0.01,1); 
+		fragColor.rgb = clamp(vec3(pbr.rgb),0.01,1); 
     }
 
 
