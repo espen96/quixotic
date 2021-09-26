@@ -32,11 +32,12 @@ void main() {
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     
 
-    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);
+    fragColor = color;
+//    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);
 
 
  // color.rgb = (noise);
-    if(water > 0.9 )    fragColor = linear_fog(color, vertexDistance, -8, FogEnd*0.1, FogColor);
+//    if(water > 0.9 )    fragColor = linear_fog(color, vertexDistance, -8, FogEnd*0.1, FogColor);
 
 //    if(water > 0.9 )  fragColor.a = 0.75;
 
