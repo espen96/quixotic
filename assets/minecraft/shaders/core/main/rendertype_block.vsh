@@ -29,7 +29,24 @@ out vec2 texCoord2;
 
 out vec4 glpos;
 
+const vec2 COPRIMES = vec2(2, 3);
 
+vec2 halton(int index) {
+    vec2 f = vec2(1);
+    vec2 result = vec2(0);
+    vec2 ind = vec2(index);
+
+    while (ind.x > 0.0 && ind.y > 0.0) {
+        f /= COPRIMES;
+        result += f * mod(ind, COPRIMES);
+        ind = floor(ind / COPRIMES);
+    }
+    return result;
+}
+
+vec2 calculateJitter() {
+    return (halton(int(mod(GameTime * 24000.0, 128))) - 0.5) / 1024.0;
+}
 
 void main() {
     vec3 position = Position + ChunkOffset;
@@ -54,7 +71,7 @@ void main() {
     normal = normalize(ModelViewMat * vec4(Normal, 0.0));
         lm2 = minecraft_sample_lightmap2(Sampler2, UV2);
  
-    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0));
+    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0))+ vec4(calculateJitter()*0.1, 0, 0);
 
    glpos = gl_Position;        
 }

@@ -62,63 +62,52 @@ float map(float value, float min1, float max1, float min2, float max2) {
 }
 void main() {
 
-    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
+  vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 
 
-        discardControlGLPos(gl_FragCoord.xy, glpos);
+  discardControlGLPos(gl_FragCoord.xy, glpos);
                   
-    vec4 albedo =texture(Sampler0, texCoord0,0);
 
-    vec4 color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
- 
-    color.a = textureLod(Sampler0, texCoord0,0).a; 
-    float lightm = 0;
+  float alpha = textureLod(Sampler0, texCoord0,0).a; 
+  vec4 color = texture(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
+  if(alpha <0.15)color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
+  color.a = alpha;
+  float lightm = 0;
 
 
-    color.rgb = (color.rgb*lm2.rgb);
+  color.rgb = (color.rgb*lm2.rgb);
         
-    if (color.a*255 <= 17.0) {
-        discard;
-    }
- //   color.rgb += FogColor.rgb*0.1;
-    color.rgb +=rnd/255; 
+  if (color.a*255 <= 17.0) {
+    discard;
+  }
+  color.rgb +=rnd/255; 
 
 
 
-    float lum = luma4(albedo.rgb);
-	vec3 diff = albedo.rgb-lum;
+  float translucent = 0;
 
-    float translucent = 0;
-
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res = mod(mod2, 2.0f);
+  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+  float res = mod(mod2, 2.0f);
 
   float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
   float alpha1 = 0.0;
   float alpha2 = 0.0;
-	float lAlbedoP = length(albedo);
+
+  if(alpha0 <= 128) alpha1 = floor(map( alpha0,  0, 128, 0, 255))/255;
+  if(alpha0 >= 128) alpha2 = floor(map( alpha0,  128, 255, 0, 255))/255;
 
 
+  //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
-
-//	alpha0 = map(lAlbedoP*255,0,255,116,208);
-if(alpha0 <= 128) alpha1 = floor(map( alpha0,  0, 128, 0, 255))/255;
-if(alpha0 >= 128) alpha2 = floor(map( alpha0,  128, 255, 0, 255))/255;
-
-
-//     fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-
-    float alpha3 = alpha1;
-    if (diff.r < 0.1) translucent = albedo.g;
-   float lm = lmx;
+  float alpha3 = alpha1;
+  float lm = lmx;
   if (res == 0.0f)    {
     lm = lmy;
-    translucent = lightm;
-     alpha3 = alpha2;
-//         color.rgb = normal.rgb;
+    alpha3 = alpha2;
+    //color.rgb = normal.rgb;
   }
  
-    fragColor = color;
+  fragColor = color;
    
-    fragColor.a = packUnorm2x4( alpha3,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 }
