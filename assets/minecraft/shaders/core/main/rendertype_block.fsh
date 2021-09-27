@@ -73,7 +73,7 @@ void main() {
 
     vec4 albedo =textureLod(Sampler0, texCoord0,0);
 
-    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+    vec4 color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
     float lightm = 0;
 
    color.rgb = (color.rgb*(lm2.rgb));

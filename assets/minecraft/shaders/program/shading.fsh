@@ -810,7 +810,37 @@ vec4 pbr (vec2 in1,vec2 in2, float sssMin, float sssMax, float lightMin, float l
     return pbr;    
 }
 
+vec3 getDepthPoint(vec2 coord, float depth) {
+    vec4 pos;
+    pos.xy = coord;
+    pos.z = depth;
+    pos.w = 1.0;
+    pos.xyz = pos.xyz * 2.0 - 1.0; //convert from the 0-1 range to the -1 to +1 range
+    pos = gbufferProjectionInverse * pos;
+    pos.xyz /= pos.w;
+    
+    return pos.xyz;
+}
 
+vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
+    vec2 offsetB = vec2(0.0,oneTexel.y)*2;
+    vec2 offsetC = vec2(oneTexel.x,0.0)*2;
+  
+    float depthB = texture(depthtex, texcoords + offsetB).r;
+    float depthC = texture(depthtex, texcoords + offsetC).r;
+  
+    vec3 A = getDepthPoint(texcoords, depthA);
+	vec3 B = getDepthPoint(texcoords + offsetB, depthB);
+	vec3 C = getDepthPoint(texcoords + offsetC, depthC);
+
+	vec3 AB = normalize(B - A);
+	vec3 AC = normalize(C - A);
+
+	vec3 normal =  -cross(AB, AC);
+	// normal.z = -normal.z;
+
+	return normalize(normal);
+}
 void main() {
     float depth = texture(DiffuseDepthSampler, texCoord).r;
   	vec2 texCoord = texCoord; 
@@ -989,7 +1019,8 @@ if (depth >=1){
                     + normalize(cross( p2, -p5)) 
                     + normalize(cross(-p4, -p5));
         normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
-        
+               normal = constructNormal(depth, texCoord, DiffuseDepthSampler);
+ 
 
 //        vec3 normal = normalize( (mix(OutTexel,OutTexel2,res)*res)*2-1 );
 
@@ -1026,11 +1057,11 @@ if (depth >=1){
 	float shadeDirM = 0;
 //    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 0.75, 0.5)));
 
-   // float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, roughL, 0.05)));		
+    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, 0.05)));		
    
-    float sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount, 0.05, 0.01 * 1.0 + 0.06);
-          if(ggxAmmount2 > 0.001)sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount2, 0.8, 0.01 * 1.0 + 0.06)*10;
-  //        sunSpec *= 10.0;
+//    float sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount, 0.05, 0.01 * 1.0 + 0.06);
+    if(ggxAmmount2 > 0.001)sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount2, 0.8, 0.01 * 1.0 + 0.06);
+//    sunSpec *= 10.0;
 	vec3 SSS = vec3(0.0);
     float filt = (1-sssAmount)*0.95;
 	vec3 extinction = 1.0 - OutTexel*0.85;    
@@ -1044,8 +1075,8 @@ if (depth >=1){
 			SSS *= clamp(sqrt(lmx*2-1.5),0,1);
 
 		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
-//       	if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),0.45)*2, phaseg(dot(view, sunPosition),0.1))*3, shadeDirS, 0.35);
-        if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*luma(SSS);
+       	if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount)*2, phaseg(dot(view, sunPosition),sssAmount*0.5))*3, shadeDirS, 0.35);
+//        if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*luma(SSS);
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)
@@ -1069,9 +1100,9 @@ if (depth >=1){
         shading *= ao;
     
         vec3 dlight =   ( OutTexel * shading);
-        if (light > 0.1)  dlight.rgb = OutTexel* pow(clamp(luma(OutTexel.rgb)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
+        if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
     	fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
-       if (light > 0.1)  fragColor.rgb *= clamp(vec3(2.0-shading*2),1.0,10.0);
+       if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light,1.0,10.0);
     float isWater = 0;
     if (texture(TranslucentSampler, texCoord).a *255 ==200) isWater = 1;
    
@@ -1088,8 +1119,7 @@ if (depth >=1){
     }
 
 
-
-		fragColor.rgb = clamp(vec3(pbr.rgb),0.01,1); 
+//		fragColor.rgb = clamp(vec3(sunSpec),0.01,1); 
     }
 
 
