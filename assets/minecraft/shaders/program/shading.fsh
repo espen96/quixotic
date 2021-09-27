@@ -1006,20 +1006,20 @@ if (depth >=1){
         float depth5 = getNotControl(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0), inctrl).r;
 
 
-        vec3 p2 = backProject(vec4(scaledCoord + 1.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
+        vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
         p2 = p2 - fragpos;
-        vec3 p3 = backProject(vec4(scaledCoord + 1.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
+        vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
         p3 = p3 - fragpos;
-        vec3 p4 = backProject(vec4(scaledCoord - 1.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
+        vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
         p4 = p4 - fragpos;
-        vec3 p5 = backProject(vec4(scaledCoord - 1.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
+        vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
         p5 = p5 - fragpos;
         vec3 normal = normalize(cross( p2,  p3)) 
                     + normalize(cross(-p4,  p3)) 
                     + normalize(cross( p2, -p5)) 
                     + normalize(cross(-p4, -p5));
         normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
-               normal = constructNormal(depth, texCoord, DiffuseDepthSampler);
+ //  if(texCoord.x<=0.5)            normal = constructNormal(depth, texCoord, DiffuseDepthSampler);
  
 
 //        vec3 normal = normalize( (mix(OutTexel,OutTexel2,res)*res)*2-1 );
@@ -1119,7 +1119,7 @@ if (depth >=1){
     }
 
 
-//		fragColor.rgb = clamp(vec3(sunSpec),0.01,1); 
+//		fragColor.rgb = clamp(vec3(normal),0.01,1); 
     }
 
 
