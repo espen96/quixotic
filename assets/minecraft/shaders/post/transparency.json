@@ -223,7 +223,21 @@
             ]
         },        
 
-
+        {
+            "name": "copy_with_depth",
+            "intarget": "denoised",
+            "outtarget": "previousFrame",
+            "auxtargets": [
+                {
+                    "name": "DepthSampler",
+                    "id": "swap3:depth"
+                },
+                {
+                    "name": "MainSampler",
+                    "id": "minecraft:main"
+                }
+            ]
+        },
 
       
         {
@@ -322,21 +336,7 @@
             ]           
             
         },        
-        {
-            "name": "copy_with_depth",
-            "intarget": "denoised",
-            "outtarget": "previousFrame",
-            "auxtargets": [
-                {
-                    "name": "DepthSampler",
-                    "id": "swap3:depth"
-                },
-                {
-                    "name": "MainSampler",
-                    "id": "minecraft:main"
-                }
-            ]
-        },
+
         {
             "name": "aa",
             "intarget": "swap2",
