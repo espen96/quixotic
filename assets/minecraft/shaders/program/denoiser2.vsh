@@ -11,6 +11,7 @@ uniform vec2 OutSize;
 uniform sampler2D CurrentFrameDataSampler;
 uniform sampler2D PreviousFrameDataSampler;
 
+out float prevtime;
 out vec2 texCoord;
 out vec3 currChunkOffset;
 out vec3 prevChunkOffset;
@@ -118,6 +119,7 @@ void main() {
     );
 
     prevPosition = mod(currChunkOffset - prevChunkOffset + 0.5, 1) - 0.5;
+    prevtime = float((texture(PreviousFrameDataSampler, start + 40.0 * inc).r));
 
     float fov = atan(1 / gbufferProjection[1][1]);
 

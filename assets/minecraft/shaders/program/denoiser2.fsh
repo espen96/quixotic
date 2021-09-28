@@ -14,13 +14,15 @@ in vec3 currChunkOffset;
 in vec3 prevChunkOffset;
 in float near;
 in float far;
+in float prevtime;
 in vec3 prevPosition;
-
+uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D CurrentFrameDepthSampler;
 uniform vec2 ScreenSize;
 uniform sampler2D PreviousFrameSampler;
 uniform sampler2D PreviousFrameDepthSampler;
+uniform float Time;
 
 out vec4 fragColor;
 
@@ -133,7 +135,7 @@ vec3 clipColor(vec3 aabbMin, vec3 aabbMax, vec3 prevColor) {
     OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
+float pt = texelFetch(PreviousFrameSampler,ivec2(17,0),0).r;
 #define VXAA_TEXTURE_CURRENT DiffuseSampler
 #define VXAA_TEXTURE_PREV PreviousFrameSampler
 
@@ -143,7 +145,7 @@ vec3 clipColor(vec3 aabbMin, vec3 aabbMax, vec3 prevColor) {
 #define VXAA_SPATIAL_FLICKER_TIME 2.35
 #define VXAA_MORPHOLOGICAL_STRENGTH 0.42
 #define VXAA_MORPHOLOGICAL_SHARPEN 0.13
-#define iTimeDelta 0.1
+#define iTimeDelta 1000.0/abs(Time - pt)
 #define VXAA_W 0
 #define VXAA_E 1
 #define VXAA_N 2
@@ -304,8 +306,22 @@ void VXAAUpsampleT4x( out vec4 vtex[4], vec4 current, vec4 history, vec4 currN[4
     vtex[VXAA_SW] = VXAADifferentialBlend( n1, weights.xy );
     vtex[VXAA_SE] = current;
 }
-
-
+#define NUMCONTROLS 100
+//#define vertexinfo
+#define THRESH 0.5
+#define FPRECISION 4000000.0
+#define PROJNEAR 0.05
+// returns control pixel index or -1 if not control
+int inControl(vec2 screenCoord, float screenWidth) {
+    if (screenCoord.y < 1.0) {
+        float index = floor(screenWidth / 2.0) + THRESH / 2.0;
+        index = (screenCoord.x - index) / 2.0;
+        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+            return int(index);
+        }
+    }
+    return -1;
+}
 void main() {
 
     /*
@@ -398,9 +414,16 @@ void main() {
     histN[VXAA_SW].a = VXAALuma( histN[VXAA_SW].rgb );
     histN[VXAA_SE].a = VXAALuma( histN[VXAA_SE].rgb );
     
-    
+
+
     // Filmic pass.    
     fragColor = VXAAFilmic( uv, current, history, currN, histN );
-//}
 
+
+//}
+    bool inctrl = inControl(texCoord * OutSize, OutSize.x) < 1;
+if (gl_FragCoord.x < 18. && gl_FragCoord.y < 1.){
+
+     fragColor = vec4(Time);
+    }
 }
