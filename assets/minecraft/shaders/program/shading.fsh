@@ -47,6 +47,22 @@ in float skyIntensityNight;
 
 out vec4 fragColor;
 
+
+//Dithering from Jodie
+float Bayer2(vec2 a) {
+    a = floor(a);
+    return fract(dot(a, vec2(0.5, a.y * 0.75)));
+}
+
+#define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer8(a)   (Bayer4(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer16(a)  (Bayer8(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer32(a)  (Bayer16( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
+
+
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define NUMCONTROLS 26
 #define THRESH 0.5
@@ -54,7 +70,34 @@ out vec4 fragColor;
 #define PROJNEAR 0.05
 #define FUDGE 32.0
 
+#define Dirt_Amount 0.01 
 
+#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
+
+#define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 ]
+
+
+#define Dirt_Absorb_R 0.65 
+#define Dirt_Absorb_G 0.85 
+#define Dirt_Absorb_B 1.05
+
+#define Water_Absorb_R 0.25422
+#define Water_Absorb_G 0.03751
+#define Water_Absorb_B 0.01150
+
+#define BASE_FOG_AMOUNT 0.2 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0 10.0 20.0 30.0 50.0 100.0 150.0 200.0]  Base fog amount amount (does not change the "cloudy" fog)
+#define CLOUDY_FOG_AMOUNT 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
+#define FOG_TOD_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of time of day on fog amount
+#define FOG_RAIN_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of rain on fog amount
+
+#define SSAO_SAMPLES 6
+
+#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
+#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
+#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
+
+
+#define CLOUDS_QUALITY 0.5 //[0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
 
 
 vec3 toLinear(vec3 sRGB){
@@ -124,19 +167,6 @@ vec2 OffsetDist(float x) {
 	float n = fract(x * 8.0) * 3.1415;
     return vec2(cos(n), sin(n)) * x;
 }
-//Dithering from Jodie
-float Bayer2(vec2 a) {
-    a = floor(a);
-    return fract(dot(a, vec2(0.5, a.y * 0.75)));
-}
-
-#define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer8(a)   (Bayer4(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer16(a)  (Bayer8(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer32(a)  (Bayer16( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
 
 
 float AmbientOcclusion(sampler2D depth, vec2 coord, float dither) {
@@ -414,7 +444,6 @@ float stars(vec3 fragpos){
 	return StableStarField(uv*700.,0.999)*0.5*(0.3-0.3*0);
 }
 
-#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
 
 const float pi = 3.141592653589793238462643383279502884197169;
 
@@ -549,10 +578,7 @@ void c(int character) {
 
 
 */
-#define BASE_FOG_AMOUNT 0.2 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0 10.0 20.0 30.0 50.0 100.0 150.0 200.0]  Base fog amount amount (does not change the "cloudy" fog)
-#define CLOUDY_FOG_AMOUNT 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
-#define FOG_TOD_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of time of day on fog amount
-#define FOG_RAIN_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of rain on fog amount
+
 ///////////////////////////////////
 
 float R2_dither(){
@@ -593,11 +619,6 @@ vec3 rodSample(vec2 Xi)
 
     return normalize(vec3(cos(phi) * r, sin(phi) * r, Xi.x)).xzy;
 }
-#define SSAO_SAMPLES 6
-
-#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
-#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
-#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
 
 
 
@@ -616,7 +637,6 @@ int decodeInt(vec3 ivec) {
 ////////////////////////////////////////////
 
 
-#define CLOUDS_QUALITY 0.5 //[0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
 
 // this code is in the public domain
 vec4 textureQuadratic( in sampler2D sam, in vec2 p )
@@ -716,29 +736,6 @@ vec3 reconstructPosition(in vec2 uv, in float z, in mat4  InvVP)
 
 
 
-
-#define Dirt_Amount 0.01 
-
-
-
-#define Dirt_Absorb_R 0.65 
-#define Dirt_Absorb_G 0.85 
-#define Dirt_Absorb_B 1.05
-
-#define Water_Absorb_R 0.25422
-#define Water_Absorb_G 0.03751
-#define Water_Absorb_B 0.01150
-
-
-
-
-
-
-
-#define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 ]
-
-
-
 void waterVolumetrics(inout vec3 inColor, vec3 rayStart, vec3 rayEnd, float estEyeDepth, float estSunDepth, float rayLength, float dither, vec3 waterCoefs, vec3 scatterCoef, vec3 ambient, vec3 lightSource, float VdotL, float sunElevation){
 		int spCount = 6;
 		//limit ray length at 32 blocks for performance and reducing integration error
@@ -809,6 +806,14 @@ vec4 pbr (vec2 in1,vec2 in2, float sssMin, float sssMax, float lightMin, float l
     pbr = vec4(emiss,sss,rough, metal);
     return pbr;    
 }
+    #define sssMin 18
+    #define sssMax 38
+    #define lightMin 39
+    #define lightMax 115
+    #define roughMin 119
+    #define roughMax 208
+    #define metalMin 209
+    #define metalMax 251
 
 vec3 getDepthPoint(vec2 coord, float depth) {
     vec4 pos;
@@ -1008,14 +1013,6 @@ float res = mod(mod2, 2.0f);
     vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+oneTexel.y).a));
 
     
-    #define sssMin 18
-    #define sssMax 38
-    #define lightMin 39
-    #define lightMax 115
-    #define roughMin 119
-    #define roughMax 208
-    #define metalMin 209
-    #define metalMax 251
 
     vec4 pbr = pbr( lmtrans, lmtrans3, sssMin, sssMax, lightMin,  lightMax, roughMin, roughMax, metalMin, metalMax);
 
