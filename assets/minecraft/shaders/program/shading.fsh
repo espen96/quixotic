@@ -841,6 +841,112 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
 
 	return normalize(normal);
 }
+
+float square(float x){
+  return x*x;
+}
+
+float g(float NdotL, float roughness)
+{
+    float alpha = square(max(roughness, 0.02));
+    return 2.0 * NdotL / (NdotL + sqrt(square(alpha) + (1.0 - square(alpha)) * square(NdotL)));
+}
+
+float gSimple(float dp, float roughness){
+  float k = roughness + 1;
+  k *= k/8.0;
+  return dp / (dp * (1.0-k) + k);
+}
+
+vec3 GGX2(vec3 n, vec3 v, vec3 l, float r, vec3 F0) {
+  float alpha = square(r);
+
+  vec3 h = normalize(l + v);
+
+  float dotLH = clamp(dot(h,l),0.,1.);
+  float dotNH = clamp(dot(h,n),0.,1.);
+  float dotNL = clamp(dot(n,l),0.,1.);
+  float dotNV = clamp(dot(n,v),0.,1.);
+  float dotVH = clamp(dot(h,v),0.,1.);
+
+
+  float D = alpha / (3.141592653589793*square(square(dotNH) * (alpha - 1.0) + 1.0));
+  float G = gSimple(dotNV, r) * gSimple(dotNL, r);
+  vec3 F = F0 + (1. - F0) * exp2((-5.55473*dotVH-6.98316)*dotVH);
+
+  return dotNL * F * (G * D / (4 * dotNV * dotNL + 1e-7));
+}
+
+vec3 GGX (vec3 n, vec3 v, vec3 l, float r, vec3 F0) {
+  r*=r;r*=r;
+
+  vec3 h = l + v;
+  float hn = inversesqrt(dot(h, h));
+
+  float dotLH = clamp(dot(h,l)*hn,0.,1.);
+  float dotNH = clamp(dot(h,n)*hn,0.,1.);
+  float dotNL = clamp(dot(n,l),0.,1.);
+  float dotNHsq = dotNH*dotNH;
+
+  float denom = dotNHsq * r - dotNHsq + 1.;
+  float D = r / (3.141592653589793 * denom * denom);
+  vec3 F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
+  float k2 = .25 * r;
+
+  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
+}
+void frisvad(in vec3 n, out vec3 f, out vec3 r){
+    if(n.z < -0.999999) {
+        f = vec3(0.,-1,0);
+        r = vec3(-1, 0, 0);
+    } else {
+    	float a = 1./(1.+n.z);
+    	float b = -n.x*n.y*a;
+    	f = vec3(1. - n.x*n.x*a, b, -n.x);
+    	r = vec3(b, 1. - n.y*n.y*a , -n.y);
+    }
+}
+mat3 CoordBase(vec3 n){
+	vec3 x,y;
+    frisvad(n,x,y);
+    return mat3(x,y,n);
+}
+
+vec3 MetalCol(float f0){
+    int metalidx = int(f0 * 255.0);
+
+    if (metalidx == 230) return vec3(0.24867, 0.22965, 0.21366); //iron
+    if (metalidx == 231) return vec3(0.88140, 0.57256, 0.11450); //gold
+    if (metalidx == 232) return vec3(0.81715, 0.82021, 0.83177); //aluminium
+    if (metalidx == 233) return vec3(0.27446, 0.27330, 0.27357); //chrome
+    if (metalidx == 234) return vec3(0.84430, 0.48677, 0.22164); //copper
+    if (metalidx == 235) return vec3(0.36501, 0.35675, 0.37653); //lead
+    if (metalidx == 236) return vec3(0.42648, 0.37772, 0.31138); //platinum
+    if (metalidx == 237) return vec3(0.91830, 0.89219, 0.83662); //silver
+    return vec3(1.0);
+}									
+	
+
+
+vec3 sampleGGXVNDF(vec3 V_, float alpha_x, float alpha_y, float U1, float U2){
+	// stretch view
+	vec3 V = normalize(vec3(alpha_x * V_.x, alpha_y * V_.y, V_.z));
+	// orthonormal basis
+	vec3 T1 = (V.z < 0.9999) ? normalize(cross(V, vec3(0,0,1))) : vec3(1,0,0);
+	vec3 T2 = cross(T1, V);
+	// sample point with polar coordinates (r, phi)
+	float a = 1.0 / (1.0 + V.z);
+	float r = sqrt(U1);
+	float phi = (U2<a) ? U2/a * 3.141592653589793 : 3.141592653589793 + (U2-a)/(1.0-a) * 3.141592653589793;
+	float P1 = r*cos(phi);
+	float P2 = r*sin(phi)*((U2<a) ? 1.0 : V.z);
+	// compute normal
+	vec3 N = P1*T1 + P2*T2 + sqrt(max(0.0, 1.0 - P1*P1 - P2*P2))*V;
+	// unstretch
+	N = normalize(vec3(alpha_x*N.x, alpha_y*N.y, max(0.0, N.z)));
+	return N;
+}
+
 void main() {
     float depth = texture(DiffuseDepthSampler, texCoord).r;
   	vec2 texCoord = texCoord; 
@@ -1057,11 +1163,70 @@ if (depth >=1){
 	float shadeDirM = 0;
 //    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 0.75, 0.5)));
 
-    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, 0.05)));		
    
 //    float sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount, 0.05, 0.01 * 1.0 + 0.06);
-    if(ggxAmmount2 > 0.001)sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount2, 0.8, 0.01 * 1.0 + 0.06);
+
 //    sunSpec *= 10.0;
+			vec3 f0 = vec3(0.04);
+            if(ggxAmmount2 > 0.001) f0 = vec3(0.8);
+            float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
+
+
+
+			float roughness = 1-ggxAmmount;
+			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition, roughness+0.05*0.95, f0);
+            specTerm = vec3(sunSpec);
+			vec3 indirectSpecular = vec3(0.0);
+
+			const int nSpecularSamples = 16;
+
+			mat3 basis = CoordBase(normal);
+			vec3 normSpaceView = -np3*basis;
+			vec3 rayContrib = vec3(0.0);
+			vec3 reflectedVector = reflect(normalize(view), normalize(normal));
+					// Energy conservation between diffuse and specular
+			vec3 fresnelDiffuse = vec3(0.0);
+			vec3 reflection = vec3(0.0);
+        if(f0.x >0.10){
+			for (int i = 0; i < nSpecularSamples; i++){
+				// Generate ray
+				int seed = int(Time*1000)*nSpecularSamples + i;
+				vec2 ij = fract(R2_samples(seed) + Bayer256(gl_FragCoord.xy));
+				vec3 H = sampleGGXVNDF(normSpaceView, roughness, roughness, ij.x, ij.y);
+				vec3 Ln = reflect(-normSpaceView, H);
+				vec3 L = basis * Ln;
+				// Ray contribution
+				float g1 = g(clamp(dot(normal, L),0.0,1.0), roughness);
+				vec3 F = f0 + (1.0 - f0) * pow(clamp(1.0 + dot(-Ln, H),0.0,1.0), 5.0);
+
+				     rayContrib = F * g1;
+
+				// Skip calculations if ray does not contribute much to the lighting
+		
+				if (luma(rayContrib) > 0.05){
+				
+					vec4 reflection = vec4(0.0,0.0,0.0,0.0);
+					// Scale quality with ray contribution
+					float rayQuality = 35*sqrt(luma(rayContrib));
+
+					// Skip SSR if ray contribution is low
+					if (rayQuality > 5.0) {
+
+
+					}
+
+					// Sample skybox
+					if (reflection.a < 0.9){
+						reflection.rgb = clamp((getSkyColorLut(L,sunPosition.xyz,L.y, temporals3Sampler).rgb),0,10);
+				//		reflection.rgb *= sqrt(lmy);
+					}
+					indirectSpecular += (reflection.rgb * rayContrib);
+					fresnelDiffuse += rayContrib;
+				}
+	
+			}
+        }
+
 	vec3 SSS = vec3(0.0);
     float filt = (1-sssAmount)*0.95;
 	vec3 extinction = 1.0 - OutTexel*0.85;    
@@ -1088,38 +1253,40 @@ if (depth >=1){
 	}
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
 
-		shading = ambientLight + mix(vec3(0.0), mix(direct*0.5,direct,sunSpec), shadeDir);
+		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
    
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
         if(lmx == 1) lmx *= 0.75;
-
+        shading += (((indirectSpecular) /nSpecularSamples + (specTerm * direct.rgb)));
 		shading = mix(vec3(1.0),shading,clamp((lmx)*5.0,0,1));
 		shading = mix(shading,vec3(1.0),clamp((lmy*0.75),0,1));
         shading *= ao;
     
-        vec3 dlight =   ( OutTexel * shading);
-        if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
-    	fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
-       if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light,1.0,10.0);
+    vec3 dlight =   ( OutTexel * shading);
+    if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
+    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
+    if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light,1.0,10.0);
+
+
     float isWater = 0;
     if (texture(TranslucentSampler, texCoord).a *255 ==200) isWater = 1;
    
-   if (isWater == 1){
+    if (isWater == 1){
 
 
-           float df = length(fragpos) ;
-      float dirtAmount = Dirt_Amount;
-      vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B)*fogcol.rgb;
-      vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
-      vec3 totEpsilon = dirtEpsilon*dirtAmount + waterEpsilon;
-      fragColor.rgb *= clamp(exp(-df*totEpsilon),0.2,1.0);
+    float df = length(fragpos) ;
+    float dirtAmount = Dirt_Amount;
+    vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B)*fogcol.rgb;
+    vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
+    vec3 totEpsilon = dirtEpsilon*dirtAmount + waterEpsilon;
+    fragColor.rgb *= clamp(exp(-df*totEpsilon),0.2,1.0);
 
     }
 
 
-//		fragColor.rgb = clamp(vec3(normal),0.01,1); 
+//		fragColor.rgb = clamp(vec3((((indirectSpecular) /nSpecularSamples + specTerm * direct.rgb))),0.01,1); 
     }
 
 
