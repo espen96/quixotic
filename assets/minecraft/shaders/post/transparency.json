@@ -4,6 +4,7 @@
         "swap2",
         "swap3",
         "swap4",
+        "denoised1",
         "denoised",
         "previousFrame",
         "previousData",
@@ -198,7 +199,7 @@
         {
             "name": "denoiser",
             "intarget": "swap4",
-            "outtarget": "denoised",
+            "outtarget": "denoised1",
             "auxtargets": [
                 {
                     "name": "CurrentFrameDataSampler",
@@ -222,6 +223,35 @@
                 }
             ]
         },        
+
+        {
+            "name": "denoiser2",
+            "intarget": "denoised1",
+            "outtarget": "denoised",
+            "auxtargets": [
+                {
+                    "name": "CurrentFrameDataSampler",
+                    "id": "minecraft:main"
+                },
+                {
+                    "name": "CurrentFrameDepthSampler",
+                    "id": "swap3:depth"
+                },
+                {
+                    "name": "PreviousFrameSampler",
+                    "id": "previousFrame"
+                },
+                {
+                    "name": "PreviousFrameDataSampler",
+                    "id": "previousData"
+                },
+                {
+                    "name": "PreviousFrameDepthSampler",
+                    "id": "previousFrame:depth"
+                }
+            ]
+        },   
+
 
         {
             "name": "copy_with_depth",
@@ -337,44 +367,11 @@
             
         },        
 
-        {
-            "name": "aa",
-            "intarget": "swap2",
-            "outtarget": "swap4",
-            "auxtargets": [
-                {
-                    "name": "temporals3Sampler",
-                    "id": "swap1"
-                },
-                {
-                    "name": "DiffuseDepthSampler",
-                    "id": "minecraft:main:depth"
-                },
-                {
-                    "name": "cloudsample",
-                    "id": "swap3"
-                },
-                {
-                    "name": "TranslucentSampler",
-                    "id": "translucent"
-                },
-                {
-                    "name": "TranslucentDepthSampler",
-                    "id": "translucent:depth"
-                },
-                {
-                    "name": "FontSampler",
-                    "id": "shader_font",
-                    "width":1,
-                    "height":1,
-                    "bilinear":false
-                }
-            ]
-        },     
+ 
  
         {
             "name": "blit",
-            "intarget": "swap4",
+            "intarget": "swap2",
             "outtarget": "minecraft:main"
         }
       

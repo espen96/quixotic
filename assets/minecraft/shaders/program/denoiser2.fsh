@@ -137,13 +137,12 @@ vec3 clipColor(vec3 aabbMin, vec3 aabbMax, vec3 prevColor) {
 #define VXAA_TEXTURE_CURRENT DiffuseSampler
 #define VXAA_TEXTURE_PREV PreviousFrameSampler
 
-#define VXAA_TEMPORALEDGE_THRES 0.08
+#define VXAA_TEMPORALEDGE_THRES 0.05
 #define VXAA_TEMPORALEDGE_TIME_MIN 0.0000001
-#define VXAA_TEMPORALEDGE_TIME_MAX 1.5
-#define VXAA_SPATIAL_FLICKER_TIME 2.75
-
-#define VXAA_MORPHOLOGICAL_STRENGTH 0.1
-#define VXAA_MORPHOLOGICAL_SHARPEN 0.1
+#define VXAA_TEMPORALEDGE_TIME_MAX 1.15
+#define VXAA_SPATIAL_FLICKER_TIME 2.35
+#define VXAA_MORPHOLOGICAL_STRENGTH 0.42
+#define VXAA_MORPHOLOGICAL_SHARPEN 0.13
 #define iTimeDelta 0.1
 #define VXAA_W 0
 #define VXAA_E 1
@@ -380,33 +379,28 @@ void main() {
     current.a = VXAALuma( current.rgb ); history.a = VXAALuma( history.rgb );
     
     vec4 currN[4];
-    currN[VXAA_W] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2( -1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_E] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_N] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_S] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_W].a = VXAALuma( currN[ VXAA_W ].rgb );
-    currN[VXAA_E].a = VXAALuma( currN[ VXAA_E ].rgb );
-    currN[VXAA_N].a = VXAALuma( currN[ VXAA_N ].rgb );
-    currN[VXAA_S].a = VXAALuma( currN[ VXAA_S ].rgb );
+    currN[VXAA_NW] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + 0.6f * vec2( -1.0f,  1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_NE] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + 0.6f * vec2(  1.0f,  1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_SW] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + 0.6f * vec2( -1.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_SE] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + 0.6f * vec2(  1.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_NW].a = VXAALuma( currN[VXAA_NW].rgb );
+    currN[VXAA_NE].a = VXAALuma( currN[VXAA_NE].rgb );
+    currN[VXAA_SW].a = VXAALuma( currN[VXAA_SW].rgb );
+    currN[VXAA_SE].a = VXAALuma( currN[VXAA_SE].rgb );
     
     vec4 histN[4];
-    histN[VXAA_W] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2( -1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_E] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_N] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_S] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_W].a = VXAALuma( histN[ VXAA_W ].rgb );
-    histN[VXAA_E].a = VXAALuma( histN[ VXAA_E ].rgb );
-    histN[VXAA_N].a = VXAALuma( histN[ VXAA_N ].rgb );
-    histN[VXAA_S].a = VXAALuma( histN[ VXAA_S ].rgb );
-    history.rgb = VXAAClampHistory( history.rgb, currN );
-   
+    histN[VXAA_NW] = clamp( texture( VXAA_TEXTURE_PREV, uv + 0.6f * vec2( -1.0f,  1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_NE] = clamp( texture( VXAA_TEXTURE_PREV, uv + 0.6f * vec2(  1.0f,  1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_SW] = clamp( texture( VXAA_TEXTURE_PREV, uv + 0.6f * vec2( -1.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_SE] = clamp( texture( VXAA_TEXTURE_PREV, uv + 0.6f * vec2(  1.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_NW].a = VXAALuma( histN[VXAA_NW].rgb );
+    histN[VXAA_NE].a = VXAALuma( histN[VXAA_NE].rgb );
+    histN[VXAA_SW].a = VXAALuma( histN[VXAA_SW].rgb );
+    histN[VXAA_SE].a = VXAALuma( histN[VXAA_SE].rgb );
     
-    // Temporal checkerboard upsample pass.
-    vec4 vtex[4];
-    VXAAUpsampleT4x( vtex, current, history, currN, histN );
     
-    // Average all samples.
-    fragColor = ( vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE] ) * 0.25f;
+    // Filmic pass.    
+    fragColor = VXAAFilmic( uv, current, history, currN, histN );
 //}
 
 }
