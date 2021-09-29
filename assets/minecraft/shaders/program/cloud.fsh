@@ -249,27 +249,7 @@ vec4 backProject(vec4 vec) {
     return tmp / tmp.w;
 }
 
-vec2 R2_samples(int n){
-	vec2 alpha = vec2(0.75487765, 0.56984026);
-	return fract(alpha * n);
-}
-vec3 rodSample(vec2 Xi)
-{
-	float r = sqrt(1.0f - Xi.x*Xi.y);
-    float phi = 2 * 3.14159265359 * Xi.y;
 
-    return normalize(vec3(cos(phi) * r, sin(phi) * r, Xi.x)).xzy;
-}
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
-	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
-
-	float mCosT = clamp(cosT,0.0,1.);
-	float cosY = dot(sunVec,sVector);
-	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
-	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
-
-	return texture(lut,vec2(x,y)).rgb;
-}
 
 void main() {
 
