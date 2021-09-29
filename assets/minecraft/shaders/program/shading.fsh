@@ -658,18 +658,18 @@ vec4 pbr (vec2 in1,vec2 in2){
     float maps = (maps1+maps2)/255;
     float expanded = int(maps * 255);
 
-    if(expanded >=  18 && expanded <=  38)   alphatest.g = maps; // SSS
-    float sss = map(alphatest.g*255,  18, 38,0,1);    
+    if(expanded >=  sssMin && expanded <=  sssMax)   alphatest.g = maps; // SSS
+    float sss = map(alphatest.g*255,  sssMin, sssMax,0,1);    
 
-    if(expanded >=  39 && expanded <= 115)   alphatest.r = maps; // Emissives
-    float emiss = map(alphatest.r*255, 39,115,0,1);    
+    if(expanded >=  lightMin && expanded <= lightMax)   alphatest.r = maps; // Emissives
+    float emiss = map(alphatest.r*255, lightMin,lightMax,0,1);    
 
-    if(expanded >= 116 && expanded <= 208)   alphatest.b = maps; // Roughness
-    float rough = map(alphatest.b*255,116,208,0,1);
+    if(expanded >= roughMin && expanded <= roughMax)   alphatest.b = maps; // Roughness
+    float rough = map(alphatest.b*255,roughMin,roughMax,0,1);
 
 
-    if(expanded >= 209 && expanded <= 251)   alphatest.a = maps; // Metals
-    float metal = map(alphatest.a*255,209,251,0,1);
+    if(expanded >= metalMin && expanded <= metalMax)   alphatest.a = maps; // Metals
+    float metal = map(alphatest.a*255,metalMin,metalMax,0,1);
     if(rough < 0.001) rough = 0.1;
 
     pbr = vec4(emiss,sss,rough, metal);
@@ -1073,7 +1073,7 @@ if(overworld == 1.0){
     }
 
 
- 	//	fragColor.rgb = clamp(vec3(ao),0.01,1); 
+ //		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 
