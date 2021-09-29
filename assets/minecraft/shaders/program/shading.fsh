@@ -122,6 +122,10 @@ vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
 
 
 
+float GetLinearDepth(float depth) {
+   return (2.0 * near) / (far + near - depth * (far - near));
+}
+
 float LinearizeDepth(float depth) 
 {
     return (2.0 * near * far) / (far + near - depth * (far - near));    
@@ -168,7 +172,7 @@ float AmbientOcclusion(sampler2D depth, vec2 coord, float dither) {
 	float d = texture(depth, coord).r;
 	if(d >= 1.0) return 1.0;
 	float hand = float(d < 0.56);
-	d = LinearizeDepth(d);
+	d = GetLinearDepth(d);
 	
 	float sampleDepth = 0.0, angle = 0.0, dist = 0.0;
 	float fovScale = gbufferModelViewInverse[1][1] / 1.37;
@@ -180,13 +184,13 @@ float AmbientOcclusion(sampler2D depth, vec2 coord, float dither) {
 	for(int i = 1; i <= samples; i++) {
 		vec2 offset = OffsetDist(i + dither, samples) * scale;
 
-		sampleDepth = LinearizeDepth(texture(depth, coord + offset).r);
+		sampleDepth = GetLinearDepth(texture(depth, coord + offset).r);
 		float sample = (far - near) * (d - sampleDepth) * 2.0;
 		if (hand > 0.5) sample *= 1024.0;
 		angle = clamp(0.5 - sample, 0.0, 1.0);
 		dist = clamp(0.5 * sample - 1.0, 0.0, 1.0);
 
-		sampleDepth = LinearizeDepth(texture(depth, coord - offset).r);
+		sampleDepth = GetLinearDepth(texture(depth, coord - offset).r);
 		sample = (far - near) * (d - sampleDepth) * 2.0;
 		if (hand > 0.5) sample *= 1024.0;
 		angle += clamp(0.5 - sample, 0.0, 1.0);
@@ -817,7 +821,7 @@ void main() {
    fragColor.rgb = OutTexel;	
 
 
-
+    float ao = AmbientOcclusion(DiffuseDepthSampler,texCoord,Bayer256(gl_FragCoord.xy)) ;
 if(overworld == 1.0){
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
@@ -865,7 +869,7 @@ if(overworld == 1.0){
           lmx = mix(lmtrans3.y,lmtrans.y,res);
           if (deptht >= 1) lmx = 1;
 
-    float ao = AmbientOcclusion(TranslucentDepthSampler,texCoord,Bayer256(gl_FragCoord.xy)) ;
+
 
 
 
@@ -973,7 +977,7 @@ if(overworld == 1.0){
             specTerm = vec3(sunSpec);
 			vec3 indirectSpecular = vec3(0.0);
 
-			const int nSpecularSamples = 16;
+			const int nSpecularSamples = 12;
 
 			mat3 basis = CoordBase(normal);
 			vec3 normSpaceView = -np3*basis;
@@ -1069,7 +1073,7 @@ if(overworld == 1.0){
     }
 
 
- //		fragColor.rgb = clamp(vec3((((indirectSpecular) /nSpecularSamples + specTerm * direct.rgb))),0.01,1); 
+ 	//	fragColor.rgb = clamp(vec3(ao),0.01,1); 
     }
 
 
