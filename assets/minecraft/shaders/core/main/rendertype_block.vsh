@@ -60,7 +60,7 @@ void main() {
         }
 
 
-    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+   // vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
     vertexColor = Color;
     texCoord0 = UV0;
     texCoord2 = UV2;
@@ -69,7 +69,7 @@ void main() {
     lmy = clamp((float(UV2.x)/255),0,1);
 
     normal = normalize(ModelViewMat * vec4(Normal, 0.0));
-        lm2 = minecraft_sample_lightmap2(Sampler2, UV2);
+    lm2 = minecraft_sample_lightmap2(Sampler2, UV2);
  
     gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0))+ vec4(calculateJitter()*0.1, 0, 0);
 

@@ -1,7 +1,6 @@
 #version 150
 
 uniform sampler2D temporals3Sampler;
-uniform sampler2D DiffuseSampler;
 uniform sampler2D noisetex;
 uniform sampler2D DiffuseDepthSampler;
 

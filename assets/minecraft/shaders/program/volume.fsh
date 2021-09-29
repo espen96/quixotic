@@ -290,12 +290,6 @@ void main() {
 
 
     float al = length(OutTexel);
-  
-
-    vec3 np3 = normVec(view);
-    vec3 np2 = vec3(0,1,0);   
-
-
 
     vec3 direct;
     vec3 ambient;

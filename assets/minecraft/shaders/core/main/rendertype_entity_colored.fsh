@@ -26,5 +26,6 @@ void main() {
     }
     color.rgb +=rnd/255;     
     float fragmentDistance = -ProjMat[3].z / ((gl_FragCoord.z) * -2.0 + 1.0 - ProjMat[2].z);
-    fragColor = linear_fog(color, fragmentDistance, FogStart, FogEnd, FogColor);
+//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
+    fragColor = color;
 }

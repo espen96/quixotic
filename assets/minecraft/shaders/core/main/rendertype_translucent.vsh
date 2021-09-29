@@ -82,7 +82,7 @@ void main() {
     noise = vec3(xs,zs,0);
     gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(0.0, (xs - zs) / 128.0, 0.0, 0.0));
 
-    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+//    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
     vertexColor = Color * texelFetch(Sampler2, UV2 / 16, 0);
     
     texCoord0 = UV0;

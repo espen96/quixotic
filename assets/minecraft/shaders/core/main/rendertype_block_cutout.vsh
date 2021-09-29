@@ -84,7 +84,7 @@ void main() {
             zs = calcMovePlants(position).z;
         }
 
-    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+//    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
     vertexColor = Color;
     texCoord0 = UV0;
     texCoord2 = UV2;

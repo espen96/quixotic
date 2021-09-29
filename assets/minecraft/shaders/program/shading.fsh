@@ -66,13 +66,10 @@ float Bayer2(vec2 a) {
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define NUMCONTROLS 26
 #define THRESH 0.5
-#define FPRECISION 4000000.0
-#define PROJNEAR 0.05
 #define FUDGE 32.0
 
 #define Dirt_Amount 0.01 
 
-#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
 
 #define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 ]
 
@@ -92,9 +89,7 @@ float Bayer2(vec2 a) {
 
 #define SSAO_SAMPLES 6
 
-#define ffstep(x,y) clamp((y - x) * 1e35,0.0,1.0)
-#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
-#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
+
 
 
 #define CLOUDS_QUALITY 0.5 //[0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
@@ -165,7 +160,6 @@ vec2 OffsetDist(float x, int s) {
 float AmbientOcclusion(sampler2D depth, vec2 coord, float dither) {
 	float ao = 0.0;
 	float far = far;
-	float aspectRatio = ScreenSize.x/ScreenSize.y;
 	if(overworld != 1.0 && end != 1.0) far = 1028;
 
 		int samples = 6;
@@ -512,23 +506,6 @@ void c(int character) {
 
 
 
-
-
-
-
-vec3 LinearTosRGB(in vec3 color)
-{
-    vec3 x = color * 12.92f;
-    vec3 y = 1.055f * pow(clamp(color,0.0,1.0), vec3(1.0f / 2.4f)) - 0.055f;
-
-    vec3 clr = color;
-    clr.r = color.r < 0.0031308f ? x.r : y.r;
-    clr.g = color.g < 0.0031308f ? x.g : y.g;
-    clr.b = color.b < 0.0031308f ? x.b : y.b;
-
-    return clr;
-}
-
 vec3 reinhard(vec3 x){
 x *= 1.66;
 return x/(1.0+x);
@@ -626,23 +603,7 @@ vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
 }
 
 
-vec4 textureBilinear(sampler2D tex, vec2 coord, const int res) {
-    ivec2 texSize = textureSize(tex, 0)*res;
-    vec2 texelSize = (1.0/vec2(texSize));
-    vec4 p0q0 = texture(tex, coord);
-    vec4 p1q0 = texture(tex, coord + vec2(texelSize.x, 0));
 
-    vec4 p0q1 = texture(tex, coord + vec2(0, texelSize.y));
-    vec4 p1q1 = texture(tex, coord + vec2(texelSize.x , texelSize.y));
-
-    float a = fract(coord.x * texSize.x);
-
-    vec4 pInterp_q0 = mix(p0q0, p1q0, a);
-    vec4 pInterp_q1 = mix(p0q1, p1q1, a);
-
-    float b = fract(coord.y*texSize.y);
-    return mix(pInterp_q0, pInterp_q1, b);
-}
 
 vec3 reconstructPosition(in vec2 uv, in float z, in mat4  InvVP)
 {
@@ -682,8 +643,6 @@ vec4 pbr (vec2 in1,vec2 in2){
     vec4 alphatest = vec4(0.0);
     vec4 pbr = vec4(0.0);
 
-    vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
-    vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+oneTexel.y).a));
 
     float maps1 = mix(in1.x,in2.x,res);
     float maps2 = mix(in2.x,in1.x,res);
@@ -850,14 +809,23 @@ void main() {
 	}
 
 
-float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-float res = mod(mod2, 2.0f);
+
+    vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
+         OutTexel = toLinear(OutTexel);    
+
+
+   fragColor.rgb = OutTexel;	
+
+
+
+if(overworld == 1.0){
+    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+    float res = mod(mod2, 2.0f);
 
 
 
 
 
-    depth = texture(DiffuseDepthSampler, texCoord).r;
     float deptht = texture(DiffuseDepthSampler, texCoord+oneTexel.y).r;
 	vec3 vl = vec3(0.);
 
@@ -867,7 +835,6 @@ float res = mod(mod2, 2.0f);
          screenPos.zw = vec2(1.0);
     vec3 view = normalize((gbufferModelViewInverse * screenPos).xyz);
 
-    float ao = AmbientOcclusion(TranslucentDepthSampler,texCoord,Bayer256(gl_FragCoord.xy)) ;
 
 
     vec3 sc = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb;
@@ -883,41 +850,28 @@ float res = mod(mod2, 2.0f);
     
 
     vec4 pbr = pbr( lmtrans, lmtrans3);
-
     float sssAmount = pbr.g;
     float ggxAmmount = pbr.b;
     float ggxAmmount2 = pbr.a;
     float light = pbr.r;
-
     if (depth > 1.0) light = 0;
 
 
 
     float lmx = 0;
     float lmy = 0;
-    vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
-//    vec3 OutTexel2 = (texture(DiffuseSampler, texCoord+oneTexel.y).rgb);
 
           lmy = mix(lmtrans.y,lmtrans3.y,res);
           lmx = mix(lmtrans3.y,lmtrans.y,res);
-//          OutTexel = mix(OutTexel2,OutTexel,res);
-          OutTexel = toLinear(OutTexel);
           if (deptht >= 1) lmx = 1;
 
-
-
-
-   fragColor.rgb = OutTexel;	
-
-
-
-	if(overworld == 1.0){
+    float ao = AmbientOcclusion(TranslucentDepthSampler,texCoord,Bayer256(gl_FragCoord.xy)) ;
 
 
 
 
 
-    float al = length(OutTexel);
+
   
 
     vec3 np3 = normVec(view);
@@ -928,7 +882,7 @@ float res = mod(mod2, 2.0f);
     direct = suncol;		
     
 
-if (depth >=1){
+ if (depth >=1){
 
 
     vec3 atmosphere = ((getSkyColorLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
@@ -953,8 +907,8 @@ if (depth >=1){
 
     fragColor.rgb = reinhard(atmosphere) ;
 
-
-}
+    return;
+ }
 
     // only do lighting if not sky and sunDir exists
     if (LinearizeDepth(depth) < far - FUDGE && length(sunPosition) > 0.99) {
@@ -1007,12 +961,7 @@ if (depth >=1){
 	float shadeDir = 0;
 	float shadeDirS = 0;
 	float shadeDirM = 0;
-//    float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 0.75, 0.5)));
 
-   
-//    float sunSpec = GGX(normal, normalize(view), sunPosition, ggxAmmount, 0.05, 0.01 * 1.0 + 0.06);
-
-//    sunSpec *= 10.0;
 			vec3 f0 = vec3(0.04);
             if(ggxAmmount2 > 0.001) f0 = vec3(0.8);
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
@@ -1029,9 +978,6 @@ if (depth >=1){
 			mat3 basis = CoordBase(normal);
 			vec3 normSpaceView = -np3*basis;
 			vec3 rayContrib = vec3(0.0);
-//			vec3 reflectedVector = reflect(normalize(view), normalize(normal));
-					// Energy conservation between diffuse and specular
-//			vec3 fresnelDiffuse = vec3(0.0);
 			vec3 reflection = vec3(0.0);
         if(f0.x >0.10){
 			for (int i = 0; i < nSpecularSamples; i++){
@@ -1067,27 +1013,19 @@ if (depth >=1){
 				//		reflection.rgb *= sqrt(lmy);
 					}
 					indirectSpecular += (reflection.rgb * rayContrib);
-//					fresnelDiffuse += rayContrib;
+
 				}
 	
 			}
         }
 
-//	vec3 SSS = vec3(0.0);
-    float filt = (1-sssAmount)*0.95;
-	vec3 extinction = 1.0 - OutTexel*0.85;    
+   
 	// Day
 	if (skyIntensity > 0.00001)
 	{
 
-	//		SSS = exp(-filt*11.0*extinction) + 3.0*exp(-filt*11./3.*extinction);
-	//		float scattering = clamp((0.7+0.3*pi*phaseg(dot(view, sunPosition),0.85))*1.26*0.25*sssAmount,0.0,1.0);
-	//		SSS *= scattering*3.0;
-	//		SSS *= clamp(sqrt(lmx*2-1.5),0,1);
-
 		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
        	if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount)*2, phaseg(dot(view, sunPosition),sssAmount*0.5))*3, shadeDirS, 0.35);
-//        if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*luma(SSS);
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)
@@ -1122,30 +1060,28 @@ if (depth >=1){
     if (isWater == 1){
 
 
-    float df = length(fragpos) ;
-    float dirtAmount = Dirt_Amount;
+
     vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B)*fogcol.rgb;
     vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
-    vec3 totEpsilon = dirtEpsilon*dirtAmount + waterEpsilon;
-    fragColor.rgb *= clamp(exp(-df*totEpsilon),0.2,1.0);
+    vec3 totEpsilon = dirtEpsilon*Dirt_Amount + waterEpsilon;
+    fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }
 
 
-//		fragColor.rgb = clamp(vec3((((indirectSpecular) /nSpecularSamples + specTerm * direct.rgb))),0.01,1); 
+ //		fragColor.rgb = clamp(vec3((((indirectSpecular) /nSpecularSamples + specTerm * direct.rgb))),0.01,1); 
     }
 
 
 
 
-	}
+}
 	else{
 
 	 fragColor.rgb =  mix(lumaBasedReinhardToneMapping(fragColor.rgb),fogcol.rgb*0.5,pow(depth,2048));
 	}
-	fragColor.a = texture(DiffuseSampler, texCoord2).a;
 
-    
+
 /*
 	vec4 numToPrint = vec4(maps);
 

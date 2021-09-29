@@ -7,12 +7,9 @@ uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform float Time;
 out vec2 texCoord;
-out vec2 oneTexel;
 out vec3 sunDir;
 
 uniform vec2 InSize;
-
-out float aspectRatio;
 
 out vec4 skycol;
 out vec4 rain;
@@ -46,7 +43,6 @@ float decodeFloat(vec3 ivec) {
 
 void main() {
 
-    oneTexel = 1.0 / OutSize;
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
     texCoord = Position.xy / OutSize;
@@ -70,8 +66,6 @@ void main() {
                                                     decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz),
                                                     1.0)).xyz);
     
-
-    aspectRatio = InSize.x / InSize.y;
 
 
 
@@ -98,15 +92,11 @@ float upPosZ = upPosition.z/normUpVec;
 float sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
 
-float angSun= -(( PI * 0.5128205128205128 - acos(sunElevation*1.065-0.065))/1.5);
-float angMoon= -(( PI * 0.5128205128205128 - acos(-sunElevation*1.065-0.065))/1.5);
 float angSky= -(( PI * 0.5128205128205128 - acos(sunElevation*0.95+0.05))/1.5);
 float angSkyNight= -(( PI * 0.5128205128205128 -acos(-sunElevation*0.95+0.05))/1.5);
 
-float sunIntensity=max(0.,1.0-exp(angSun));
 float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
 skyIntensity=max(0.,1.0-exp(angSky))*(1.0-rainStrength*0.4)*pow(fading,5.0);
-float moonIntensity=max(0.,1.0-exp(angMoon));
 float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 skyIntensityNight=max(0.,1.0-exp(angSkyNight))*(1.0-rainStrength*0.4)*pow(fading2,5.0);
 

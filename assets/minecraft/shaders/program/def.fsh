@@ -1,18 +1,12 @@
 #version 150
 
-uniform sampler2D DiffuseSampler;
-uniform sampler2D DiffuseDepthSampler;
 uniform vec2 OutSize;
 uniform vec2 ScreenSize;
 uniform float Time;
 
 in vec2 texCoord;
-in vec2 oneTexel;
-
-
-
 in vec4 skycol;
-in float aspectRatio;
+
 
 in float skyIntensity;
 in vec3 nsunColor;
@@ -70,7 +64,7 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 void main() {
 //    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 
-    float aspectRatio = ScreenSize.x/ScreenSize.y;
+
         vec4 screenPos = gl_FragCoord;
         screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
         screenPos.zw = vec2(1.0);

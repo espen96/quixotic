@@ -43,6 +43,6 @@ void main() {
     }
     glpos = gl_Position;
 
-    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
+//    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     vertexColor = Color;
 }

@@ -30,7 +30,7 @@ void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
-    
+
 
     fragColor = color;
 //    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);

@@ -83,17 +83,8 @@ float luma4(vec3 color) {
 	return dot(color,vec3(0.21, 0.72, 0.07));
 }
 
-vec3 nvec3(vec4 pos) {
-    return pos.xyz/pos.w;
-}
 
-vec4 nvec4(vec3 pos) {
-    return vec4(pos.xyz, 1.0);
-}
 
-float cdist(vec2 coord) {
-	return max(abs(coord.s-0.5),abs(coord.t-0.5))*1.95;
-}
 vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 approxreflection, vec2 randsamples[64]) {
     vec3 rayStart   = fragpos.xyz;
     vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
@@ -139,62 +130,8 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 appr
 
     return candidate;
 }
-vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither) {
-	vec3 pos = vec3(0.0);
-	float dist = 0.0;
-	vec3 start = viewPos;
-    vec3 vector = 0.5 * reflect(normalize(viewPos), normalize(normal));
-    viewPos += vector;
-	vec3 tvector = vector;
-
-    int sr = 0;
-
-    for(int i = 0; i < 64; i++) {
-        pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
-		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
-
-		vec3 rfragpos = vec3(pos.xy, texture2D(depthtex,pos.xy).r);
-        rfragpos = nvec3(gbufferProjectionInverse * nvec4(rfragpos * 2.0 - 1.0));
-		dist = length(start - rfragpos);
-
-        float err = length(viewPos - rfragpos);
-		if(err < pow(length(vector), 1.1)) {
-                sr++;
-                if(sr >= 6) break;
-				tvector -= vector;
-                vector *= 0.1;
-		}
-        vector *= 2.0;
-        tvector += vector * (dither * 0.05 + 1.0);
-		viewPos = start + tvector;
-    }
-
-	return vec4(pos, dist);
-}
 
 
-
-
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
-	float mCosT = clamp(cosT,0.0,1.);
-	float cosY = dot(sunVec,sVector);
-	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
-	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
-
-	return texture(lut,vec2(x,y)).rgb;
-}
-
-
-vec3 cosineHemisphereSample(vec2 Xi)
-{
-    float r = sqrt(Xi.x);
-    float theta = 2.0 * 3.14159265359 * Xi.y;
-
-    float x = r * cos(theta);
-    float y = r * sin(theta);
-
-    return vec3(x, y, sqrt(clamp(1.0 - Xi.x,0.,1.)));
-}
 
 vec2 unpackUnorm2x4(float pack) {
 	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
@@ -353,13 +290,11 @@ void main() {
 
     vec4 color = texture(TranslucentSampler, texCoord);
 
- //   lumaBasedReinhardToneMapping(color.rgb * sky2);
-//    color.rgb = toLinear(color.rgb);
+
     vec4 color2 = color;
     float wdepth = texture(TranslucentDepthSampler, texCoord).r;
     float wdepth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
     float wdepth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
-    float gdepth = texture(DiffuseDepthSampler, texCoord).r;
     float ldepth = LinearizeDepth(wdepth);
     float ldepth2 = LinearizeDepth(wdepth2);
     float ldepth3 = LinearizeDepth(wdepth3);
@@ -401,15 +336,8 @@ void main() {
         p2 = p2 - fragpos2;
         vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
         p3 = p3 - fragpos2;
-        vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
-        p4 = p4 - fragpos2;
-        vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
-        p5 = p5 - fragpos2;
-        vec3 normal2 = normalize(cross(p2, p3)) 
-                    + normalize(cross(-p4, p3)) 
-                    + normalize(cross(p2, -p5)) 
-                    + normalize(cross(-p4, -p5));
-   //     normal2 = normal2 == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal2);
+
+
         vec4 r = vec4(0.0);
         for (int i = 0; i < SSR_TAPS; i += 1) {
             r += SSR(fragpos, ldepth, normalize(normal + NORMAL_SCATTER * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(sky,1), vec4(sky,1), poissonDisk);

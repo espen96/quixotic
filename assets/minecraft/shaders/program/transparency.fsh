@@ -27,18 +27,7 @@ out vec4 fragColor;
 vec4 toLinear(vec4 sRGB){
 	return vec4(sRGB.rgb * (sRGB.rgb * (sRGB.rgb * 0.305306011 + 0.682171111) + 0.012522878),sRGB.a);
 }
-vec4 LinearTosRGB(in vec4 color)
-{
-    vec3 x = color.rgb * 12.92f;
-    vec3 y = 1.055f * pow(clamp(color.rgb,0.0,1.0), vec3(1.0f / 2.4f)) - 0.055f;
 
-    vec4 clr = color;
-    clr.r = color.r < 0.0031308f ? x.r : y.r;
-    clr.g = color.g < 0.0031308f ? x.g : y.g;
-    clr.b = color.b < 0.0031308f ? x.b : y.b;
-
-    return clr;
-}
 void try_insert( vec4 color, sampler2D dSampler ) {
     if ( color.a == 0.0 ) {
         return;

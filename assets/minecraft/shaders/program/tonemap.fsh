@@ -13,8 +13,8 @@ in vec2 texCoord;
 
 
 
-    #define EXPOSURE 1.45 
-    #define TONEMAP_WHITE_CURVE 2.0 
+    #define EXPOSURE 1.42 
+    #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
     #define CROSSTALK 0.25 // Desaturates bright colors and preserves saturation in darker areas (inverted if negative). Helps avoiding almsost fluorescent colors 

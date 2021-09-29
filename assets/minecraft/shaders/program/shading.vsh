@@ -203,4 +203,6 @@ float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 	}
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
 
+
+
 }

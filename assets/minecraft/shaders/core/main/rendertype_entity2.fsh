@@ -76,7 +76,8 @@ void main() {
 
 
 
-    fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
+//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
+    fragColor = color;
 
 //    fragColor.a = packUnorm2x4( 0.0,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 

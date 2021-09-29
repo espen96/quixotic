@@ -183,22 +183,7 @@ void VXAAUpsampleT4x( out vec4 vtex[4], vec4 current, vec4 history, vec4 currN[4
     vtex[VXAA_SW] = VXAADifferentialBlend( n1, weights.xy );
     vtex[VXAA_SE] = current;
 }
-#define NUMCONTROLS 100
-//#define vertexinfo
-#define THRESH 0.5
-#define FPRECISION 4000000.0
-#define PROJNEAR 0.05
-// returns control pixel index or -1 if not control
-int inControl(vec2 screenCoord, float screenWidth) {
-    if (screenCoord.y < 1.0) {
-        float index = floor(screenWidth / 2.0) + THRESH / 2.0;
-        index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
-            return int(index);
-        }
-    }
-    return -1;
-}
+
 void main() {
 
     vec2 iResolution =ScreenSize;

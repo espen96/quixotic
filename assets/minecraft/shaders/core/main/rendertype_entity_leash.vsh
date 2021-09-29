@@ -20,6 +20,6 @@ void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
     glpos = gl_Position;
 
-    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
+//    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     vertexColor = Color * ColorModulator * minecraft_sample_lightmap(Sampler2, UV2);
 }

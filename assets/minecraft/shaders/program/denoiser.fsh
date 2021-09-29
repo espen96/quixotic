@@ -119,7 +119,7 @@ void VXAAUpsampleT4x( out vec4 vtex[4], vec4 current, vec4 history, vec4 currN[4
 
 
 void main() {
-    vec2 iResolution =ScreenSize;
+    vec2 iResolution = ScreenSize;
     vec2 uv = texCoord;
     
     // Sample scene and neighbourhood.
