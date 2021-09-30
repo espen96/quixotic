@@ -96,12 +96,12 @@ float Bayer2(vec2 a) {
 #define NORMDEPTHTOLERANCE 1.0
 
 
-#define SSR_TAPS 3
-#define SSR_SAMPLES 10
-#define SSR_MAXREFINESAMPLES 10
-#define SSR_STEPREFINE 0.2
-#define SSR_STEPINCREASE 1.2
-#define SSR_IGNORETHRESH 0.1
+
+#define SSR_SAMPLES 64
+#define SSR_MAXREFINESAMPLES 1
+#define SSR_STEPREFINE 0.1
+#define SSR_STEPINCREASE 0.1
+#define SSR_IGNORETHRESH 0.0
 
 #define NORMAL_SCATTER 0.006
 
@@ -777,6 +777,13 @@ vec3 MetalCol(float f0){
     return vec3(1.0);
 }									
 	
+vec3 worldToView(vec3 worldPos) {
+
+    vec4 pos = vec4(worldPos, 0.0);
+    pos = inverse(gbufferModelViewInverse) * pos;
+
+    return pos.xyz;
+}
 
 
 vec3 sampleGGXVNDF(vec3 V_, float alpha_x, float alpha_y, float U1, float U2){
@@ -803,7 +810,7 @@ vec3 sampleGGXVNDF(vec3 V_, float alpha_x, float alpha_y, float U1, float U2){
 vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
     vec3 rayStart   = fragpos.xyz;
     vec3 rayDir     = surfacenorm;
- //       vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
+//        vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
     vec3 rayStep    = 0.5 * rayDir;
     vec3 rayPos     = rayStart + rayStep;
     vec3 rayRefine  = rayStep;
@@ -835,7 +842,7 @@ vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 
     vec4 candidate = vec4(0.0);
     if (fragdepth < dtmp + SSR_IGNORETHRESH && pos.y <= 1.0) {
-        vec3 colortmp = texture(PreviousFrameSampler, pos.xy).rgb*2.0;
+        vec3 colortmp = texture(DiffuseSampler, pos.xy).rgb;
 
 
 
@@ -844,7 +851,7 @@ vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
     
     candidate = mix(candidate, skycol, pos.y );
 
-    return pos;
+    return candidate.xyz;
 }
 
 void main() {
@@ -1099,21 +1106,22 @@ if(overworld == 1.0){
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
 
 
-
+   vec3 normal2 = normalize(worldToView(normal) );
 			float roughness = 1-ggxAmmount;
 			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition, roughness+0.05*0.95, f0);
-            specTerm = vec3(sunSpec);
+        //    specTerm = vec3(sunSpec);
 			vec3 indirectSpecular = vec3(0.0);
-
-			const int nSpecularSamples = 16;
+         
+			const int nSpecularSamples = 6;
 			// Energy conservation between diffuse and specular
 			vec3 fresnelDiffuse = vec3(0.0);
-			mat3 basis = CoordBase(normal);
+			mat3 basis = CoordBase(normal2);
 			vec3 normSpaceView = -np3*basis;
 			vec3 rayContrib = vec3(0.0);
 			vec3 reflection = vec3(0.0);
-        if(f0.x >0.10){  
-        //    OutTexel *= 0.0;
+        if(f0.x >0.5){  
+            f0 = 1-vec3(0.24867, 0.22965, 0.21366);
+            OutTexel *= 0.75;
             float wdepth = texture(TranslucentDepthSampler, texCoord).r;
 
             float ldepth = LinearizeDepth(wdepth);
@@ -1127,7 +1135,7 @@ if(overworld == 1.0){
 				vec3 Ln = reflect(-normSpaceView, H);
 				vec3 L = basis * Ln;
 				// Ray contribution
-				float g1 = g(clamp(dot(normal, L),0.0,1.0), roughness);
+				float g1 = g(clamp(dot(normal2, L),0.0,1.0), roughness);
 				vec3 F = f0 + (1.0 - f0) * pow(clamp(1.0 + dot(-Ln, H),0.0,1.0), 5.0);
 
 				     rayContrib = F * g1;
@@ -1142,22 +1150,17 @@ if(overworld == 1.0){
 
 					// Skip SSR if ray contribution is low
 					if (rayQuality > 5.0) {
-                    vec3 r = SSR(fragpos3.xyz, depth,  normalize(L ), vec4(1));
-                  //  if (r.z < 1.){
-								reflection.rgb = texture2D(DiffuseSampler,r.xy).rgb;
-                        //        reflection.rgb *= reflection.rgb;
-                        //        reflection.rgb *= 0.5;
+                    vec3 r = SSR(fragpos3.xyz, depth,normalize(normal2 + (roughness*3) * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(clamp((getSkyColorLut(L,sunPosition.xyz,L.y, temporals3Sampler).rgb),0,10),1));
+
+								reflection.rgb = r;
+         
                                 reflection.a = 1.0;
-             //       }
+         
 
                                     
 					}
 
-					// Sample skybox
-					if (reflection.a < 0.9){
-						reflection.rgb = clamp((getSkyColorLut(L,sunPosition.xyz,L.y, temporals3Sampler).rgb),0,10);
-			//		reflection.rgb *= sqrt(lmy)/1.*8./3.;
-					}
+	
 					indirectSpecular += (reflection.rgb * rayContrib);
 					fresnelDiffuse += rayContrib;
 
@@ -1191,14 +1194,17 @@ if(overworld == 1.0){
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
         if(lmx == 1) lmx *= 0.75;
-        vec3 speculars  = (((indirectSpecular) /nSpecularSamples + (specTerm * direct.rgb)));
-           shading += speculars*10; 
+        vec3 speculars  = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb);
+                                  speculars.rgb *= speculars.rgb;
+                                  speculars.rgb *= 5.0;
 		shading = mix(vec3(1.0),shading,clamp((lmx)*5.0,0,1));
-		shading = mix(shading,vec3(1.0),clamp((lmy*0.75),0,1));
+		shading = mix(shading,vec3(1.0),clamp((lmy*0.75),0,1));   
+       
         shading *= ao;
     
     vec3 dlight =   ( OutTexel * shading);
- //   dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
+  dlight += (speculars*dlight); 
+//    dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
     if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
     fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light,1.0,10.0);
