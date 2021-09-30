@@ -14,6 +14,7 @@
         { "name": "temporals3Sampler" },
         { "name": "TranslucentSpecSampler" },
         { "name": "TranslucentDepthSampler" },
+        { "name": "PreviousFrameSampler" },
         { "name": "cloudsample" },
         { "name": "FontSampler" }
     ],

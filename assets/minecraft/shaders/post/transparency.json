@@ -70,6 +70,10 @@
             "id":"swap3"
           },
           {
+            "name":"PreviousFrameSampler",
+            "id":"previousFrame"
+          },
+          {
             "name":"TranslucentSampler",
             "id":"translucent"
           },

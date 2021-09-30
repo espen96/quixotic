@@ -81,6 +81,7 @@ void main() {
 
     // not a control pixel, draw sky like normal
     else if (isSky > 0.5) {
+        discard;
 
         /*
         vec4 screenPos = gl_FragCoord;
@@ -94,10 +95,10 @@ void main() {
 //   fragColor.rgb = renderSky(ColorModulator.rgb,ColorModulator.rgb,FogColor.rgb,view.y);
 
 */
-    }
+    }/*
     else {
         fragColor = linear_fog(ColorModulator, vertexDistance, FogStart, FogEnd, FogColor);
 
     }
-
+*/
 }

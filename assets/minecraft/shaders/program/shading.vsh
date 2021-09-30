@@ -18,6 +18,10 @@ flat out vec3 ambientF;
 flat out vec3 ambientDown;
 flat out vec3 avgSky;
 
+out float cosFOVrad;
+out float tanFOVrad;
+out mat4 gbPI;
+out mat4 gbP;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -144,6 +148,22 @@ void main() {
     aspectRatio = InSize.x / InSize.y;
 
 const float pi = 3.141592653589793238462643383279502884197169;
+
+
+    float FOVrad = 70 / 360.0 * 3.1415926535;
+    cosFOVrad = cos(FOVrad);
+    tanFOVrad = tan(FOVrad);
+    gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,
+                0.0,                           2.0 * tanFOVrad, 0.0, 0.0,
+                0.0,                           0.0,             0.0, 0.0,
+                -tanFOVrad * aspectRatio,     -tanFOVrad,       1.0, 1.0);
+
+    gbP = mat4(1.0 / (2.0 * tanFOVrad * aspectRatio), 0.0,               0.0, 0.0,
+               0.0,                             1.0 / (2.0 * tanFOVrad), 0.0, 0.0,
+               0.5,                             0.5,                     1.0, 0.0,
+               0.0,                             0.0,                     0.0, 1.0);
+
+
 
 ////////////////////////////////////////////////
  rainStrength = 1-rain.r;
