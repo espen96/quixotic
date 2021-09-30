@@ -17,11 +17,11 @@ in float vertexDistance;
 in float lm;
 in vec4 vertexColor;
 in vec4 lm2;
+in vec3 test;
 in vec2 texCoord0;
 in vec2 texCoord2;
 in vec2 texCoord3;
 in vec4 normal;
-in vec4 test;
 in vec4 glpos;
 in float lmx;
 in float lmy;
@@ -108,6 +108,7 @@ void main() {
   }
  
   fragColor = color;
+//  fragColor.rgb = test.rgb;
    
   fragColor.a = packUnorm2x4( alpha3+((Bayer512(gl_FragCoord.xy)/128)),clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 }

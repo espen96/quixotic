@@ -24,6 +24,7 @@ out vec4 lm2;
 out float lmx;
 out float lmy;
 out vec4 vertexColor;
+out vec3 test;
 out vec2 texCoord0;
 out vec2 texCoord2;
 
@@ -51,6 +52,7 @@ vec2 calculateJitter() {
 void main() {
     vec3 position = Position + ChunkOffset;
     float animation = GameTime * 4000.0;
+  test = textureLod(Sampler0, UV0,100).rgb ;
 
     float xs = 0.0;
     float zs = 0.0;
