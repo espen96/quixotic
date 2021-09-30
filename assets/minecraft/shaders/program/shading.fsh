@@ -1102,7 +1102,9 @@ if(overworld == 1.0){
 	float shadeDirM = 0;
 
 			vec3 f0 = vec3(0.04);
-            if(ggxAmmount2 > 0.001) f0 = vec3(0.8);
+            if(ggxAmmount2 > 0.001) {f0 = vec3(0.8);
+            ggxAmmount = ggxAmmount2;}
+  //          if(ggxAmmount*255 <12) ggxAmmount = length(OutTexel); 
      //       if(ggxAmmount<0.05) ggxAmmount += (length(OutTexel));
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
 
@@ -1122,7 +1124,7 @@ if(overworld == 1.0){
 			vec3 rayContrib = vec3(0.0);
 			vec3 reflection = vec3(0.0);
         if(f0.x >0.5){  
-            f0 = 1-vec3(0.24867, 0.22965, 0.21366);
+
             OutTexel *= 0.75;
             float wdepth = texture(TranslucentDepthSampler, texCoord).r;
 
@@ -1225,9 +1227,9 @@ if(overworld == 1.0){
     fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }
-
-
- //		fragColor.rgb = clamp(vec3(sunSpec),0.01,1); 
+float test = 0.0;
+ //   if(pbr.b*255 <12) test = 1.0;
+ //		fragColor.rgb = clamp(vec3(length(OutTexel)),0.01,1); 
     }
 
 
