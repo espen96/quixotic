@@ -56,7 +56,7 @@ float Bayer2(vec2 a) {
 #define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
-
+#define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
@@ -109,5 +109,5 @@ void main() {
  
   fragColor = color;
    
-  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
+  fragColor.a = packUnorm2x4( alpha3+((Bayer512(gl_FragCoord.xy)/128)),clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 }

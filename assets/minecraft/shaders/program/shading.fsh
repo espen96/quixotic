@@ -1171,7 +1171,7 @@ if(overworld == 1.0){
 				}
 	
 			}
-          
+          sunSpec = luma(specTerm);
         }
   
    
@@ -1193,12 +1193,12 @@ if(overworld == 1.0){
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
 
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
-   
+        shading += (sunSpec*direct);
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
         if(lmx == 1) lmx *= 0.75;
-        vec3 speculars  = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb);
+        vec3 speculars  = (indirectSpecular/nSpecularSamples);
                                   speculars.rgb *= speculars.rgb;
                                   speculars.rgb *= 5.0;
 		shading = mix(vec3(1.0),shading,clamp((lmx)*5.0,0,1));
