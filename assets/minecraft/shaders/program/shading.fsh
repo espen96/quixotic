@@ -1103,13 +1103,15 @@ if(overworld == 1.0){
 
 			vec3 f0 = vec3(0.04);
             if(ggxAmmount2 > 0.001) f0 = vec3(0.8);
+     //       if(ggxAmmount<0.05) ggxAmmount += (length(OutTexel));
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
 
 
    vec3 normal2 = normalize(worldToView(normal) );
 			float roughness = 1-ggxAmmount;
 			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition, roughness+0.05*0.95, f0);
-        //    specTerm = vec3(sunSpec);
+            specTerm += vec3(sunSpec)*0.5;
+            normalize(specTerm);
 			vec3 indirectSpecular = vec3(0.0);
          
 			const int nSpecularSamples = 6;
@@ -1225,7 +1227,7 @@ if(overworld == 1.0){
     }
 
 
- 	//	fragColor.rgb = clamp(vec3(speculars),0.01,1); 
+ //		fragColor.rgb = clamp(vec3(sunSpec),0.01,1); 
     }
 
 
