@@ -1211,7 +1211,7 @@ if(overworld == 1.0){
 //    dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
     if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
     fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
-    if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light,1.0,10.0);
+    if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 
 
     float isWater = 0;
