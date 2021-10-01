@@ -1229,7 +1229,7 @@ if(overworld == 1.0){
     }
 float test = 0.0;
  //   if(pbr.b*255 <12) test = 1.0;
- //		fragColor.rgb = clamp(vec3(length(OutTexel)),0.01,1); 
+ //		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 

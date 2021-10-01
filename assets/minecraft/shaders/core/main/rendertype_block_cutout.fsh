@@ -109,5 +109,5 @@ void main() {
  
   fragColor = color;
    
-  fragColor.a = packUnorm2x4( alpha3+((Bayer512(gl_FragCoord.xy)/128)),clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
+  fragColor.a = packUnorm2x4( alpha3+((luma4(rnd)/32)),clamp(lm+(luma4(rnd)/2),0,0.9));
 }

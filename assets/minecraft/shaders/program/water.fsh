@@ -24,19 +24,20 @@ flat in vec3 ambientF;
 flat in vec3 ambientDown;
 flat in vec3 avgSky;
 
+#define near 0.00004882812 
 
+
+
+
+in float far;
 
 #define NORMDEPTHTOLERANCE 1.0
-
-#define near 0.00004882812 
-in float far;
 #define SSR_TAPS 3
 #define SSR_SAMPLES 10
 #define SSR_MAXREFINESAMPLES 10
 #define SSR_STEPREFINE 0.2
 #define SSR_STEPINCREASE 1.2
 #define SSR_IGNORETHRESH 0.1
-
 #define NORMAL_SCATTER 0.006
 
 
