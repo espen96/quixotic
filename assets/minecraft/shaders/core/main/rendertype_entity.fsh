@@ -66,9 +66,9 @@ void main() {
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 
 
-        if (color.a < 0.1) {
-        discard;
-    }
+  if (color.a*255 <= 17.0) {
+    discard;
+  }
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
     color *= lightMapColor;
 

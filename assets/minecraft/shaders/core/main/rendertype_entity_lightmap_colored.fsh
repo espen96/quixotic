@@ -61,9 +61,9 @@ void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 
-    if (color.a < 0.1) {
-        discard;
-    }
+  if (color.a*255 <= 17.0) {
+    discard;
+  }
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = color;
 
