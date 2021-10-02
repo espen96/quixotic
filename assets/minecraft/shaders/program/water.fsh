@@ -287,10 +287,10 @@ void main() {
     poissonDisk[63] = vec2(-0.178564, -0.596057);
     vec3 reflection = vec3(1.0);
     vec4 reflection2 = vec4(0.0);
-    vec3 sky = avgSky;
+    
 
     vec4 color = texture(TranslucentSampler, texCoord);
-
+    vec3 sky = mix(color.rgb*2.0,avgSky,0.5);
 
     vec4 color2 = color;
     float wdepth = texture(TranslucentDepthSampler, texCoord).r;

@@ -688,6 +688,7 @@ vec4 pbr (vec2 in1,vec2 in2){
     if(rough < 0.001) rough = 0.1;
 
     pbr = vec4(emiss,sss,rough, metal);
+ //   if(expanded > 170) pbr *=0;
     return pbr;    
 }
 
@@ -1203,14 +1204,12 @@ if(overworld == 1.0){
                                   speculars.rgb *= 5.0;
 		shading = mix(vec3(1.0),shading,clamp((lmx)*5.0,0,1));
 		shading = mix(shading,vec3(1.0),clamp((lmy*0.75),0,1));   
-       
-        shading *= ao;
     
     vec3 dlight =   ( OutTexel * shading);
   dlight += (speculars*dlight); 
 //    dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
     if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
-    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight);           		     
+    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight)*clamp(ao,0.75,1.00);           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 
 
@@ -1227,9 +1226,9 @@ if(overworld == 1.0){
     fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }
-float test = 0.0;
- //   if(pbr.b*255 <12) test = 1.0;
- //		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
+float test = 0.0; 
+   if(pbr.a*255 >1) test = 1.0;
+ 	//	fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 

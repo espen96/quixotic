@@ -2,6 +2,7 @@
 
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
+#moj_import <mappings.glsl>
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
@@ -62,6 +63,8 @@ float Bayer2(vec2 a) {
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
+
+
 void main() {
 
   vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
@@ -71,6 +74,7 @@ void main() {
                   
 
   float alpha = textureLod(Sampler0, texCoord0,0).a; 
+  vec4 albedo = textureLod(Sampler0, texCoord0,0) ;
   vec4 color = texture(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
   if(alpha <0.15)color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
   color.a = alpha;
@@ -80,16 +84,44 @@ void main() {
   color.rgb = (color.rgb*lm2.rgb);
         
 
-  color.rgb +=rnd/255; 
+  color.rgb +=rnd/16; 
 
-
+    #define sssMin 22
+    #define sssMax 47
+    #define lightMin 48
+    #define lightMax 72
+    #define roughMin 73
+    #define roughMax 157
+    #define metalMin 158
+    #define metalMax 251
 
   float translucent = 0;
 
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
 
+    float lum = luma4(albedo.rgb);
+	vec3 diff = albedo.rgb-lum;
+
   float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
+  float procedual1 = (distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb))*255;
+ if (alpha0 ==255) {alpha0 = map(procedual1,0,255,roughMin,roughMax);
+ }
+
+  float noise = luma4(rnd)*128;  
+ 
+//    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = clamp(alpha0+noise,sssMin,sssMax); // SSS
+
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = clamp(alpha0+noise,lightMin,lightMax); // Emissives
+
+    if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = clamp(alpha0+noise,roughMin,roughMax); // Roughness
+
+
+    if(alpha0 >= metalMin && alpha0 <= metalMax)   alpha0 = clamp(alpha0+noise,metalMin,metalMax); // Metals
+
+  noise /= 255;  
+
+
   float alpha1 = 0.0;
   float alpha2 = 0.0;
 
@@ -106,8 +138,7 @@ void main() {
     alpha3 = alpha2;
     //color.rgb = normal.rgb;
   }
- 
   fragColor = color;
 //  fragColor.rgb = test.rgb;
    
-  fragColor.a = packUnorm2x4( alpha3+((luma4(rnd)/32)),clamp(lm+(luma4(rnd)/2),0,0.9));}
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd)/2),0,0.95));}

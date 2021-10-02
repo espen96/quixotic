@@ -2,6 +2,7 @@
 
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
+#moj_import <mappings.glsl>
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
@@ -21,7 +22,7 @@ in vec2 texCoord0;
 in vec2 texCoord2;
 in vec2 texCoord3;
 in vec4 normal;
-in vec4 test;
+in vec3 test;
 in vec4 glpos;
 in float lmx;
 in float lmy;
@@ -69,10 +70,10 @@ void main() {
                   
 
   float alpha = textureLod(Sampler0, texCoord0,0).a; 
-  vec4 color = texture(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
-  if(alpha <0.5)color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
+  vec4 color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
   color.a = alpha;
   float lightm = 0;
+  vec4 albedo = textureLod(Sampler0, texCoord0,0) ;
 
 
   color.rgb = (color.rgb*lm2.rgb);
@@ -80,16 +81,46 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
-  color.rgb +=rnd/255; 
+  color.rgb +=rnd/16; 
 
-
+    #define sssMin 22
+    #define sssMax 47
+    #define lightMin 48
+    #define lightMax 72
+    #define roughMin 73
+    #define roughMax 157
+    #define metalMin 158
+    #define metalMax 251
 
   float translucent = 0;
 
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
 
-  float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
+    float lum = luma4(albedo.rgb);
+	vec3 diff = albedo.rgb-lum;
+
+  int alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
+  int procedual1 = int(floor((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb))*255));
+ if (alpha0 ==255) {
+                   alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax)));
+ if (diff.r < 0.1) alpha0 = int(floor(map(procedual1,0,255,sssMin,sssMin+3)));
+ }
+
+  float noise = luma4(rnd);  
+ 
+    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+noise,sssMin,sssMax)); // SSS
+
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+noise,lightMin,lightMax)); // Emissives
+
+    if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = int(clamp(alpha0+noise,roughMin,roughMax)); // Roughness
+
+
+    if(alpha0 >= metalMin && alpha0 <= metalMax)   alpha0 = int(clamp(alpha0+noise,metalMin,metalMax)); // Metals
+
+  noise /= 255;  
+
+
   float alpha1 = 0.0;
   float alpha2 = 0.0;
 
@@ -106,8 +137,7 @@ void main() {
     alpha3 = alpha2;
     //color.rgb = normal.rgb;
   }
- 
   fragColor = color;
+//  fragColor.rgb = test.rgb;
    
-  fragColor.a = packUnorm2x4( alpha3+((luma4(rnd)/32)),clamp(lm+(luma4(rnd)/2),0,0.9));
-}
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd)/3),0,0.95));}

@@ -28,7 +28,7 @@ out vec2 texCoord0;
 out vec2 texCoord2;
 out vec2 texCoord3;
 out vec4 normal;
-out vec4 test;
+out vec3 test;
 out vec4 glpos;
 
 #define WAVY_PLANTS
@@ -74,7 +74,7 @@ vec2 calculateJitter() {
 void main() {
     vec3 position = Position + ChunkOffset;
     float animation = GameTime * 4000.0;
-
+    test = textureLod(Sampler0, UV0,100).rgb ;
     float xs = 0.0;
     float ys = 0.0;
     float zs = 0.0;
@@ -101,7 +101,7 @@ void main() {
 
     xs *= lmx;
     zs *= lmx;
-    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, ys / 32.0, zs / 32.0, 0.0))+ vec4(calculateJitter()*0.1, 0, 0);
+    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, ys / 32.0, zs / 32.0, 0.0))+ vec4(calculateJitter()*0.0, 0, 0);
     glpos = gl_Position;
 
 }
