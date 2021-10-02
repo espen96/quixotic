@@ -101,7 +101,7 @@ void main() {
 	vec3 diff = albedo.rgb-lum;
 
   int alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
-  int procedual1 = int(floor((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb))*255));
+  float procedual1 = ((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb))*2)*255;
  if (alpha0 ==255) {
                    alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax)));
  if (diff.r < 0.1) alpha0 = int(floor(map(procedual1,0,255,sssMin,sssMin+3)));
