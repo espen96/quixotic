@@ -81,7 +81,7 @@ void main() {
 
     // not a control pixel, draw sky like normal
     else if (isSky > 0.5) {
-        discard;
+
 
         /*
         vec4 screenPos = gl_FragCoord;

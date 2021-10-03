@@ -7,6 +7,7 @@ uniform sampler2D cloudsample;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
+uniform sampler2D prevsky;
 
 uniform vec2 OutSize;
 uniform vec2 ScreenSize;
@@ -854,14 +855,49 @@ vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 
     return candidate.xyz;
 }
+vec3 reinhard_jodie(vec3 v)
+{
+    float l = luma(v);
+    vec3 tv = v / (1.0f + v);
+    tv = mix(v / (1.0f + l), tv, tv);
+    return 	pow(tv, vec3(1. / 2.2));
+}
+
+
 
 void main() {
-    float depth = texture(DiffuseDepthSampler, texCoord).r;
   	vec2 texCoord = texCoord; 
   	vec2 texCoord2 = texCoord; 
+    vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
+    float deptha = texture(DiffuseDepthSampler, texCoord).r;
+    if(deptha >= 1) lmtrans = vec2(0.0); 
+    vec2 lmtrans2 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(0,oneTexel.y)).a));
+    float depthb = texture(DiffuseDepthSampler, texCoord-vec2(0,oneTexel.y)).r;
+    lmtrans2 *= 1-(depthb -deptha);
+
+    vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(0,oneTexel.y)).a));
+    float depthc = texture(DiffuseDepthSampler, texCoord+vec2(0,oneTexel.y)).r;
+    lmtrans3 *= 1-(depthc -deptha);
+
+    vec2 lmtrans4 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.x,0)).a));
+    float depthd = texture(DiffuseDepthSampler, texCoord+vec2(oneTexel.x,0)).r;
+    lmtrans4 *= 1-(depthd -deptha);
+
+    vec2 lmtrans5 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(oneTexel.x,0)).a));
+    float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
+    lmtrans5 *= 1-(depthe -deptha);
+    
+    float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
+    vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
+    if( (depthtest-deptha)*1000 >0.1) pbr =vec4(0.0);
+    float sssAmount = pbr.g;
+    float ggxAmmount = pbr.b;
+    float ggxAmmount2 = pbr.a;
+    float light = pbr.r;
+    float depth = deptha;
+    if (depth > 1.0) light = 0;
 
 	if(overworld != 1.0 && end != 1.0){
-    vec2 lmtrans2 = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
 
     vec2 p_m = texCoord;
     vec2 p_d = p_m;
@@ -902,7 +938,6 @@ if(overworld == 1.0){
 
 
 
-    float deptht = texture(DiffuseDepthSampler, texCoord+oneTexel.y).r;
 	vec3 vl = vec3(0.);
 
     bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
@@ -920,27 +955,29 @@ if(overworld == 1.0){
  
 
 
-    vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
-    vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+oneTexel.y).a));
 
-    
 
-    vec4 pbr = pbr( lmtrans, lmtrans3);
-    float sssAmount = pbr.g;
-    float ggxAmmount = pbr.b;
-    float ggxAmmount2 = pbr.a;
-    float light = pbr.r;
-    if (depth > 1.0) light = 0;
 
 
 
     float lmx = 0;
     float lmy = 0;
+    float postlight = 1;
 
-          lmy = mix(lmtrans.y,lmtrans3.y,res);
-          lmx = mix(lmtrans3.y,lmtrans.y,res);
-          if (deptht >= 1) lmx = 1;
 
+        lmy = mix(lmtrans.y,(lmtrans2.y+lmtrans3.y+lmtrans4.y+lmtrans5.y)/4,res);
+        lmx = mix((lmtrans2.y+lmtrans3.y+lmtrans4.y+lmtrans5.y)/4,lmtrans.y,res);
+
+        if(lmx == 1) {
+            lmx *= 0.75;
+            postlight = 0.0;
+            
+        }
+
+    vec3 lightmap = texture2D(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
+
+    if(postlight == 1)    OutTexel *= lightmap;
+//     if (deptht >= 1 || depthy >= 1) discard;   
 
 
 
@@ -958,7 +995,7 @@ if(overworld == 1.0){
     direct = suncol;		
     
 
- if (depth >=1){
+ if (depthtest >= 1.0 || luma(OutTexel) == 0){
 
 
     vec3 atmosphere = ((getSkyColorLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
@@ -1191,20 +1228,24 @@ if(overworld == 1.0){
 	
 
 	}
-        shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
 
+    
+        shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
+        
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
         shading += (sunSpec*direct);
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
-        if(lmx == 1) lmx *= 0.75;
+
         vec3 speculars  = (indirectSpecular/nSpecularSamples);
                                   speculars.rgb *= speculars.rgb;
                                   speculars.rgb *= 5.0;
-		shading = mix(vec3(1.0),shading,clamp((lmx)*5.0,0,1));
-		shading = mix(shading,vec3(1.0),clamp((lmy*0.75),0,1));   
-    
+        float mixweight = 1.0;
+        if(postlight == 1) mixweight = 0.1;
+		shading = mix(vec3(mixweight),shading,clamp((lmx)*5.0,0,1));
+		shading = mix(shading,vec3(1.0),clamp((lmy),0,1));   
+
     vec3 dlight =   ( OutTexel * shading);
   dlight += (speculars*dlight); 
 //    dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
@@ -1226,9 +1267,12 @@ if(overworld == 1.0){
     fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }
+
+
+    	
 float test = 0.0; 
    if(pbr.a*255 >1) test = 1.0;
- 	//	fragColor.rgb = clamp(vec3(pbr),0.01,1); 
+ //		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 
@@ -1237,7 +1281,7 @@ float test = 0.0;
 }
 	else{
 
-	 fragColor.rgb =  mix(lumaBasedReinhardToneMapping(fragColor.rgb),fogcol.rgb*0.5,pow(depth,2048));
+	 fragColor.rgb =  mix(reinhard_jodie(fragColor.rgb),fogcol.rgb*0.5,pow(depth,2048));
 	}
 
 

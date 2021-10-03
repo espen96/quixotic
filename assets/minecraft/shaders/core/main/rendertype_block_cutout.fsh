@@ -76,7 +76,7 @@ void main() {
   vec4 albedo = textureLod(Sampler0, texCoord0,0) ;
 
 
-  color.rgb = (color.rgb*lm2.rgb);
+//  color.rgb = (color.rgb*lm2.rgb);
         
   if (color.a*255 <= 17.0) {
     discard;
@@ -101,9 +101,9 @@ void main() {
 	vec3 diff = albedo.rgb-lum;
 
   int alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
-  float procedual1 = ((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb))*2)*255;
+  float procedual1 = ((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb)))*255;
  if (alpha0 ==255) {
-                   alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax)));
+                   alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax-16)));
  if (diff.r < 0.1) alpha0 = int(floor(map(procedual1,0,255,sssMin,sssMin+3)));
  }
 
@@ -140,4 +140,4 @@ void main() {
   fragColor = color;
 //  fragColor.rgb = test.rgb;
    
-  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd)/3),0,0.95));}
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))/1),0,0.95));}

@@ -18,8 +18,28 @@
       {
         "name":"def",
         "intarget":"minecraft:main",
-        "outtarget":"swap1"
+        "outtarget":"swap1",
+        "auxtargets":[
+          {
+            "name":"DiffuseDepthSampler",
+            "id":"minecraft:main:depth"
+          },
+          {
+            "name":"TranslucentSampler",
+            "id":"translucent"
+          },
+          {
+            "name":"TranslucentDepthSampler",
+            "id":"translucent:depth"
+          },
+          {
+            "name":"noisetex",
+            "id":"clouds"
+          }
+        ]
       },
+
+
       {
         "name":"cloud",
         "intarget":"minecraft:main",
@@ -90,6 +110,7 @@
           }
         ]
       },
+
       {
         "name":"water",
         "intarget":"minecraft:main",

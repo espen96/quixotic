@@ -5,6 +5,8 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D prevsky;
+
 uniform float Time;
 out vec2 texCoord;
 out vec3 sunDir;
@@ -18,6 +20,15 @@ out float skyIntensity;
 out vec3 nsunColor;
 out float skyIntensityNight;
 out float rainStrength;
+out float sunIntensity;
+out float moonIntensity;
+flat out vec3 ambientUp;
+flat out vec3 ambientLeft;
+flat out vec3 ambientRight;
+flat out vec3 ambientB;
+flat out vec3 ambientF;
+flat out vec3 ambientDown;
+flat out vec3 avgSky;
 
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
@@ -40,7 +51,30 @@ int decodeInt(vec3 ivec) {
 float decodeFloat(vec3 ivec) {
     return decodeInt(ivec) / FPRECISION;
 }
+vec3 rodSample(vec2 Xi)
+{
+	float r = sqrt(1.0f - Xi.x*Xi.y);
+    float phi = 2 * 3.14159265359 * Xi.y;
 
+    return normalize(vec3(cos(phi) * r, sin(phi) * r, Xi.x)).xzy;
+}
+//Low discrepancy 2D sequence, integration error is as low as sobol but easier to compute : http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+vec2 R2_samples(int n){
+	vec2 alpha = vec2(0.75487765, 0.56984026);
+	return fract(alpha * n);
+}
+vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
+    vec2 oneTexel = 1.0 / OutSize;
+	float mCosT = clamp(cosT,0.0,1.);
+	float cosY = dot(sunVec,sVector);
+	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
+	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
+
+	return texture(lut,vec2(x,y)).rgb;
+
+
+}
 void main() {
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
@@ -94,12 +128,17 @@ float sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
 float angSky= -(( PI * 0.5128205128205128 - acos(sunElevation*0.95+0.05))/1.5);
 float angSkyNight= -(( PI * 0.5128205128205128 -acos(-sunElevation*0.95+0.05))/1.5);
+float angMoon= -(( PI * 0.5128205128205128 - acos(-sunElevation*1.065-0.065))/1.5);
+float angSun= -(( PI * 0.5128205128205128 - acos(sunElevation*1.065-0.065))/1.5);
 
 float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
 skyIntensity=max(0.,1.0-exp(angSky))*(1.0-rainStrength*0.4)*pow(fading,5.0);
 float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 skyIntensityNight=max(0.,1.0-exp(angSkyNight))*(1.0-rainStrength*0.4)*pow(fading2,5.0);
 
+float skyIntensity=max(0.,1.0-exp(angSky))*(1.0-rainStrength*0.4)*pow(fading,5.0);
+moonIntensity=max(0.,1.0-exp(angMoon));
+sunIntensity=max(0.,1.0-exp(angSun));
 
 float sunElev = pow(clamp(1.0-sunElevation,0.0,1.0),4.0)*1.8;
 const float sunlightR0=1.0;

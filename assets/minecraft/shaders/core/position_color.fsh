@@ -12,6 +12,7 @@ out vec4 fragColor;
 
 void main() {
     if (isHorizon > 0.5) {
+        discard;
         discardControl(gl_FragCoord.xy, ScreenSize.x);
     }
     
