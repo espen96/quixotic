@@ -7,16 +7,20 @@ uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
+uniform sampler2D PreviousFrameSampler;
+
 uniform vec2 InSize;
 uniform float FOV;
 
-flat out vec3 ambientUp;
-flat out vec3 ambientLeft;
-flat out vec3 ambientRight;
-flat out vec3 ambientB;
-flat out vec3 ambientF;
-flat out vec3 ambientDown;
-flat out vec3 avgSky;
+ out vec3 ambientUp;
+ out vec3 ambientLeft;
+ out vec3 ambientRight;
+ out vec3 ambientB;
+ out vec3 ambientF;
+ out vec3 ambientDown;
+ out vec3 avgSky;
+
+
 
 out float cosFOVrad;
 out float tanFOVrad;

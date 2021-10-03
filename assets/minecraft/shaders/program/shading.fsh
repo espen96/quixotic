@@ -14,13 +14,15 @@ uniform vec2 ScreenSize;
 uniform float Time;
 uniform mat4 ProjMat;
 
-flat in vec3 ambientUp;
-flat in vec3 ambientLeft;
-flat in vec3 ambientRight;
-flat in vec3 ambientB;
-flat in vec3 ambientF;
-flat in vec3 ambientDown;
-flat in vec3 avgSky;
+ in vec3 ambientUp;
+ in vec3 ambientLeft;
+ in vec3 ambientRight;
+ in vec3 ambientB;
+ in vec3 ambientF;
+ in vec3 ambientDown;
+ in vec3 avgSky;
+
+
 
 in vec2 texCoord;
 in vec2 oneTexel;
@@ -1064,13 +1066,18 @@ if(overworld == 1.0){
 
 
 	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
-
-		vec3 ambientLight  = ambientUp   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientDown *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientRight*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientLeft *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
+        vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
+        vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
+        vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
+        vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
+        vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
+        vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
+		vec3 ambientLight  = ambientUp2   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientDown2*1.5 *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientRight2*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientLeft2 *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientB2    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientF2    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
              ambientLight *= (1.0+rainStrength*0.2);
              ambientLight *= 1.5;
     
@@ -1255,7 +1262,7 @@ if(overworld == 1.0){
     	
 float test = 0.0; 
    if(pbr.a*255 >1) test = 1.0;
- //		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
+// 		fragColor.rgb = clamp(vec3(ambientLight),0.01,1); 
     }
 
 
@@ -1294,17 +1301,23 @@ float test = 0.0;
 
     fragColor += colour;
 */
+	vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
+	vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
+	vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
+	vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
+	vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
+	vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
 if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientUp,1.0);
+fragColor = vec4(mix(ambientUp,ambientUp2,0.7),1.0);
 if (gl_FragCoord.x > 1. && gl_FragCoord.x < 2.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientDown,1.0);
+fragColor = vec4(mix(ambientDown,ambientDown2,0.7),1.0);
 if (gl_FragCoord.x > 2. && gl_FragCoord.x < 3.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientLeft,1.0);
+fragColor = vec4(mix(ambientLeft,ambientLeft2,0.7),1.0);
 if (gl_FragCoord.x > 3. && gl_FragCoord.x < 4.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientRight,1.0);
+fragColor = vec4(mix(ambientRight,ambientRight2,0.7),1.0);
 if (gl_FragCoord.x > 4. && gl_FragCoord.x < 5.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientB,1.0);
+fragColor = vec4(mix(ambientB,ambientB2,0.7),1.0);
 if (gl_FragCoord.x > 5. && gl_FragCoord.x < 6.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(ambientF,1.0);
+fragColor = vec4(mix(ambientF,ambientF2,0.7),1.0);
 
 }

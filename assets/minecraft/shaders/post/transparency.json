@@ -9,6 +9,7 @@
       "previousFrame",
       "previousData",
       "shading",
+      "shadingprev",
       "translucent",
       "itemEntity",
       "particles",
@@ -100,7 +101,7 @@
           },
           {
             "name":"PreviousFrameSampler",
-            "id":"previousFrame"
+            "id":"shadingprev"
           },
           {
             "name":"TranslucentSampler",
@@ -119,7 +120,11 @@
           }
         ]
       },
-
+      {
+        "name":"blit",
+        "intarget":"shading",
+        "outtarget":"shadingprev"
+      },
       {
         "name":"water",
         "intarget":"minecraft:main",
