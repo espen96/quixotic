@@ -8,6 +8,7 @@
       "denoised",
       "previousFrame",
       "previousData",
+      "shading",
       "translucent",
       "itemEntity",
       "particles",
@@ -31,6 +32,10 @@
           {
             "name":"TranslucentDepthSampler",
             "id":"translucent:depth"
+          },
+          {
+            "name":"shading",
+            "id":"shading"
           },
           {
             "name":"noisetex",
@@ -62,6 +67,10 @@
             "id":"translucent:depth"
           },
           {
+            "name":"shading",
+            "id":"shading"
+          },
+          {
             "name":"noisetex",
             "id":"clouds"
           }
@@ -75,7 +84,7 @@
       {
         "name":"shading",
         "intarget":"minecraft:main",
-        "outtarget":"swap4",
+        "outtarget":"shading",
         "auxtargets":[
           {
             "name":"temporals3Sampler",
@@ -134,7 +143,7 @@
           },
           {
             "name":"TerrainCloudsSampler",
-            "id":"swap4"
+            "id":"shading"
           }
         ],
         "uniforms":[
@@ -148,7 +157,7 @@
       },
       {
         "name":"transparency",
-        "intarget":"swap4",
+        "intarget":"shading",
         "outtarget":"swap3",
         "auxtargets":[
           {
@@ -201,6 +210,10 @@
           {
             "name":"MainSampler",
             "id":"swap3"
+          },
+          {
+            "name":"shading",
+            "id":"shading"
           },
           {
             "name":"DiffuseDepthSampler",

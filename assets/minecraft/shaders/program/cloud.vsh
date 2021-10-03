@@ -7,6 +7,7 @@ uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
+uniform sampler2D shading;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -23,7 +24,12 @@ out mat4 gbufferModelView;
 out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
-
+ out vec3 ambientUp;
+ out vec3 ambientLeft;
+ out vec3 ambientRight;
+ out vec3 ambientB;
+ out vec3 ambientF;
+ out vec3 ambientDown;
 uniform float Time;
 
 
@@ -149,17 +155,15 @@ float upPosZ = upPosition.z/normUpVec;
 
 vec3 upVec=vec3(upPosX,upPosY,upPosZ);
  sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
-	 avgSky = vec3(0.0);
-    const int maxIT = 15;
-	for (int i = 0; i < maxIT; i++) {
-			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
-			vec3 pos = normalize(rodSample(ij));
 
 
-			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
-			avgSky += samplee/2.2;
+	ambientUp = texelFetch(shading,ivec2(0,37),0).rgb;
+	ambientDown = texelFetch(shading,ivec2(1,37),0).rgb;
+	ambientLeft = texelFetch(shading,ivec2(2,37),0).rgb;
+	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
+	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
+	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
 
-	}
 
 ////////////////////////
 }

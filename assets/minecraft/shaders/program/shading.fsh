@@ -1021,7 +1021,7 @@ if(overworld == 1.0){
 
     fragColor.rgb = reinhard(atmosphere) ;
 
-    return;
+
  }
 
     // only do lighting if not sky and sunDir exists
@@ -1061,6 +1061,7 @@ if(overworld == 1.0){
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
              ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
              ambientLight *= (1.0+rainStrength*0.2);
+             ambientLight *= 1.5;
     
 	
 
@@ -1210,6 +1211,7 @@ if(overworld == 1.0){
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
         shading += (sunSpec*direct);
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
+        if(postlight == 1)ambientLight = vec3(1.0);
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
 
@@ -1280,4 +1282,17 @@ float test = 0.0;
 
     fragColor += colour;
 */
+if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientUp,1.0);
+if (gl_FragCoord.x > 1. && gl_FragCoord.x < 2.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientDown,1.0);
+if (gl_FragCoord.x > 2. && gl_FragCoord.x < 3.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientLeft,1.0);
+if (gl_FragCoord.x > 3. && gl_FragCoord.x < 4.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientRight,1.0);
+if (gl_FragCoord.x > 4. && gl_FragCoord.x < 5.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientB,1.0);
+if (gl_FragCoord.x > 5. && gl_FragCoord.x < 6.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientF,1.0);
+
 }

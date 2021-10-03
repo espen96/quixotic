@@ -17,13 +17,13 @@ in float sunIntensity;
 in float moonIntensity;
 
 
-flat in vec3 ambientUp;
-flat in vec3 ambientLeft;
-flat in vec3 ambientRight;
-flat in vec3 ambientB;
-flat in vec3 ambientF;
-flat in vec3 ambientDown;
-flat in vec3 avgSky;
+ in vec3 ambientUp;
+ in vec3 ambientLeft;
+ in vec3 ambientRight;
+ in vec3 ambientB;
+ in vec3 ambientF;
+ in vec3 ambientDown;
+ in vec3 avgSky;
 out vec4 fragColor;
 
 
@@ -31,7 +31,7 @@ out vec4 fragColor;
 
 
 #define SKY_BRIGHTNESS_DAY 0.4//[0.0 0.5 0.75 1.0 1.2 1.4 1.6 1.8 2.0]
-#define SKY_BRIGHTNESS_NIGHT 2.1 //[0.0 0.5 0.75 1.0 1.2 1.4 1.6 1.8 2.0]
+#define SKY_BRIGHTNESS_NIGHT 1.0 //[0.0 0.5 0.75 1.0 1.2 1.4 1.6 1.8 2.0]
 #define fsign(a)  (clamp((a)*1e35,0.,1.)*2.-1.)
 
 
@@ -104,29 +104,14 @@ vec3 reinhard_jodie(vec3 v)
     vec3 tv = v / (1.0f + v);
     return mix(v / (1.0f + l), tv, tv);
 }
+
 void main() {
 //    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-		vec3 ambientUp = vec3(1.0);
 
 if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
 
 
-  //luminance (cie model)
-	vec3 daySky = vec3(0.0);
-	vec3 moonSky = vec3(0.0);
-	// Day
-	if (skyIntensity > 0.00001)
-	{
-		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*2);
-		vec3 skyColor = mix(skyColor0,nsunColor,0.5);
-		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.5;
-	}
-	// Night
-	if (skyIntensityNight > 0.00001)
-	{
-		moonSky = skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*0.4;
-	}
-
+vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown)/6.*(1.0+rainStrength*0.2);
 
   float skyLut = floor(gl_FragCoord.y)/15.;
   float sky_lightmap = pow(skyLut,2.23);
@@ -135,7 +120,7 @@ if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
   float torch_lightmap = ((torchLut*torchLut)*(torchLut*torchLut))*(torchLut*10.)+torchLut;
 	float avgEyeIntensity = ((sunIntensity*120.+moonIntensity*4.)+skyIntensity*230.+skyIntensityNight*4.)*sky_lightmap;
 	float exposure =  0.18/log2(max(avgEyeIntensity*0.16+1.0,1.13));
-  vec3 ambient = (((2.2*(daySky + moonSky))/2.2)*sky_lightmap*log2(1.13+sky_lightmap*1.5)+torch_lightmap*0.05*vec3(TORCH_R,TORCH_G,TORCH_B)*TORCH_AMOUNT)*exposure * vec3(1.0,0.96,0.96)+MIN_LIGHT_AMOUNT*0.001*vec3(0.75,1.0,1.25);
+  vec3 ambient = (((avgAmbient)*10.0)*sky_lightmap*log2(1.13+sky_lightmap*1.5)+torch_lightmap*0.05*vec3(TORCH_R,TORCH_G,TORCH_B)*TORCH_AMOUNT)*exposure * vec3(1.0,0.96,0.96)+MIN_LIGHT_AMOUNT*0.001*vec3(0.75,1.0,1.25);
   fragColor = vec4(reinhard_jodie(ambient*10.),1.0);
 }
 
@@ -156,7 +141,7 @@ if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && g
 	// Night
 	if (skyIntensityNight > 0.00001)
 	{
-		moonSky = (skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4))*SKY_BRIGHTNESS_NIGHT;
+		moonSky = (skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4))*3.0;
 	}
   fragColor.rgb =  ((daySky + moonSky) )*(1.0-rainStrength);
 

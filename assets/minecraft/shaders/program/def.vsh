@@ -5,7 +5,7 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D prevsky;
+uniform sampler2D shading;
 
 uniform float Time;
 out vec2 texCoord;
@@ -22,13 +22,13 @@ out float skyIntensityNight;
 out float rainStrength;
 out float sunIntensity;
 out float moonIntensity;
-flat out vec3 ambientUp;
-flat out vec3 ambientLeft;
-flat out vec3 ambientRight;
-flat out vec3 ambientB;
-flat out vec3 ambientF;
-flat out vec3 ambientDown;
-flat out vec3 avgSky;
+ out vec3 ambientUp;
+ out vec3 ambientLeft;
+ out vec3 ambientRight;
+ out vec3 ambientB;
+ out vec3 ambientF;
+ out vec3 ambientDown;
+ out vec3 avgSky;
 
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
@@ -152,6 +152,11 @@ nsunColor=vec3(sunlightR,sunlightG,sunlightB);
 
 
 ///////////////////////////
-
+	ambientUp = texelFetch(shading,ivec2(0,37),0).rgb;
+	ambientDown = texelFetch(shading,ivec2(1,37),0).rgb;
+	ambientLeft = texelFetch(shading,ivec2(2,37),0).rgb;
+	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
+	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
+	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
 
 }

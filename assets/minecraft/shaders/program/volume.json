@@ -15,7 +15,7 @@
         { "name": "temporals3Sampler" },
         { "name": "TranslucentSpecSampler" },
         { "name": "TranslucentDepthSampler" },
-        { "name": "ParticlesSampler" },
+        { "name": "shading" },
         { "name": "ParticlesDepthSampler" },
         { "name": "PartialCompositeSampler" },
         { "name": "ItemEntityDepthSampler" },

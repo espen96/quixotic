@@ -6,6 +6,7 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D shading;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -16,6 +17,12 @@ out vec4 rain;
 out mat4 gbufferModelViewInverse;
 
 out vec3 avgSky;
+out vec3 ambientUp;
+out vec3 ambientLeft;
+out vec3 ambientRight;
+out vec3 ambientB;
+out vec3 ambientF;
+out vec3 ambientDown;
 flat out float near;
 flat out float far;
 flat out float end;
@@ -64,7 +71,7 @@ float decodeFloat24(vec3 raw) {
 }
 
 #define BASE_FOG_AMOUNT 2.2 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0 10.0 20.0 30.0 50.0 100.0 150.0 200.0]  Base fog amount amount (does not change the "cloudy" fog)
-#define FOG_TOD_MULTIPLIER 0.5 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of time of day on fog amount
+#define FOG_TOD_MULTIPLIER 0.7 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of time of day on fog amount
 #define FOG_RAIN_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of rain on fog amount
 
 const float pi = 3.141592653589793238462643383279502884197169;
@@ -180,18 +187,13 @@ float fogAmount0 = 1/2500.+FOG_TOD_MULTIPLIER*(1/180.*(clamp(modWT-11000.,0.,200
 
 fogAmount = 1.6*BASE_FOG_AMOUNT*(fogAmount0+max(FOG_RAIN_MULTIPLIER*1/70.*rainStrength , 0.33*FOG_TOD_MULTIPLIER*1/50.*clamp(modWT-13000.,0.,1000.0)/1000.*(1.0-clamp(modWT-23000.,0.,1000.0)/1000.)));
 
-	 avgSky = vec3(0.0);
-    const int maxIT = 15;
-	for (int i = 0; i < maxIT; i++) {
-			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
-			vec3 pos = normalize(rodSample(ij));
 
-
-			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
-			avgSky += samplee/2.2;
-
-	}
-
+	ambientUp = texelFetch(shading,ivec2(0,37),0).rgb;
+	ambientDown = texelFetch(shading,ivec2(1,37),0).rgb;
+	ambientLeft = texelFetch(shading,ivec2(2,37),0).rgb;
+	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
+	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
+	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
 ///////////////////////////
 
 

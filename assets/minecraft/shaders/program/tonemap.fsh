@@ -568,7 +568,16 @@ void main() {
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
 
 
+	// Calculate color temperature for pixel
+	vec2 uv2 = texCoord;
+	float temp = uv2.x*(maxTemp - minTemp) + minTemp;
 
+	// Calculate temperature conversion
+	float selected = (5600.0 - minTemp)/(maxTemp - minTemp);
+
+	vec4 convWhite = temperatureToXyz(selected*(maxTemp - minTemp) + minTemp);
+	mat4 adapt = toRgb*frLms*diag((toLms*convWhite)/(toLms*display.white))*toLms*toXyz;
+	color = mat3(adapt)*color;
 
 	BSLTonemap(color);
     float lumC = luma(color);
@@ -577,16 +586,7 @@ void main() {
   //  color.rgb = vec3(VL_abs);
 
 
-	// Calculate color temperature for pixel
-	vec2 uv2 = texCoord;
-	float temp = uv2.x*(maxTemp - minTemp) + minTemp;
 
-	// Calculate temperature conversion
-	float selected = (5900.0 - minTemp)/(maxTemp - minTemp);
-
-	vec4 convWhite = temperatureToXyz(selected*(maxTemp - minTemp) + minTemp);
-	mat4 adapt = toRgb*frLms*diag((toLms*convWhite)/(toLms*display.white))*toLms*toXyz;
-	color = mat3(adapt)*color;
 
 
 

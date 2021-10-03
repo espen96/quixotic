@@ -12,7 +12,7 @@
         { "name": "DiffuseDepthSampler" },
         { "name": "TranslucentSampler" },
         { "name": "TranslucentSpecSampler" },
-        { "name": "prevsky" },
+        { "name": "shading" },
         { "name": "TranslucentDepthSampler" }
     ],
     "uniforms": [
