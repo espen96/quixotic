@@ -301,7 +301,7 @@ if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
 
 
 vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown)/6.*(1.0+rainStrength*0.2);
-
+		avgAmbient = mix(avgAmbient*vec3(0.2,0.2,0.5)*2.0,avgAmbient,1-rainStrength);	
   float skyLut = floor(gl_FragCoord.y)/15.;
   float sky_lightmap = pow(skyLut,2.23);
   float torchLut = floor(gl_FragCoord.x)/15.;

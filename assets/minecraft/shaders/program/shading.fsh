@@ -1217,8 +1217,9 @@ if(overworld == 1.0){
         
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
         shading += (sunSpec*direct);
+        
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
-        if(postlight == 1)ambientLight = vec3(1.0);
+        if(postlight == 1)ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-rainStrength);
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
 
