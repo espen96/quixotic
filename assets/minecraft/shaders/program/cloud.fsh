@@ -63,13 +63,13 @@ const int maxIT = 15;
 
 
 
-vec3 ScreenSpaceDither( vec2 vScreenPos )
+#define steps 15.0
+vec3 ScreenSpaceDither(vec2 vScreenPos)
 {
-    vec3 vDither = vec3( dot( vec2( 171.0, 231.0 ), vScreenPos.xy + (Time*8.0)) );
-    vDither.rgb = fract( vDither.rgb / vec3( 103.0, 71.0, 97.0 ) );
-    return vDither.rgb ;
+    vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(Time*2048)));
+    vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0,2.0,2.0) - vec3(0.5, 0.5, 0.5);
+    return (vDither.rgb / steps);
 }
-
 
 
 
@@ -204,24 +204,22 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 			if (coverageSP>0.05){
 				float cloud = cloudVol(curvedPos,samplePos,coverageSP);
 				if (cloud > 0.05){
-					float muS = cloud*cdensity;
-					float muE =	cloud*cdensity;
-
-					float muEshD = 0.0;
-					float muEshN = 0.0;
+					float mu = cloud*cdensity;
+					float muEshD = 0.01;
+					float muEshN = 0.01;
 
 					//fake multiple scattering approx 2  (from horizon zero down clouds)
 					float h = 0.35-0.35*clamp(progress_view.y/4000.-1500./4000.,0.0,1.0);
-					float powder = 1.0-exp(-muE*mult);
-					float sunShadow = max(exp(-muEshD),0.7*exp(-0.25*muEshD))*mix(1.0, powder,  h);
+					float powder = 1.0-exp(-mu*mult);
+					float sunShadow =  max(exp(-muEshD),0.7*exp(-0.25*muEshD))*mix(1.0, powder,  h);
 					float moonShadow = max(exp2(-muEshN),0.7*exp(-0.25*muEshN))*mix(1.0, powder,  h);
 					float ambientPowder = mix(1.0,powder,h * ambientMult);
 					vec3 S = vec3(sunContribution*sunShadow+moonShadow*moonContribution+skyCol0*ambientPowder);
 
 
-					vec3 Sint=(S - S * exp(-mult*muE)) / (muE);
-					color += muS*Sint*total_extinction;
-					total_extinction *= exp(-muE*mult);
+					vec3 Sint=(S - S * exp(-mult*mu)) / (mu);
+					color += mu*Sint*total_extinction;
+					total_extinction *= exp(-mu*mult);
 					if (total_extinction < 1e-5) break;
 				}
 							 

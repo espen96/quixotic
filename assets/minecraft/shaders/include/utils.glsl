@@ -212,8 +212,6 @@ mat4 getOrthoMat(mat4 ProjMat, float Zoom) {
                 -(right + left) / (right - left),   -(top + bottom) / (top - bottom),   -(far + near) / (far - near),   1.0);
 }
 
-
-#define gamma 2.2
 #define steps 15.0
 vec3 ScreenSpaceDither(vec2 vScreenPos)
 {
