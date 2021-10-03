@@ -217,7 +217,7 @@ mat4 getOrthoMat(mat4 ProjMat, float Zoom) {
 #define steps 15.0
 vec3 ScreenSpaceDither(vec2 vScreenPos)
 {
-    vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(GameTime*4000)));
+    vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(GameTime*2048)));
     vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0,2.0,2.0) - vec3(0.5, 0.5, 0.5);
     return (vDither.rgb / steps);
 }

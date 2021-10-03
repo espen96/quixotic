@@ -82,7 +82,7 @@ void main() {
     discard;
   }
   color.rgb +=rnd/16; 
-
+    color.rgb = clamp(color.rgb,0.001,1);
     #define sssMin 22
     #define sssMax 47
     #define lightMin 48
@@ -107,11 +107,11 @@ void main() {
  if (diff.r < 0.1) alpha0 = int(floor(map(procedual1,0,255,sssMin,sssMin+3)));
  }
 
-  float noise = luma4(rnd);  
+  float noise = luma4(rnd)*255;  
  
-    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+noise,sssMin,sssMax)); // SSS
+    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+0,sssMin,sssMax)); // SSS
 
-    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+noise,lightMin,lightMax)); // Emissives
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+0,lightMin,lightMax)); // Emissives
 
     if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = int(clamp(alpha0+noise,roughMin,roughMax)); // Roughness
 

@@ -67,7 +67,7 @@ void main() {
   }
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = color;
-
+    color.rgb = clamp(color.rgb,0.01,1);
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
 

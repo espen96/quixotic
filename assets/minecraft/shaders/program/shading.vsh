@@ -212,6 +212,7 @@ float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 
 			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunPosition,pos.y,temporals3Sampler)/maxIT;
 			avgSky += samplee/2.2;
+            
 			ambientUp += samplee*(pos.y+abs(pos.x)/7.+abs(pos.z)/7.);
 			ambientLeft += samplee*(clamp(-pos.x,0.0,1.0)+clamp(pos.y/7.,0.0,1.0)+abs(pos.z)/7.);
 			ambientRight += samplee*(clamp(pos.x,0.0,1.0)+clamp(pos.y/7.,0.0,1.0)+abs(pos.z)/7.);

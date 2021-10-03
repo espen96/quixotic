@@ -85,7 +85,7 @@ void main() {
         
 
   color.rgb +=rnd/16; 
-
+    color.rgb = clamp(color.rgb,0.01,1);
     #define sssMin 22
     #define sssMax 47
     #define lightMin 48
@@ -103,16 +103,17 @@ void main() {
     float lum = luma4(albedo.rgb);
 	vec3 diff = albedo.rgb-lum;
 
-  float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
+  float noise = luma4(rnd)*255;   
+   float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
   float procedual1 = ((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb)))*255;
  if (alpha0 ==255) {alpha0 = map(procedual1,0,255,roughMin,roughMax-16);
  }
 
-  float noise = luma4(rnd)*128;  
+
  
 //    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = clamp(alpha0+noise,sssMin,sssMax); // SSS
 
-    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = clamp(alpha0+noise,lightMin,lightMax); // Emissives
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = clamp(alpha0+0,lightMin,lightMax); // Emissives
 
     if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = clamp(alpha0+noise,roughMin,roughMax); // Roughness
 

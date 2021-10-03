@@ -22,6 +22,7 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
+    color.rgb = clamp(color.rgb,0.01,1);
     float fade = linear_fog_fade(vertexDistance, FogStart, FogEnd);
     fragColor = vec4(color.rgb * fade, color.a);
 }

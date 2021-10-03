@@ -975,6 +975,7 @@ if(overworld == 1.0){
         }
 
     vec3 lightmap = texture2D(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
+    if (light > 0.001)  lightmap.rgb = OutTexel* pow(clamp((light*10)-0.2,0.0,1.0)/0.65*0.65+0.35,10.0);
 
     if(postlight == 1)    OutTexel *= lightmap;
 //     if (deptht >= 1 || depthy >= 1) discard;   
@@ -1030,10 +1031,10 @@ if(overworld == 1.0){
         // first calculate approximate surface normal using depth map
 
         
-        float depth2 = getNotControl(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y), inctrl).r;
-        float depth3 = getNotControl(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0), inctrl).r;
-        float depth4 = getNotControl(TranslucentDepthSampler, texCoord - vec2(0.0, oneTexel.y), inctrl).r;
-        float depth5 = getNotControl(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0), inctrl).r;
+        float depth2 = depthc;
+        float depth3 = depthd;
+        float depth4 = depthb;
+        float depth5 = depthe;
 
 
         vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
@@ -1053,19 +1054,19 @@ if(overworld == 1.0){
 
 	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
 
-		vec3 ambientLight = ambientUp*mix(clamp(ambientCoefs.y,0.,1.), 0.166, sssAmount);
-		ambientLight += ambientDown*mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
-		ambientLight += ambientRight*mix(clamp(ambientCoefs.x,0.,1.), 0.166, sssAmount);
-		ambientLight += ambientLeft*mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
-		ambientLight += ambientB*mix(clamp(ambientCoefs.z,0.,1.), 0.166, sssAmount);
-		ambientLight += ambientF*mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
-		ambientLight *= (1.0+rainStrength*0.2);
-  
+		vec3 ambientLight  = ambientUp   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientDown *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientRight*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientLeft *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
+             ambientLight *= (1.0+rainStrength*0.2);
+    
 	
 
 
-       bool t1 = sssAmount > 0.0;
-    vec2 poissonDisk[64];
+    bool isSSS = sssAmount > 0.0;
+    vec2 poissonDisk[32];
     poissonDisk[0] = vec2(-0.613392, 0.617481);
     poissonDisk[1] = vec2(0.170019, -0.040254);
     poissonDisk[2] = vec2(-0.299417, 0.791925);
@@ -1098,38 +1099,7 @@ if(overworld == 1.0){
     poissonDisk[29] = vec2(-0.696890, -0.549791);
     poissonDisk[30] = vec2(-0.149693, 0.605762);
     poissonDisk[31] = vec2(0.034211, 0.979980);
-    poissonDisk[32] = vec2(0.503098, -0.308878);
-    poissonDisk[33] = vec2(-0.016205, -0.872921);
-    poissonDisk[34] = vec2(0.385784, -0.393902);
-    poissonDisk[35] = vec2(-0.146886, -0.859249);
-    poissonDisk[36] = vec2(0.643361, 0.164098);
-    poissonDisk[37] = vec2(0.634388, -0.049471);
-    poissonDisk[38] = vec2(-0.688894, 0.007843);
-    poissonDisk[39] = vec2(0.464034, -0.188818);
-    poissonDisk[40] = vec2(-0.440840, 0.137486);
-    poissonDisk[41] = vec2(0.364483, 0.511704);
-    poissonDisk[42] = vec2(0.034028, 0.325968);
-    poissonDisk[43] = vec2(0.099094, -0.308023);
-    poissonDisk[44] = vec2(0.693960, -0.366253);
-    poissonDisk[45] = vec2(0.678884, -0.204688);
-    poissonDisk[46] = vec2(0.001801, 0.780328);
-    poissonDisk[47] = vec2(0.145177, -0.898984);
-    poissonDisk[48] = vec2(0.062655, -0.611866);
-    poissonDisk[49] = vec2(0.315226, -0.604297);
-    poissonDisk[50] = vec2(-0.780145, 0.486251);
-    poissonDisk[51] = vec2(-0.371868, 0.882138);
-    poissonDisk[52] = vec2(0.200476, 0.494430);
-    poissonDisk[53] = vec2(-0.494552, -0.711051);
-    poissonDisk[54] = vec2(0.612476, 0.705252);
-    poissonDisk[55] = vec2(-0.578845, -0.768792);
-    poissonDisk[56] = vec2(-0.772454, -0.090976);
-    poissonDisk[57] = vec2(0.504440, 0.372295);
-    poissonDisk[58] = vec2(0.155736, 0.065157);
-    poissonDisk[59] = vec2(0.391522, 0.849605);
-    poissonDisk[60] = vec2(-0.620106, -0.328104);
-    poissonDisk[61] = vec2(0.789239, -0.419965);
-    poissonDisk[62] = vec2(-0.545396, 0.538133);
-    poissonDisk[63] = vec2(-0.178564, -0.596057);
+
 
 
 
@@ -1147,7 +1117,6 @@ if(overworld == 1.0){
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
 
 
-   vec3 normal2 = normalize(worldToView(normal) );
 			float roughness = 1-ggxAmmount;
 			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition, roughness+0.05*0.95, f0);
             specTerm += vec3(sunSpec)*0.5;
@@ -1155,20 +1124,25 @@ if(overworld == 1.0){
 			vec3 indirectSpecular = vec3(0.0);
          
 			const int nSpecularSamples = 6;
-			// Energy conservation between diffuse and specular
+
+
+
+        if(f0.x >0.5){  
+
+            vec3 normal2 = normalize(worldToView(normal) );
+
+			// Energy conservation between diffuse and specular            
 			vec3 fresnelDiffuse = vec3(0.0);
 			mat3 basis = CoordBase(normal2);
 			vec3 normSpaceView = -np3*basis;
 			vec3 rayContrib = vec3(0.0);
-			vec3 reflection = vec3(0.0);
-        if(f0.x >0.5){  
-
-            OutTexel *= 0.75;
+			vec3 reflection = vec3(0.0);    
             float wdepth = texture(TranslucentDepthSampler, texCoord).r;
 
             float ldepth = LinearizeDepth(wdepth);
             vec3 fragpos3 = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
             fragpos3 *= ldepth;
+            /*
 			for (int i = 0; i < nSpecularSamples; i++){
 				// Generate ray
 				int seed = int(Time*1000)*nSpecularSamples + i;
@@ -1209,6 +1183,7 @@ if(overworld == 1.0){
 				}
 	
 			}
+            */
           sunSpec = luma(specTerm);
         }
   
@@ -1218,13 +1193,13 @@ if(overworld == 1.0){
 	{
 
 		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
-       	if(t1) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount*0.4)*2, phaseg(dot(view, sunPosition),sssAmount*0.1))*3, shadeDirS, 0.35);
+       	if(isSSS) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount*0.4)*2, phaseg(dot(view, sunPosition),sssAmount*0.1))*3, shadeDirS, 0.35);
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)
 	{
 		shadeDirM = (skyIntensityNight*dot(normal, -sunPosition))*0.01;
-       	if(t1) shadeDirM = clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, -sunPosition),0.45), phaseg(dot(view, -sunPosition),0.1)), shadeDirS, 0.35);
+       	if(isSSS) shadeDirM = clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, -sunPosition),0.45), phaseg(dot(view, -sunPosition),0.1)), shadeDirS, 0.35);
 	
 
 	}
@@ -1247,9 +1222,7 @@ if(overworld == 1.0){
 		shading = mix(shading,vec3(1.0),clamp((lmy),0,1));   
 
     vec3 dlight =   ( OutTexel * shading);
-  dlight += (speculars*dlight); 
-//    dlight = (indirectSpecular/nSpecularSamples + specTerm * direct.rgb) +  (1.0-fresnelDiffuse/nSpecularSamples) * dlight.rgb;
-    if (light > 0.001)  dlight.rgb = OutTexel* pow(clamp((light*2)-0.2,0.0,1.0)/0.65*0.65+0.35,2.0);
+    dlight += (speculars*dlight); 
     fragColor.rgb =  lumaBasedReinhardToneMapping(dlight)*clamp(ao,0.75,1.00);           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 

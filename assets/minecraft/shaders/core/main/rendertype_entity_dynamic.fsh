@@ -23,7 +23,7 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
-
+    color.rgb = clamp(color.rgb,0.01,1);
 
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = color;

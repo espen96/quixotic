@@ -70,12 +70,13 @@ void main() {
     discard;
   }
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
+
 //    color *= lightMapColor;
 
     color.rgb +=rnd/255;   
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
-
+    color.rgb = clamp(color.rgb,0.01,1);
 
       float lm = lmx;
   if (res == 0.0f)    {

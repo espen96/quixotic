@@ -23,6 +23,6 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
-
+    color.rgb = clamp(color.rgb,0.01,1);
     fragColor = vec4(ColorModulator.rgb * vertexColor.rgb, ColorModulator.a);
 }
