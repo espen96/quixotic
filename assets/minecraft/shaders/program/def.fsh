@@ -136,7 +136,7 @@ if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && g
 	if (skyIntensity > 0.00001)
 	{
 		vec3 skyColor = nsunColor;
-		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.0;
+		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.5;
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)

@@ -36,385 +36,50 @@ in vec2 texCoord;
 
 
 
-precision highp float;
-
-#define PI 3.1415926535897932384626433832795
-#define EULER 2.7182818284590452353602874713527
-
-
-/*
- * Structures
- */
-
-// Parameters for transfer characteristics (gamma curves)
-struct transfer {
-	// Exponent used to linearize the signal
-	float power;
-
-	// Offset from 0.0 for the exponential curve
-	float off;
-
-	// Slope of linear segment near 0
-	float slope;
-
-	// Values below this are divided by slope during linearization
-	float cutoffToLinear;
-
-	// Values below this are multiplied by slope during gamma correction
-	float cutoffToGamma;
-};
-
-// Parameters for a colorspace
-struct rgb_space {
-	// Chromaticity coordinates (xyz) for Red, Green, and Blue primaries
-	mat4 primaries;
-
-	// Chromaticity coordinates (xyz) for white point
-	vec4 white;
-
-	// Linearization and gamma correction parameters
-	transfer trc;
-};
-
-
-/*
- * Preprocessor 'functions' that help build colorspaces as constants
- */
-
-// Turns 6 chromaticity coordinates into a 3x3 matrix
-#define Primaries(r1, r2, g1, g2, b1, b2)\
-	mat4(\
-		(r1), (r2), 1.0 - (r1) - (r2), 0,\
-		(g1), (g2), 1.0 - (g1) - (g2), 0,\
-		(b1), (b2), 1.0 - (b1) - (b2), 0,\
-		0, 0, 0, 1)
-
-// Creates a whitepoint's xyz chromaticity coordinates from the given xy coordinates
-#define White(x, y)\
-	vec4(vec3((x), (y), 1.0 - (x) - (y))/(y), 1)
-
-// Automatically calculate the slope and cutoffs for transfer characteristics
-#define Transfer(po, of)\
-transfer(\
-	(po),\
-	(of),\
-	(pow((po)*(of)/((po) - 1.0), 1.0 - (po))*pow(1.0 + (of), (po)))/(po),\
-	(of)/((po) - 1.0),\
-	(of)/((po) - 1.0)*(po)/(pow((po)*(of)/((po) - 1.0), 1.0 - (po))*pow(1.0 + (of), (po)))\
-)
-
-// Creates a scaling matrix using a vec4 to set the xyzw scalars
-#define diag(v)\
-	mat4(\
-		(v).x, 0, 0, 0,\
-		0, (v).y, 0, 0,\
-		0, 0, (v).z, 0,\
-		0, 0, 0, (v).w)
-
-// Creates a conversion matrix that turns RGB colors into XYZ colors
-#define rgbToXyz(space)\
-	(space.primaries*diag(inverse((space).primaries)*(space).white))
-
-// Creates a conversion matrix that turns XYZ colors into RGB colors
-#define xyzToRgb(space)\
-	inverse(rgbToXyz(space))
-
-
-/*
- * Chromaticities for RGB primaries
- */
-
-// CIE 1931 RGB
-const mat4 primariesCie = Primaries(
-	0.72329, 0.27671,
-	0.28557, 0.71045,
-	0.15235, 0.02
-);
-
-// Identity RGB
-const mat4 primariesIdentity = mat4(1.0);
-
-
-
-// Never-popular, antiquated, and idealized 'HDTV' primaries based mostly on the
-// 1953 NTSC colorspace. SMPTE-240M officially used the SMPTE-C primaries
-const mat4 primaries240m = Primaries(
-	0.67, 0.33,
-	0.21, 0.71,
-	0.15, 0.06
-);
-
-// Alleged primaries for old Sony TVs with a very blue whitepoint
-const mat4 primariesSony = Primaries(
-	0.625, 0.34,
-	0.28, 0.595,
-	0.155, 0.07
-);
-
-// Rec. 709 (HDTV) and sRGB primaries
-const mat4 primaries709 = Primaries(
-	0.64, 0.33,
-	0.3, 0.6,
-	0.15, 0.06
-);
-
-// DCI-P3 primaries
-const mat4 primariesDciP3 = Primaries(
-	0.68, 0.32,
-	0.265, 0.69,
-	0.15, 0.06
-);
-
-// Rec. 2020 UHDTV primaries
-const mat4 primaries2020 = Primaries(
-	0.708, 0.292,
-	0.17, 0.797,
-	0.131, 0.046
-);
-
-// If the HUNT XYZ->LMS matrix were expressed instead as
-// chromaticity coordinates, these would be them
-const mat4 primariesHunt = Primaries(
-	0.8374, 0.1626,
-	2.3, -1.3,
-	0.168, 0.0
-);
-
-// If the CIECAM97_1 XYZ->LMS matrix were expressed instead as
-// chromaticity coordinates, these would be them
-const mat4 primariesCiecam971 = Primaries(
-	0.7, 0.306,
-	-0.357, 1.26,
-	0.136, 0.042
-);
-
-// If the CIECAM97_2 XYZ->LMS matrix were expressed instead as
-// chromaticity coordinates, these would be them
-const mat4 primariesCiecam972 = Primaries(
-	0.693, 0.316,
-	-0.56, 1.472,
-	0.15, 0.067
-);
-
-// If the CIECAM02 XYZ->LMS matrix were expressed instead as
-// chromaticity coordinates, these would be them
-const mat4 primariesCiecam02 = Primaries(
-	0.711, 0.295,
-	-1.476, 2.506,
-	0.144, 0.057
-);
-
-// LMS primaries as chromaticity coordinates, computed from
-// http://www.cvrl.org/ciepr8dp.htm, and
-// http://www.cvrl.org/database/text/cienewxyz/cie2012xyz2.htm
-/*const mat3 primariesLms = Primaries(
-	0.73840145, 0.26159855,
-	1.32671635, -0.32671635,
-	0.15861916, 0.0
-);*/
-
-// Same as above, but in fractional form
-const mat4 primariesLms = Primaries(
-	194735469.0/263725741.0, 68990272.0/263725741.0,
-	141445123.0/106612934.0, -34832189.0/106612934.0,
-	36476327.0/229961670.0, 0.0
-);
-
-
-/*
- * Chromaticities for white points
- */
-
-// Standard Illuminant C. White point for the original 1953 NTSC color system
-const vec4 whiteC = White(0.310063, 0.316158);
-
-// Standard illuminant E (also known as the 'equal energy' white point)
-const vec4 whiteE = White(1.0/3.0, 1.0/3.0);
-
-// Alleged whitepoint to use with the P22 phosphors (D65 might be more proper)
-const vec4 whiteP22 = White(0.313, 0.329);
-
-// Standard illuminant D65. Note that there are more digits here than specified
-// in either sRGB or Rec 709, so in some cases results may differ from other
-// software. Color temperature is roughly 6504 K (originally 6500K, but complex
-// science stuff made them realize that was innaccurate)
-const vec4 whiteD65 = White(0.312713, 0.329016);
-
-// Standard Illuminant D65 according to the Rec. 709 and sRGB standards
-const vec4 whiteD65S = White(0.3127, 0.3290);
-
-// Standard illuminant D50. Just included for the sake of including it. Content
-// for Rec. 709 and sRGB is recommended to be produced using a D50 whitepoint.
-// For the same reason as D65, the color temperature is 5003 K instead of 5000 K
-const vec4 whiteD50 = White(0.34567, 0.35850);
-
-// Standard Illuminant D50 according to ICC  specs
-const vec4 whiteD50I = White(0.3457, 0.3585);
-
-// White point for DCI-P3 Theater
-const vec4 whiteTheater = White(0.314, 0.351);
-
-// Very blue white point for old Sony televisions. Color temperature of 9300 K.
-// Use with the 'primariesSony' RGB primaries defined above
-const vec4 whiteSony = White(0.283, 0.298);
-
-
-/*
- * Gamma curve parameters
- */
-
-// Linear gamma
-const transfer gam10 = transfer(1.0, 0.0, 1.0, 0.0, 0.0);
-
-// Gamma of 1.8; not linear near 0. This is what older Apple devices used
-const transfer gam18 = transfer(1.8, 0.0, 1.0, 0.0, 0.0);
-
-// Gamma of 2.2; not linear near 0. Was defined abstractly to be used by early
-// NTSC systems, before SMPTE 170M was modified to specify a more exact curve.
-// Also what Adobe RGB uses
-const transfer gam22 = transfer(2.2, 0.0, 1.0, 0.0, 0.0);
-
-// Gamma of 2.4; not linear near 0. Used as the gamma value for BT.1886
-const transfer gam24 = transfer(2.4, 0.0, 1.0, 0.0, 0.0);
-
-// Gamma of 2.5; not linear near 0. Approximately what old Sony TVs used
-const transfer gam25 = transfer(2.5, 0.0, 1.0, 0.0, 0.0);
-
-// Gamma of 2.8; not linear near 0. Loosely defined gamma for European SDTV
-const transfer gam28 = transfer(2.8, 0.0, 1.0, 0.0, 0.0);
-
-// Modern SMPTE 170M, as well as Rec. 601, Rec. 709, and a rough approximation
-// for Rec. 2020 content as well. Do not use with Rec. 2020 if you work with
-// high bit depths!
-const transfer gam170m = transfer(1.0/0.45, 0.099, 4.5, 0.0812, 0.018);
-
-// Proper Rec. 2020 gamma, made using the new Transfer macro
-const transfer gam2020 = Transfer(1.0/0.45, 0.099);
-
-// Gamma for sRGB
-const transfer gamSrgb = transfer(2.4, 0.055, 12.92, 0.04045, 0.0031308);
-
-// A more continuous version of sRGB, for high bit depths
-const transfer gamSrgbHigh = Transfer(2.4, 0.055);
-
-// Gamma for the CIE L*a*b* Lightness scale
-const transfer gamLab = transfer(3.0, 0.16, 243.89/27.0, 0.08, 216.0/24389.0);
-
-
-/*
- * RGB Colorspaces
- */
-
-// CIE 1931 RGB
-const rgb_space Cie1931 = rgb_space(primariesCie, whiteE, gam10);
-
-// Identity RGB
-const rgb_space Identity = rgb_space(primariesIdentity, whiteE, gam10);
-
-
-// Old Sony displays using high temperature white point
-const rgb_space Sony = rgb_space(primariesSony, whiteSony, gam25);
-
-// Rec. 709 (HDTV)
-const rgb_space Rec709 = rgb_space(primaries709, whiteD65S, gam170m);
-
-// sRGB (mostly the same as Rec. 709, but different gamma and full range values)
-const rgb_space Srgb = rgb_space(primaries709, whiteD65S, gamSrgb);
-
-// DCI-P3 D65
-const rgb_space DciP3D65 = rgb_space(primariesDciP3, whiteD65S, gam170m);
-
-// DCI-P3 D65
-const rgb_space DciP3Theater = rgb_space(primariesDciP3, whiteTheater, gam170m);
-
-// Rec. 2020
-const rgb_space Rec2020 = rgb_space(primaries2020, whiteD65S, gam170m);
-
-// Hunt primaries, balanced against equal energy white point
-const rgb_space HuntRgb = rgb_space(primariesHunt, whiteE, gam10);
-
-// CIE CAM 1997 primaries, balanced against equal energy white point
-const rgb_space Ciecam971Rgb = rgb_space(primariesCiecam971, whiteE, gam10);
-
-// CIE CAM 1997 primaries, balanced against equal energy white point and linearized
-const rgb_space Ciecam972Rgb = rgb_space(primariesCiecam972, whiteE, gam10);
-
-// CIE CAM 2002 primaries, balanced against equal energy white point
-const rgb_space Ciecam02Rgb = rgb_space(primariesCiecam02, whiteE, gam10);
-
-// Lms primaries, balanced against equal energy white point
-const rgb_space LmsRgb = rgb_space(primariesLms, whiteE, gam10);
-
-
-/*
- * Colorspace conversion functions
- */
-
-// Converts RGB colors to a linear light scale
-vec4 toLinear(vec4 color, const transfer trc)
+/* python syntax algorithm 
+color_pick=np.ones(3)
+xyEst = XYZ2xy(sRGBtoXYZ.dot(color_pick))
+xyzEst = xy2XYZ(xyEst,1.0)
+xyz_D65=np.array([95.04,100.0,108.88])/100.0
+gain1=xfm_cat.dot(xyz_D65)
+gain2=xfm_cat.dot(xyzEst)
+gain3=gain1/gain2
+gain3=np.diag(gain3)
+outMat=inv_xfm_cat.dot(gain3).dot(xfm_cat)
+outMat=inv_sRGBtoXYZ.dot(outMat).dot(sRGBtoXYZ)
+rgb=outMat.dot(rgb)
+*/
+const mat3 M = mat3(1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
+const mat3 xfm_cat = mat3 (.40024,-.2263,0.0,.7076,1.16532,0.0,-.0881,0.0457,.91822);
+const mat3 inv_xfm_cat = mat3 (1.860,0.361,0.0,-1.12938162e+00, 6.38812463e-01, 0.0, 2.19897410e-01, -6.37059684e-06, 1.08906362e+00);
+const vec3 xyz_D65 = vec3(95.04,100.0,108.88);
+const mat3 sRGBtoXYZ = mat3(0.4124564,0.2126729,0.0193339,0.3575761,0.7151522, 0.1191920,0.1804375, 0.0721750, 0.9503041);
+const mat3 inv_sRGBtoXYZ = mat3(3.24045484,-0.96926639, 0.05564342, -1.53713885,1.87601093,-0.20402585, -0.49853155, 0.04155608,1.05722516);
+
+
+
+vec3 xy2XYZ(vec2 xy,float Y)
 {
-	bvec4 cutoff = lessThan(color, vec4(trc.cutoffToLinear));
-	bvec4 negCutoff = lessThanEqual(color, vec4(-1.0*trc.cutoffToLinear));
-	vec4 higher = pow((color + trc.off)/(1.0 + trc.off), vec4(trc.power));
-	vec4 lower = color/trc.slope;
-	vec4 neg = -1.0*pow((color - trc.off)/(-1.0 - trc.off), vec4(trc.power));
-
-	vec4 result = mix(higher, lower, cutoff);
-	return mix(result, neg, negCutoff);
+return vec3(xy[0]/xy[1]*Y,Y,(1.0-xy[0]-xy[1])/xy[1]*Y);
 }
-
-// Gamma-corrects RGB colors to be sent to a display
-vec4 toGamma(vec4 color, const transfer trc)
+vec2 XYZ2xy(vec3 XYZ)
 {
-	bvec4 cutoff = lessThan(color, vec4(trc.cutoffToGamma));
-	bvec4 negCutoff = lessThanEqual(color, vec4(-1.0*trc.cutoffToGamma));
-	vec4 higher = (1.0 + trc.off)*pow(color, vec4(1.0/trc.power)) - trc.off;
-	vec4 lower = color*trc.slope;
-	vec4 neg = (-1.0 - trc.off)*pow(-1.0*color, vec4(1.0/trc.power)) + trc.off;
-
-	vec4 result = mix(higher, lower, cutoff);
-	return mix(result, neg, negCutoff);
-}
-
-// Calculate Standard Illuminant Series D light source XYZ values
-vec4 temperatureToXyz(float temperature)
-{
-	// Calculate terms to be added up. Since only the coefficients aren't
-	// known ahead of time, they're the only thing determined by mix()
-	float x = dot(mix(
-		vec4(0.244063, 99.11, 2967800.0, -4607000000.0),
-		vec4(0.23704, 247.48, 1901800.0, -2006400000.0),
-		bvec4(temperature > 7000.0)
-	)/vec4(1, temperature, pow(temperature, 2.0), pow(temperature, 3.0)), vec4(1));
-
-	return White(x, -3.0*pow(x, 2.0) + 2.87*x - 0.275);
+float sum0=XYZ[0]+XYZ[1]+XYZ[2];
+return vec2(XYZ[0]/sum0,XYZ[1]/sum0);
 }
 
 
-/*
- * Settings
- */
-
-// Minimum temperature in the range (defined in the standard as 4000)
-const float minTemp = 4000.0;
-
-// Maximum temperature in the range (defined in the standard as 25000)
-const float maxTemp = 9000.0;
-
-// Display colorspace
-const rgb_space display = Srgb;
-
-// XYZ conversion matrices for the display colorspace
-const mat4 toXyz = rgbToXyz(display);
-const mat4 toRgb = xyzToRgb(display);
-
-// LMS conversion matrices for white point adaptation
-const mat4 toLms = xyzToRgb(LmsRgb);
-const mat4 frLms = rgbToXyz(LmsRgb);
-
-
-
-
+mat3 cbCAT(vec3 xyz_est, vec3 xyz_target)
+{
+vec3 gain1 = xfm_cat * xyz_target;
+vec3 gain2 = xfm_cat * xyz_est;
+vec3 gain3 = gain1 / gain2;
+mat3 outMat = inv_xfm_cat * mat3(gain3[0], 0.0, 0.0, 0.0, gain3[1], 0.0, 0.0, 0.0, gain3[2]);
+outMat = outMat * xfm_cat;
+outMat = inv_sRGBtoXYZ * outMat;
+outMat = outMat * sRGBtoXYZ;
+return outMat;
+}
 
 
 
@@ -567,17 +232,11 @@ void main() {
 //         lmx *= clamp(pow(depth,512)*10,0,1);
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
 
-
-	// Calculate color temperature for pixel
-	vec2 uv2 = texCoord;
-	float temp = uv2.x*(maxTemp - minTemp) + minTemp;
-
-	// Calculate temperature conversion
-	float selected = (5600.0 - minTemp)/(maxTemp - minTemp);
-
-	vec4 convWhite = temperatureToXyz(selected*(maxTemp - minTemp) + minTemp);
-	mat4 adapt = toRgb*frLms*diag((toLms*convWhite)/(toLms*display.white))*toLms*toXyz;
-	color = mat3(adapt)*color;
+vec3 color_pick = vec3(162,203,221)/255;
+vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
+vec3 xyzEst = xy2XYZ(xyEst,100.0);
+mat3 M = cbCAT(xyzEst, xyz_D65);
+color = M*color;
 
 	BSLTonemap(color);
     float lumC = luma(color);
