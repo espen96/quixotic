@@ -37,7 +37,7 @@ in float far;
 #define SSR_MAXREFINESAMPLES 10
 #define SSR_STEPREFINE 0.2
 #define SSR_STEPINCREASE 1.2
-#define SSR_IGNORETHRESH 0.1
+#define SSR_IGNORETHRESH 0.0
 #define NORMAL_SCATTER 0.006
 
 
@@ -103,14 +103,14 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 appr
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
         dtmp = LinearizeDepth(texture(DiffuseDepthSampler, pos.xy).r);
         float dist = abs(rayPos.z - dtmp);
-
+/*
         if (dtmp + SSR_IGNORETHRESH > fragdepth && dist < length(rayStep) * pow(length(rayRefine), 0.11) * 2.0) {
             refine++;
             if (refine >= SSR_MAXREFINESAMPLES)	break;
             rayRefine  -= rayStep;
             rayStep    *= SSR_STEPREFINE;
         }
-
+*/
         rayStep        *= SSR_STEPINCREASE;
         rayRefine      += rayStep;
         rayPos          = rayStart+rayRefine;

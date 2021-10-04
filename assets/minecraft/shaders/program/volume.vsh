@@ -194,6 +194,7 @@ fogAmount = 1.6*BASE_FOG_AMOUNT*(fogAmount0+max(FOG_RAIN_MULTIPLIER*1/70.*rainSt
 	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
 	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
 	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
+	avgSky = texelFetch(shading,ivec2(6,37),0).rgb;
 ///////////////////////////
 
 

@@ -900,6 +900,14 @@ void main() {
     float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
     lmtrans5 *= 1-(depthe -deptha);
     
+        vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
+        vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
+        vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
+        vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
+        vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
+        vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
+        vec3 avgSky2 = texelFetch(PreviousFrameSampler,ivec2(6,37),0).rgb;
+
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
     if( (depthtest-deptha)*1000 >0.1) pbr =vec4(0.0);
@@ -1070,12 +1078,7 @@ if(overworld == 1.0){
 
 
 	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
-        vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
-        vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
-        vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
-        vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
-        vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
-        vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
+
 		vec3 ambientLight  = ambientUp2   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
              ambientLight += ambientDown2*1.5 *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
              ambientLight += ambientRight2*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
@@ -1237,12 +1240,12 @@ if(overworld == 1.0){
         vec3 speculars  = (indirectSpecular/nSpecularSamples);
                                   speculars.rgb *= speculars.rgb;
                                   speculars.rgb *= 5.0;
-        float mixweight = 1.0;
-        if(postlight == 1) mixweight = 0.1;
+        float mixweight = 0.1;
+        if(postlight == 1) mixweight = 1.0;
 		shading = mix(vec3(mixweight),shading,clamp((lmx)*5.0,0,1));
 		shading = mix(shading,vec3(1.0),clamp((lmy),0,1));   
 
-    vec3 dlight =   ( OutTexel * shading);
+    vec3 dlight =   ( OutTexel * clamp(shading,0.1,10));
     dlight += (speculars*dlight); 
     fragColor.rgb =  lumaBasedReinhardToneMapping(dlight)*clamp(ao,0.75,1.00);           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
@@ -1266,7 +1269,7 @@ if(overworld == 1.0){
     	
 float test = 0.0; 
    if(pbr.a*255 >1) test = 1.0;
-// 		fragColor.rgb = clamp(vec3(ambientLight),0.01,1); 
+//		fragColor.rgb = clamp(vec3(lightmap),0.01,1); 
     }
 
 
@@ -1302,12 +1305,8 @@ float test = 0.0;
 
     fragColor += colour;
 */
-	vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
-	vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
-	vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
-	vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
-	vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
-	vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
+
+
 if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
 fragColor = vec4(mix(ambientUp,ambientUp2,0.7),1.0);
 if (gl_FragCoord.x > 1. && gl_FragCoord.x < 2.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
@@ -1320,5 +1319,6 @@ if (gl_FragCoord.x > 4. && gl_FragCoord.x < 5.  && gl_FragCoord.y > 19.+18. && g
 fragColor = vec4(mix(ambientB,ambientB2,0.7),1.0);
 if (gl_FragCoord.x > 5. && gl_FragCoord.x < 6.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
 fragColor = vec4(mix(ambientF,ambientF2,0.7),1.0);
-
+if (gl_FragCoord.x > 6. && gl_FragCoord.x < 7.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(mix(avgSky,avgSky2,0.7),1.0);
 }

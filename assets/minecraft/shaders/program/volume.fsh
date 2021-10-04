@@ -12,7 +12,7 @@ uniform vec2 ScreenSize;
 uniform float Time;
 
 
-in vec3 avgSky;
+
 
 in vec2 texCoord;
 in vec2 oneTexel;
@@ -37,6 +37,7 @@ flat in vec2 eyeBrightnessSmooth;
  in vec3 ambientB;
  in vec3 ambientF;
  in vec3 ambientDown;
+ in vec3 avgSky;
 
 #define VL_SAMPLES 4 //[4 6 8 10 12 14 16 20 24 30 40 50]
 #define Ambient_Mult 1.0 //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.75 0.8 0.85 0.9 0.95 1.0 1.5 2.0 3.0 4.0 5.0 6.0 10.0]
@@ -184,7 +185,7 @@ ambientUp = ambientUp*10;
 	vec3 ambientCoefs = dVWorld/dot(abs(dVWorld),vec3(1.));
 
 
-	vec3 ambientLight = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown)/6.;
+	vec3 ambientLight = avgSky;
 
 	vec3 skyCol0 = ambientLight*8.*2./150./3.*eyeBrightnessSmooth.y/vec3(240.)*Ambient_Mult/3.1415;
 	vec3 sunColor = lightCol.rgb*8./5./3.;

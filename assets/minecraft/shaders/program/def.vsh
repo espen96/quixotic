@@ -158,5 +158,6 @@ nsunColor=vec3(sunlightR,sunlightG,sunlightB);
 	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
 	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
 	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
+	avgSky = texelFetch(shading,ivec2(6,37),0).rgb;
 
 }
