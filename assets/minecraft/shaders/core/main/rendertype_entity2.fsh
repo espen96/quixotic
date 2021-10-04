@@ -68,6 +68,12 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
+  if(luma4(color.rgb) == 0 && color.a < 0.9) {
+    color.rgb = vec3(color.a)* vertexColor.rgb * ColorModulator.rgb;
+    if (color.a*255 <= 50.0) {
+    discard;
+  }
+  }
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
     color *= lightMapColor;
 
@@ -76,7 +82,7 @@ void main() {
 
 
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = color;
+    fragColor = vec4(color.rgb,1);
 
 //    fragColor.a = packUnorm2x4( 0.0,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 

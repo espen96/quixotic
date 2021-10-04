@@ -910,7 +910,7 @@ void main() {
 
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
-    if( (depthtest-deptha)*1000 >0.1) pbr =vec4(0.0);
+//    if( (depthtest-deptha)*1000 >0.1) pbr =vec4(0.0);
     float sssAmount = pbr.g;
     float ggxAmmount = pbr.b;
     float ggxAmmount2 = pbr.a;
@@ -958,7 +958,7 @@ void main() {
     float res = mod(mod2, 2.0f);
     lmy = mix(lmtrans.y,(lmtrans2.y+lmtrans3.y+lmtrans4.y+lmtrans5.y)/4,res);
     lmx = mix((lmtrans2.y+lmtrans3.y+lmtrans4.y+lmtrans5.y)/4,lmtrans.y,res);
-
+    if(lmx > 9.0)pbr = vec4(0.0);
 if(overworld == 1.0){
 
 
@@ -1138,8 +1138,6 @@ if(overworld == 1.0){
 			vec3 f0 = vec3(0.04);
             if(ggxAmmount2 > 0.001) {f0 = vec3(0.8);
             ggxAmmount = ggxAmmount2;}
-  //          if(ggxAmmount*255 <12) ggxAmmount = length(OutTexel); 
-     //       if(ggxAmmount<0.05) ggxAmmount += (length(OutTexel));
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
 
 
@@ -1269,7 +1267,7 @@ if(overworld == 1.0){
     	
 float test = 0.0; 
    if(pbr.a*255 >1) test = 1.0;
-//		fragColor.rgb = clamp(vec3(lightmap),0.01,1); 
+//		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 

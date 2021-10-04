@@ -79,7 +79,7 @@ float lm = lmx;
   }
 
    
-    fragColor.a = packUnorm2x4( 0,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
+    fragColor.a = packUnorm2x4( 0 ,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 
 
 }
