@@ -17,6 +17,7 @@
         { "name": "prevsky" },
         { "name": "PreviousFrameSampler" },
         { "name": "cloudsample" },
+        { "name": "clouds" },
         { "name": "FontSampler" }
     ],
     "uniforms": [

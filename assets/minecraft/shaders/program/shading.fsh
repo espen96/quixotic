@@ -43,6 +43,9 @@ in float aspectRatio;
 in float sunElevation;
 in float rainStrength;
 in vec3 sunVec;
+in vec4 cloudx;
+in float cloudy;
+in float cloudz;
 in vec3 sunPosition;
 in float skyIntensity;
 in float skyIntensityNight;
@@ -423,7 +426,7 @@ vec2 Nnoise(vec2 coord)
 
 
 /////////////////////////////////
-/*
+
 uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
 
@@ -526,7 +529,7 @@ void c(int character) {
 }
 
 
-*/
+
 
 ///////////////////////////////////
 
@@ -550,7 +553,11 @@ int decodeInt(vec3 ivec) {
     return s * (int(ivec.r) + int(ivec.g) * 256 + (int(ivec.b) - 64 + s * 64) * 256 * 256);
 }
 
-
+float unpack8BitVec3IntoFloat(vec3 v, float min, float max) {
+   float zeroTo24Bit = v.x + v.y * 256.0 + v.z * 256.0 * 256.0;
+   float zeroToOne = zeroTo24Bit / 256.0 / 256.0 / 256.0;
+   return zeroToOne * (max - min) + min;
+}
 ////////////////////////////////////////////
 
  float frameTimeCounter =  sunElevation*1000;
@@ -877,7 +884,19 @@ vec3 skyFromTex(vec3 pos,sampler2D sampler){
 	vec2 p = sphereToCarte(pos);
 	return texture2D(sampler,p*oneTexel*256.+vec2(18.5,1.5)*oneTexel).rgb;
 }
-
+float DecodeRangeV3( in vec3 pack, in float minVal, in float maxVal )
+{
+    float value  = dot( pack, 1.0 / vec3(1.0, 256.0, 256.0*256.0) );
+    value       *= (256.0*256.0*256.0) / (256.0*256.0*256.0 - 1.0);
+    return mix( minVal, maxVal, value );
+}
+float decodeFloat24(vec3 raw) {
+    uvec3 scaled = uvec3(raw * 255.0);
+    uint sign = scaled.r >> 7;
+    uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
+    uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
+    return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
+}
 void main() {
   	vec2 texCoord = texCoord; 
   	vec2 texCoord2 = texCoord; 
@@ -1265,9 +1284,8 @@ if(overworld == 1.0){
 
 
     	
-float test = 0.0; 
-   if(pbr.a*255 >1) test = 1.0;
-//		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
+
+//		fragColor.rgb = clamp(vec3(cloudx),0.01,1); 
     }
 
 
@@ -1281,8 +1299,8 @@ float test = 0.0;
 	}
 
 
-/*
-	vec4 numToPrint = vec4(maps);
+
+	vec4 numToPrint = vec4(decodeFloat24(cloudx.xyz));
 
 	// Define text to draw
     clearTextBuffer();
@@ -1302,7 +1320,7 @@ float test = 0.0;
     printTextAt(1.0, 4.0);
 
     fragColor += colour;
-*/
+
 
 
 if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )

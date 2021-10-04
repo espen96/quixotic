@@ -22,6 +22,7 @@ out vec4 vertexColor;
 out vec2 texCoord0;
 out vec4 normal;
 out vec4 glpos;
+out vec3 pos;
 out vec3 chunkOffset;
 out mat4 projInv;
 out mat4 projMat;
@@ -55,7 +56,7 @@ void main() {
 
     vec4 viewPos = ModelViewMat * vec4(Position + ChunkOffset, 1.0);
     vertexColor = Color ;
-
+    pos = Position; 
 
     
 

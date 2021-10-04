@@ -96,6 +96,10 @@
             "id":"minecraft:main:depth"
           },
           {
+            "name":"clouds",
+            "id":"clouds"
+          },
+          {
             "name":"cloudsample",
             "id":"swap3"
           },

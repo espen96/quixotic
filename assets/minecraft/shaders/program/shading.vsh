@@ -8,6 +8,7 @@ uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D PreviousFrameSampler;
+uniform sampler2D clouds;
 
 uniform vec2 InSize;
 uniform float FOV;
@@ -19,6 +20,9 @@ uniform float FOV;
  out vec3 ambientF;
  out vec3 ambientDown;
  out vec3 avgSky;
+ out vec4 cloudx;
+ out float cloudy;
+ out float cloudz;
 
 
 
@@ -135,6 +139,9 @@ void main() {
     overworld = vec4((texture(DiffuseSampler, start + 28.0 * inc))).r;
     end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
     rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
+    cloudx = (vec4((texture(clouds, start + 50.0 * inc))).xyza);
+
+
 
 
     near = PROJNEAR;
