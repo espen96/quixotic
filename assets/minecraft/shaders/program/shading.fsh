@@ -897,6 +897,32 @@ float decodeFloat24(vec3 raw) {
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
+const vec4 bitEnc = vec4(1.,255.,65025.,16581375.);
+const vec4 bitDec = 1./bitEnc;
+vec4 EncodeFloatRGBA (float v) {
+    vec4 enc = bitEnc * v;
+    enc = fract(enc);
+    enc -= enc.yzww * vec2(1./255., 0.).xxxy;
+    return enc;
+}
+float DecodeFloatRGBA (vec4 v) {
+    return dot(v, bitDec);
+}
+vec4 pack_depth(const in float depth)
+{
+    const vec4 bit_shift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);
+    const vec4 bit_mask  = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
+    vec4 res = fract(depth * bit_shift);
+    res -= res.xxyz * bit_mask;
+    return res;
+}
+
+float unpack_depth(const in vec4 rgba_depth)
+{
+    const vec4 bit_shift = vec4(1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1.0);
+    float depth = dot(rgba_depth, bit_shift);
+    return depth;
+}
 void main() {
   	vec2 texCoord = texCoord; 
   	vec2 texCoord2 = texCoord; 
@@ -1047,7 +1073,7 @@ if(overworld == 1.0){
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
-        	((atmosphere += pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*0.001)*clamp(1-rainStrength,0,1);
+        	atmosphere += ((pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*0.001)*clamp(1-(rainStrength),0,1);
             atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
             atmosphere += drawSun(dot(-sunPosition,np3),0, atmosphere,vec3(0.0))*clamp(1-rainStrength,0,1);
 
@@ -1319,7 +1345,7 @@ if(overworld == 1.0){
     c('A'); c('l'); c('p'); c('h'); c('a'); c(':'); c(' '); floatToDigits(numToPrint.a);
     printTextAt(1.0, 4.0);
 
-    fragColor += colour;
+ //   fragColor += colour;
 
 
 

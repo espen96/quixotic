@@ -189,6 +189,8 @@ ambientUp = ambientUp*10;
 
 	vec3 skyCol0 = ambientLight*8.*2./150./3.*eyeBrightnessSmooth.y/vec3(240.)*Ambient_Mult/3.1415;
 	vec3 sunColor = lightCol.rgb*8./5./3.;
+	sunColor *= 1-((1-rain.x)*0.5);
+	skyCol0 *= 1-((1-rain.x)*0.2);
 
 		vec3 rC = vec3(fog_coefficientRayleighR*1e-6, fog_coefficientRayleighG*1e-5, fog_coefficientRayleighB*1e-5);
 	//	vec3 mC = vec3(fog_coefficientMieR*1e-6, fog_coefficientMieG*1e-6, fog_coefficientMieB*1e-6);

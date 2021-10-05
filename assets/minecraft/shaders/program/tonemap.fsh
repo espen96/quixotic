@@ -236,7 +236,7 @@ vec3 color_pick = vec3(162,203,221)/255;
 vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
 vec3 xyzEst = xy2XYZ(xyEst,100.0);
 mat3 M = cbCAT(xyzEst, xyz_D65);
-color = M*color;
+//color = M*color;
 
 	BSLTonemap(color);
     float lumC = luma(color);

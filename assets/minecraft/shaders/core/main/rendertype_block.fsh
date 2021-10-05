@@ -142,4 +142,7 @@ void main() {
   fragColor = color;
 //  fragColor.rgb = test.rgb;
    
-  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))/2),0,0.95));}
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))/2),0,0.95));
+  
+  
+  }
