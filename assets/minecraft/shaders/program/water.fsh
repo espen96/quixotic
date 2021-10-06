@@ -26,10 +26,6 @@ flat in vec3 avgSky;
 flat in float isEyeInLava;
 flat in float isEyeInWater;
 #define near 0.00004882812 
-
-
-
-
 in float far;
 
 #define NORMDEPTHTOLERANCE 1.0

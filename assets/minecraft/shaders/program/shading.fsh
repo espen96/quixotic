@@ -504,17 +504,6 @@ vec4 textureQuadratic( in sampler2D sam, in vec2 p )
 */
     
 }
-vec4 sample_biquadratic(sampler2D channel, vec2 res, vec2 uv) {
-    vec2 q = fract(uv * res);
-    vec2 c = (q*(q - 1.0) + 0.5) / res;
-    vec2 w0 = uv - c;
-    vec2 w1 = uv + c;
-    vec4 s = texture(channel, vec2(w0.x, w0.y))
-    	   + texture(channel, vec2(w0.x, w1.y))
-    	   + texture(channel, vec2(w1.x, w1.y))
-    	   + texture(channel, vec2(w1.x, w0.y));
-	return s / 4.0;
-}
 
 // avoid hardware interpolation
 vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
@@ -782,12 +771,7 @@ vec3 skyFromTex(vec3 pos,sampler2D sampler){
 	vec2 p = sphereToCarte(pos);
 	return texture2D(sampler,p*oneTexel*256.+vec2(18.5,1.5)*oneTexel).rgb;
 }
-float DecodeRangeV3( in vec3 pack, in float minVal, in float maxVal )
-{
-    float value  = dot( pack, 1.0 / vec3(1.0, 256.0, 256.0*256.0) );
-    value       *= (256.0*256.0*256.0) / (256.0*256.0*256.0 - 1.0);
-    return mix( minVal, maxVal, value );
-}
+
 float decodeFloat24(vec3 raw) {
     uvec3 scaled = uvec3(raw * 255.0);
     uint sign = scaled.r >> 7;
@@ -795,32 +779,7 @@ float decodeFloat24(vec3 raw) {
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
-const vec4 bitEnc = vec4(1.,255.,65025.,16581375.);
-const vec4 bitDec = 1./bitEnc;
-vec4 EncodeFloatRGBA (float v) {
-    vec4 enc = bitEnc * v;
-    enc = fract(enc);
-    enc -= enc.yzww * vec2(1./255., 0.).xxxy;
-    return enc;
-}
-float DecodeFloatRGBA (vec4 v) {
-    return dot(v, bitDec);
-}
-vec4 pack_depth(const in float depth)
-{
-    const vec4 bit_shift = vec4(256.0*256.0*256.0, 256.0*256.0, 256.0, 1.0);
-    const vec4 bit_mask  = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
-    vec4 res = fract(depth * bit_shift);
-    res -= res.xxyz * bit_mask;
-    return res;
-}
 
-float unpack_depth(const in vec4 rgba_depth)
-{
-    const vec4 bit_shift = vec4(1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1.0);
-    float depth = dot(rgba_depth, bit_shift);
-    return depth;
-}
 void main() {
 
 
@@ -994,7 +953,7 @@ if(overworld == 1.0){
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight *= (1.0+rainStrength*0.2);
-             ambientLight *= 1.5;
+//             ambientLight *= 1.5;
     
 	
 
@@ -1080,14 +1039,14 @@ if(overworld == 1.0){
 		
 				if (luma(rayContrib) > 0.05){
 				
-					vec4 reflection = vec4(0.0,0.0,0.0,0.0);
+					vec4 reflection = vec4(0.0);
 					// Scale quality with ray contribution
 					float rayQuality = 35*sqrt(luma(rayContrib));
 
 					// Skip SSR if ray contribution is low
 					if (rayQuality > 5.0) {
 
-                    vec3 r = SSR(fragpos3.xyz, depth,normalize(normal2 + (roughness*3) * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(clamp((getSkyColorLut(L,sunPosition.xyz,L.y, temporals3Sampler).rgb),0,10),1));
+                    vec3 r = SSR(fragpos3.xyz, depth,normalize(L), vec4(avgSky,1));
 								reflection.rgb = r;
                                 reflection.a = 1.0;
 					}

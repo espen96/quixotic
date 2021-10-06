@@ -25,9 +25,7 @@ vec2 unpackUnorm2x4(float pack) {
 void main() {
 float Intensity = 1.0;
 float BlurSize = 24.0;
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res2 = mod(mod2, 2.0f);
-    vec2 oneTexel = 1/ScreenSize;
+
 
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy *4. -1.5;
     vec2 res = ScreenSize.xy;

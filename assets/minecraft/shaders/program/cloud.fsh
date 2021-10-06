@@ -152,7 +152,6 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 		float VdotU = worldV.y;
 		maxIT_clouds = int(clamp(maxIT_clouds/sqrt(VdotU),0.0,maxIT_clouds));
 
-		vec4 start = (gbufferModelViewInverse*vec4(0.0,0.0,0.,1.));
 		vec3 dV_view = worldV;
 
 
@@ -206,10 +205,9 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 					//fake multiple scattering approx 2  (from horizon zero down clouds)
 					float h = 0.35-0.35*clamp(progress_view.y/4000.-1500./4000.,0.0,1.0);
 					float powder = 1.0-exp(-mu*mult);
-					float sunShadow =  mix(1.0, powder,  h);
-					float moonShadow = mix(1.0, powder,  h);
+					float Shadow =  mix(1.0, powder,  h);
 					float ambientPowder = mix(1.0,powder,h * ambientMult);
-					vec3 S = vec3(sunContribution*sunShadow+moonShadow*moonContribution+skyCol0*ambientPowder);
+					vec3 S = vec3(sunContribution*Shadow+Shadow*moonContribution+skyCol0*ambientPowder);
 
 
 					vec3 Sint=(S - S * exp(-mult*mu)) / (mu);
@@ -276,7 +274,7 @@ void main() {
     vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-	vec4 cloud = renderClouds(fragpos,avgSky,luma(rnd.rgb),suncol,suncol,avgSky).rgba;
+	vec4 cloud = renderClouds(fragpos,avgSky,luma(rnd.rgb)*5.0,suncol,suncol,avgSky).rgba;
 
 	fragColor = cloud;
 }
