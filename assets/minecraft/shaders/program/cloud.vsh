@@ -24,12 +24,7 @@ out mat4 gbufferModelView;
 out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
- out vec3 ambientUp;
- out vec3 ambientLeft;
- out vec3 ambientRight;
- out vec3 ambientB;
- out vec3 ambientF;
- out vec3 ambientDown;
+
 uniform float Time;
 
 

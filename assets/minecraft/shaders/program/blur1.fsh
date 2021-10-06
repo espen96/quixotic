@@ -31,7 +31,7 @@ float BlurSize = 24.0;
     vec2 res = ScreenSize.xy;
 	
     float i = SAMPLE_OFFSET;
-    i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x; // make this animated
+    i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x; 
     
      vec3 col = texture( DiffuseSampler, uv).rgb / 2.0;
     col += texture( DiffuseSampler, uv + vec2( i, i ) / res ).rgb / 8.0;

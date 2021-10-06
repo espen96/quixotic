@@ -36,14 +36,6 @@ out vec4 fragColor;
 #define VXAA_TEXTURE_CURRENT DiffuseSampler
 #define VXAA_TEXTURE_PREV PreviousFrameSampler
 
-#define VXAA_TEMPORALEDGE_THRES 0.08
-#define VXAA_TEMPORALEDGE_TIME_MIN 0.0000001
-#define VXAA_TEMPORALEDGE_TIME_MAX 1.5
-#define VXAA_SPATIAL_FLICKER_TIME 2.75
-
-#define VXAA_MORPHOLOGICAL_STRENGTH 0.1
-#define VXAA_MORPHOLOGICAL_SHARPEN 0.1
-#define iTimeDelta 0.1
 #define VXAA_W 0
 #define VXAA_E 1
 #define VXAA_N 2

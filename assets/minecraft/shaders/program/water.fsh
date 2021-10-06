@@ -118,9 +118,6 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 appr
     vec4 candidate = vec4(0.0);
     if (fragdepth < dtmp + SSR_IGNORETHRESH && pos.y <= 1.0) {
         vec3 colortmp = texture(TerrainCloudsSampler, pos.xy).rgb*2.0;
-
-
-
         candidate = mix(vec4(colortmp, 1.0), skycol, float(dtmp + SSR_IGNORETHRESH < 1.0) * clamp(pos.z * 1.1, 0.0, 1.0));
     }
     

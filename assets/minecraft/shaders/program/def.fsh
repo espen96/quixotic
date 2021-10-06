@@ -141,6 +141,7 @@ if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && g
   //luminance (cie model)
 	vec3 daySky = vec3(0.0);
 	vec3 moonSky = vec3(0.0);
+  
 	// Day
 	if (skyIntensity > 0.00001)
 	{

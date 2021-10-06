@@ -207,7 +207,7 @@ void main() {
     col += texture( blursampler, uv + vec2( i*2. , 0     ) / ScreenSize ).rgb / 12.0;
     col += texture( blursampler, uv + vec2( -i*2., 0     ) / ScreenSize ).rgb / 12.0;
     col += texture( blursampler, uv + vec2( 0    , -i*2. ) / ScreenSize ).rgb / 12.0;
-         col *= col;
+    col *= col;
     vec3 fin = max(vec3(0.0), col - 0.03);
     
 
@@ -217,15 +217,14 @@ void main() {
 	float purkinje = 1/(1.0+1)*Purkinje_strength;
     VL_abs = clamp((1.0-VL_abs)*1.0*0.75*(1.0-purkinje),0.0,1.0)*clamp(1.0-pow(cdist(texCoord.xy),15.0),0.0,1.0);
 	color = (mix(color*1.5,col,VL_abs)+fin*lightScat);
-//         lmx *= clamp(pow(depth,512)*10,0,1);
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
-/*
-vec3 color_pick = vec3(162,203,221)/255;
-vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
-vec3 xyzEst = xy2XYZ(xyEst,100.0);
-mat3 M = cbCAT(xyzEst, xyz_D65);
-color = M*color;
-*/
+    /*
+    vec3 color_pick = vec3(162,203,221)/255;
+    vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
+    vec3 xyzEst = xy2XYZ(xyEst,100.0);
+    mat3 M = cbCAT(xyzEst, xyz_D65);
+    color = M*color;
+    */
 	BSLTonemap(color);
     float lumC = luma(color);
 	vec3 diff = color-lumC;
