@@ -12,12 +12,7 @@ in vec2 texCoord;
 in vec2 oneTexel;
 in vec3 sunDir;
 in vec3 avgSky;
- in vec3 ambientUp;
- in vec3 ambientLeft;
- in vec3 ambientRight;
- in vec3 ambientB;
- in vec3 ambientF;
- in vec3 ambientDown;
+
 in vec4 fogcol;
 in float near;
 
@@ -277,12 +272,11 @@ void main() {
 
     vec3 sc = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb;
   	vec3 suncol = sc;
-vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown)/6.*(1.0+rainStrength*0.2);
 
     vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-	vec4 cloud = renderClouds(fragpos,avgAmbient,luma(rnd.rgb),suncol,suncol,avgAmbient).rgba;
+	vec4 cloud = renderClouds(fragpos,avgSky,luma(rnd.rgb),suncol,suncol,avgSky).rgba;
 
 	fragColor = cloud;
 }

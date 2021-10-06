@@ -945,13 +945,6 @@ void main() {
     float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
     lmtrans5 *= 1-(depthe -deptha);
     
-        vec3 ambientUp2 = texelFetch(PreviousFrameSampler,ivec2(0,37),0).rgb;
-        vec3 ambientDown2 = texelFetch(PreviousFrameSampler,ivec2(1,37),0).rgb;
-        vec3 ambientLeft2 = texelFetch(PreviousFrameSampler,ivec2(2,37),0).rgb;
-        vec3 ambientRight2 = texelFetch(PreviousFrameSampler,ivec2(3,37),0).rgb;
-        vec3 ambientB2 = texelFetch(PreviousFrameSampler,ivec2(4,37),0).rgb;
-        vec3 ambientF2 = texelFetch(PreviousFrameSampler,ivec2(5,37),0).rgb;
-        vec3 avgSky2 = texelFetch(PreviousFrameSampler,ivec2(6,37),0).rgb;
 
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
@@ -1073,11 +1066,10 @@ if(overworld == 1.0){
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
-        	atmosphere += ((pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*1)*clamp(1-(rainStrength),0,1);
+//        	atmosphere += ((pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*1)*clamp(1-(rainStrength),0,1);
             atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
-            atmosphere += drawSun(dot(-sunPosition,np3),0, atmosphere,vec3(0.0))*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(-sunPosition,np3),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
 
-            
 		}
 
 	vec4 cloud = textureQuadratic(cloudsample, texCoord*CLOUDS_QUALITY);
@@ -1124,12 +1116,12 @@ if(overworld == 1.0){
 
 	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
 
-		vec3 ambientLight  = ambientUp2   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientDown2*1.5 *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientRight2*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientLeft2 *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientB2    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
-             ambientLight += ambientF2    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
+		vec3 ambientLight  = ambientUp   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientDown*1.5 *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientRight*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientLeft *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssAmount);
+             ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssAmount);
              ambientLight *= (1.0+rainStrength*0.2);
              ambientLight *= 1.5;
     
@@ -1137,7 +1129,7 @@ if(overworld == 1.0){
 
 
     bool isSSS = sssAmount > 0.0;
-    vec2 poissonDisk[32];
+    vec2 poissonDisk[16];
     poissonDisk[0] = vec2(-0.613392, 0.617481);
     poissonDisk[1] = vec2(0.170019, -0.040254);
     poissonDisk[2] = vec2(-0.299417, 0.791925);
@@ -1154,24 +1146,6 @@ if(overworld == 1.0){
     poissonDisk[13] = vec2(-0.885922, 0.215369);
     poissonDisk[14] = vec2(0.566637, 0.605213);
     poissonDisk[15] = vec2(0.039766, -0.396100);
-    poissonDisk[16] = vec2(0.751946, 0.453352);
-    poissonDisk[17] = vec2(0.078707, -0.715323);
-    poissonDisk[18] = vec2(-0.075838, -0.529344);
-    poissonDisk[19] = vec2(0.724479, -0.580798);
-    poissonDisk[20] = vec2(0.222999, -0.215125);
-    poissonDisk[21] = vec2(-0.467574, -0.405438);
-    poissonDisk[22] = vec2(-0.248268, -0.814753);
-    poissonDisk[23] = vec2(0.354411, -0.887570);
-    poissonDisk[24] = vec2(0.175817, 0.382366);
-    poissonDisk[25] = vec2(0.487472, -0.063082);
-    poissonDisk[26] = vec2(-0.084078, 0.898312);
-    poissonDisk[27] = vec2(0.488876, -0.783441);
-    poissonDisk[28] = vec2(0.470016, 0.217933);
-    poissonDisk[29] = vec2(-0.696890, -0.549791);
-    poissonDisk[30] = vec2(-0.149693, 0.605762);
-    poissonDisk[31] = vec2(0.034211, 0.979980);
-
-
 
 
 
@@ -1179,26 +1153,22 @@ if(overworld == 1.0){
 	float shadeDir = 0;
 	float shadeDirS = 0;
 	float shadeDirM = 0;
-    vec3 sunPosition2 = sunPosition;
-	// Day
-	if (skyIntensity > 0.00001)
-	{
+    vec3 sunPosition2 = mix(sunPosition,-sunPosition,clamp(skyIntensityNight*3,0,1));
 
-		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
-       	if(isSSS) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount*0.4)*2, phaseg(dot(view, sunPosition),sssAmount*0.1))*3, shadeDirS, 0.35);
+
+		shadeDirS  = clamp(skyIntensity,0,1)*dot(normal, sunPosition2);
+       	shadeDirS +=(clamp(skyIntensity,0,1)   *  mix(max(phaseg(dot(view, sunPosition2),sssAmount*0.4)*2, phaseg(dot(view, sunPosition2),sssAmount*0.1))*3, shadeDirS, 0.35))*float(isSSS);
            
-	}
-	// Night
-	if (skyIntensityNight > 0.00001)
-	{
-		shadeDirM = (skyIntensityNight*dot(normal, -sunPosition))*0.01;
-       	if(isSSS) shadeDirM = clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, -sunPosition),0.45), phaseg(dot(view, -sunPosition),0.1)), shadeDirS, 0.35);
-	  sunPosition2 = -sunPosition;
 
-	}
+		shadeDirM  = clamp(skyIntensityNight,0,1)*dot(normal, sunPosition2);
+       	shadeDirM +=(clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, sunPosition2),sssAmount*0.4)*2, phaseg(dot(view, sunPosition2),sssAmount*0.1))*3, shadeDirS, 0.35))*float(isSSS);
+	 
+
+	
 
 			vec3 f0 = vec3(0.04);
-            if(ggxAmmount2 > 0.001) {f0 = vec3(0.8);
+            if(ggxAmmount2 > 0.001) {
+            f0 = vec3(0.8);
             ggxAmmount = ggxAmmount2;}
             float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
@@ -1314,8 +1284,11 @@ if(overworld == 1.0){
 
     	
 
-//		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
-    }
+
+//		fragColor.rgb = clamp(vec3(shading),0.01,1);     
+
+
+}
 
 
 
@@ -1328,7 +1301,7 @@ if(overworld == 1.0){
 	}
 
 
-
+/*
 	vec4 numToPrint = vec4(decodeFloat24(cloudx.xyz));
 
 	// Define text to draw
@@ -1348,22 +1321,11 @@ if(overworld == 1.0){
     c('A'); c('l'); c('p'); c('h'); c('a'); c(':'); c(' '); floatToDigits(numToPrint.a);
     printTextAt(1.0, 4.0);
 
- //   fragColor += colour;
+    fragColor += colour;
 
 
+*/
 
-if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientUp,ambientUp2,0.7),1.0);
-if (gl_FragCoord.x > 1. && gl_FragCoord.x < 2.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientDown,ambientDown2,0.7),1.0);
-if (gl_FragCoord.x > 2. && gl_FragCoord.x < 3.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientLeft,ambientLeft2,0.7),1.0);
-if (gl_FragCoord.x > 3. && gl_FragCoord.x < 4.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientRight,ambientRight2,0.7),1.0);
-if (gl_FragCoord.x > 4. && gl_FragCoord.x < 5.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientB,ambientB2,0.7),1.0);
-if (gl_FragCoord.x > 5. && gl_FragCoord.x < 6.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(ambientF,ambientF2,0.7),1.0);
 if (gl_FragCoord.x > 6. && gl_FragCoord.x < 7.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(mix(avgSky,avgSky2,0.7),1.0);
+fragColor = vec4(avgSky,1.0);
 }

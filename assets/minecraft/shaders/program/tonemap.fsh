@@ -231,13 +231,13 @@ void main() {
 	color = (mix(color*1.5,col,VL_abs)+fin*lightScat);
 //         lmx *= clamp(pow(depth,512)*10,0,1);
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
-
+/*
 vec3 color_pick = vec3(162,203,221)/255;
 vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
 vec3 xyzEst = xy2XYZ(xyEst,100.0);
 mat3 M = cbCAT(xyzEst, xyz_D65);
-//color = M*color;
-
+color = M*color;
+*/
 	BSLTonemap(color);
     float lumC = luma(color);
 	vec3 diff = color-lumC;

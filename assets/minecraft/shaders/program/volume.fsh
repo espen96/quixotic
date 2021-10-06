@@ -31,13 +31,7 @@ flat in vec3 sunVec;
 flat in vec3 sunPosition;
 flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
- in vec3 ambientUp;
- in vec3 ambientLeft;
- in vec3 ambientRight;
- in vec3 ambientB;
- in vec3 ambientF;
- in vec3 ambientDown;
- in vec3 avgSky;
+in vec3 avgSky;
 
 #define VL_SAMPLES 8 //[4 6 8 10 12 14 16 20 24 30 40 50]
 #define Ambient_Mult 1.0 //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.75 0.8 0.85 0.9 0.95 1.0 1.5 2.0 3.0 4.0 5.0 6.0 10.0]

@@ -188,12 +188,6 @@ float fogAmount0 = 1/2500.+FOG_TOD_MULTIPLIER*(1/180.*(clamp(modWT-11000.,0.,200
 fogAmount = 1.6*BASE_FOG_AMOUNT*(fogAmount0+max(FOG_RAIN_MULTIPLIER*1/70.*rainStrength , 0.33*FOG_TOD_MULTIPLIER*1/50.*clamp(modWT-13000.,0.,1000.0)/1000.*(1.0-clamp(modWT-23000.,0.,1000.0)/1000.)));
 
 
-	ambientUp = texelFetch(shading,ivec2(0,37),0).rgb;
-	ambientDown = texelFetch(shading,ivec2(1,37),0).rgb;
-	ambientLeft = texelFetch(shading,ivec2(2,37),0).rgb;
-	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
-	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
-	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
 	avgSky = texelFetch(shading,ivec2(6,37),0).rgb;
 ///////////////////////////
 
