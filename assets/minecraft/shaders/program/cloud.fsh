@@ -50,15 +50,15 @@ const vec3 cameraPosition = vec3(0);
 const float cloud_height = 1500.;
 const float maxHeight = 1650.;
 int maxIT_clouds = 10;
-const int maxIT = 15;
-
+const float steps = 15.0;
+const float cdensity = 0.20;
 
 
 ///////////////////////////
 
 
 
-#define steps 15.0
+
 vec3 ScreenSpaceDither(vec2 vScreenPos)
 {
     vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(Time*2048)));
@@ -69,7 +69,7 @@ vec3 ScreenSpaceDither(vec2 vScreenPos)
 
 
 
-float cdensity = 0.20;
+
 
 	//Mie phase function
 float phaseg(float x, float g){
@@ -150,7 +150,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 
 		vec3 worldV = normalize(fragposition.rgb);
 		float VdotU = worldV.y;
-		maxIT_clouds = int(clamp(maxIT_clouds/sqrt(VdotU),0.0,maxIT*1.0));
+		maxIT_clouds = int(clamp(maxIT_clouds/sqrt(VdotU),0.0,maxIT_clouds));
 
 		vec4 start = (gbufferModelViewInverse*vec4(0.0,0.0,0.,1.));
 		vec3 dV_view = worldV;
@@ -200,14 +200,14 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 				float cloud = cloudVol(curvedPos,samplePos,coverageSP);
 				if (cloud > 0.05){
 					float mu = cloud*cdensity;
-					float muEshD = 0.01;
-					float muEshN = 0.01;
+				
+
 
 					//fake multiple scattering approx 2  (from horizon zero down clouds)
 					float h = 0.35-0.35*clamp(progress_view.y/4000.-1500./4000.,0.0,1.0);
 					float powder = 1.0-exp(-mu*mult);
-					float sunShadow =  max(exp(-muEshD),0.7*exp(-0.25*muEshD))*mix(1.0, powder,  h);
-					float moonShadow = max(exp2(-muEshN),0.7*exp(-0.25*muEshN))*mix(1.0, powder,  h);
+					float sunShadow =  mix(1.0, powder,  h);
+					float moonShadow = mix(1.0, powder,  h);
 					float ambientPowder = mix(1.0,powder,h * ambientMult);
 					vec3 S = vec3(sunContribution*sunShadow+moonShadow*moonContribution+skyCol0*ambientPowder);
 

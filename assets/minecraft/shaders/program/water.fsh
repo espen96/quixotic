@@ -23,7 +23,8 @@ flat in vec3 ambientB;
 flat in vec3 ambientF;
 flat in vec3 ambientDown;
 flat in vec3 avgSky;
-
+flat in float isEyeInLava;
+flat in float isEyeInWater;
 #define near 0.00004882812 
 
 
@@ -206,6 +207,16 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 
 void main() {
 
+
+    vec3 reflection = vec3(1.0);
+    
+
+    vec4 color = texture(TranslucentSampler, texCoord);
+
+
+    vec4 color2 = color;
+
+    if (color.a > 0.01 ) {
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
@@ -285,14 +296,9 @@ void main() {
     poissonDisk[61] = vec2(0.789239, -0.419965);
     poissonDisk[62] = vec2(-0.545396, 0.538133);
     poissonDisk[63] = vec2(-0.178564, -0.596057);
-    vec3 reflection = vec3(1.0);
-    vec4 reflection2 = vec4(0.0);
-    
 
-    vec4 color = texture(TranslucentSampler, texCoord);
     vec3 sky = mix(color.rgb*2.0,avgSky,0.5);
 
-    vec4 color2 = color;
     float wdepth = texture(TranslucentDepthSampler, texCoord).r;
     float wdepth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
     float wdepth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
@@ -303,7 +309,7 @@ void main() {
     ldepth3 = abs(ldepth - ldepth3) > NORMDEPTHTOLERANCE ? ldepth : ldepth3;
 
 
-    if (color.a > 0.01 ) {
+
 
     bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
         vec3 fragpos = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
@@ -352,11 +358,7 @@ void main() {
               fresnel = clamp(exp((fresnel - 1.0) * (4.0 + clamp(exp(clamp(ndlsq - 0.05, 0.0, 1.0) * 2.0) - 1.0, 0.0, 1.0) * 25.0)), 0.0, 1.0);
               fresnel = clamp(exp(-35 * pow(dot(normalize(fragpos), normal), 2.0))*5.0,0,1);
         float lookfresnel = clamp(exp(-25 * clamp(ndlsq * horizon, 0.0, 1.0) + 3.0)*100, 0.0, 1.0);
-        float lum = luminance(reflection.rgb);
-					vec4 screenPos2 = vec4(gl_FragCoord.xy / vec2(ScreenSize), depth, 1.0);
-					vec4 viewPos = gbufferProjectionInverse * (screenPos2 * 2.0 - 1.0);
-					viewPos /= viewPos.w;
-
+	
 
            color = vec4(mix(sky*0.7,reflection,(fresnel *lookfresnel)), color.a);
            color = ((color2*luma4(sky.rgb) ) +color)*0.6;

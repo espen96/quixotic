@@ -130,16 +130,13 @@ void main(){
                0.0,                             0.0,                     0.0, 1.0);
 
 
-	 avgSky = vec3(0.0);
-    const int maxIT = 15;
+	avgSky = vec3(0.0);
+    const int maxIT = 5;
 	for (int i = 0; i < maxIT; i++) {
 			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
 			vec3 pos = normalize(rodSample(ij));
-
-
 			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
 			avgSky += samplee/2.2;
-
 	}
 
 }

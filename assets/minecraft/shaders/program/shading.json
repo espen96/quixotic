@@ -15,7 +15,6 @@
         { "name": "TranslucentSpecSampler" },
         { "name": "TranslucentDepthSampler" },
         { "name": "prevsky" },
-        { "name": "PreviousFrameSampler" },
         { "name": "cloudsample" },
         { "name": "clouds" },
         { "name": "FontSampler" }

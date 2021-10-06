@@ -18,13 +18,9 @@ in float sunIntensity;
 in float moonIntensity;
 
 
- in vec3 ambientUp;
- in vec3 ambientLeft;
- in vec3 ambientRight;
- in vec3 ambientB;
- in vec3 ambientF;
- in vec3 ambientDown;
- in vec3 avgSky;
+
+ in vec3 ds;
+ in vec3 ms;
 out vec4 fragColor;
  in vec4 lightCol;
 
@@ -118,26 +114,10 @@ void main() {
 
 if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
 
-  //luminance (cie model)
-	vec3 daySky = vec3(0.0);
-	vec3 moonSky = vec3(0.0);
-	// Day
-	if (skyIntensity > 0.00001)
-	{
-		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*2);
-		vec3 skyColor = mix(skyColor0,nsunColor,0.5);
-		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.0;
-	}
-	// Night
-	if (skyIntensityNight > 0.00001)
-	{
-		moonSky = skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*0.05;
-	}
-	
-vec3 avgAmbient = avgSky;
 
-		avgAmbient = daySky+moonSky;
-				avgAmbient = mix(avgAmbient*vec3(0.2,0.2,0.5)*2.0,avgAmbient,1-rainStrength);	
+
+vec3 avgAmbient = ds+ms;
+	 avgAmbient = mix(avgAmbient*vec3(0.2,0.2,0.5)*2.0,avgAmbient,1-rainStrength);	
 
   float skyLut = floor(gl_FragCoord.y)/15.;
   float sky_lightmap = pow(skyLut,2.23);

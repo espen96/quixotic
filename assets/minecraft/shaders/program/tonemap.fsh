@@ -36,19 +36,7 @@ in vec2 texCoord;
 
 
 
-/* python syntax algorithm 
-color_pick=np.ones(3)
-xyEst = XYZ2xy(sRGBtoXYZ.dot(color_pick))
-xyzEst = xy2XYZ(xyEst,1.0)
-xyz_D65=np.array([95.04,100.0,108.88])/100.0
-gain1=xfm_cat.dot(xyz_D65)
-gain2=xfm_cat.dot(xyzEst)
-gain3=gain1/gain2
-gain3=np.diag(gain3)
-outMat=inv_xfm_cat.dot(gain3).dot(xfm_cat)
-outMat=inv_sRGBtoXYZ.dot(outMat).dot(sRGBtoXYZ)
-rgb=outMat.dot(rgb)
-*/
+
 const mat3 M = mat3(1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0);
 const mat3 xfm_cat = mat3 (.40024,-.2263,0.0,.7076,1.16532,0.0,-.0881,0.0457,.91822);
 const mat3 inv_xfm_cat = mat3 (1.860,0.361,0.0,-1.12938162e+00, 6.38812463e-01, 0.0, 2.19897410e-01, -6.37059684e-06, 1.08906362e+00);
@@ -243,14 +231,6 @@ color = M*color;
 	vec3 diff = color-lumC;
 	color = color + diff*(-lumC*CROSSTALK + SATURATION);
   //  color.rgb = vec3(VL_abs);
-
-
-
-
-
-
-
-
 
 	fragColor= vec4(int8Dither(vec3(color)), 1.0);
     

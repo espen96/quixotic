@@ -10,6 +10,8 @@ uniform sampler2D shading;
 uniform float Time;
 out vec2 texCoord;
 out vec3 sunDir;
+out vec3 ds;
+out vec3 ms;
 
 uniform vec2 InSize;
 
@@ -157,12 +159,21 @@ float lightSign = clamp(sunIntensity*pow(10.,35.),0.,1.);
 lightCol=vec4((sunlightR*3.*sunAmount*sunIntensity+0.16/5.-0.16/5.*lightSign)*(1.0-rainStrength*0.95)*7.84*exposure,7.84*(sunlightG*3.*sunAmount*sunIntensity+0.24/5.-0.24/5.*lightSign)*(1.0-rainStrength*0.95)*exposure,7.84*(sunlightB*3.*sunAmount*sunIntensity+0.36/5.-0.36/5.*lightSign)*(1.0-rainStrength*0.95)*exposure,lightSign*2.0-1.0);
 
 ///////////////////////////
-	ambientUp = texelFetch(shading,ivec2(0,37),0).rgb;
-	ambientDown = texelFetch(shading,ivec2(1,37),0).rgb;
-	ambientLeft = texelFetch(shading,ivec2(2,37),0).rgb;
-	ambientRight = texelFetch(shading,ivec2(3,37),0).rgb;
-	ambientB = texelFetch(shading,ivec2(4,37),0).rgb;
-	ambientF = texelFetch(shading,ivec2(5,37),0).rgb;
-	avgSky = texelFetch(shading,ivec2(6,37),0).rgb;
-
+  //luminance (cie model)
+	vec3 daySky = vec3(0.0);
+	vec3 moonSky = vec3(0.0);
+	// Day
+	if (skyIntensity > 0.00001)
+	{
+		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*2);
+		vec3 skyColor = mix(skyColor0,nsunColor,0.5);
+		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.0;
+	}
+	// Night
+	if (skyIntensityNight > 0.00001)
+	{
+		moonSky = skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*0.05;
+	}
+    ds = daySky;
+    ms = moonSky;
 }

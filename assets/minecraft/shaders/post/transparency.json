@@ -9,7 +9,6 @@
       "previousFrame",
       "previousData",
       "shading",
-      "shadingprev",
       "translucent",
       "itemEntity",
       "particles",
@@ -104,10 +103,6 @@
             "id":"swap3"
           },
           {
-            "name":"PreviousFrameSampler",
-            "id":"shadingprev"
-          },
-          {
             "name":"TranslucentSampler",
             "id":"translucent"
           },
@@ -124,11 +119,7 @@
           }
         ]
       },
-      {
-        "name":"blit",
-        "intarget":"shading",
-        "outtarget":"shadingprev"
-      },
+
       {
         "name":"water",
         "intarget":"minecraft:main",
@@ -152,6 +143,10 @@
           },
           {
             "name":"TerrainCloudsSampler",
+            "id":"shading"
+          },
+          {
+            "name":"shading",
             "id":"shading"
           }
         ],
