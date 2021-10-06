@@ -26,5 +26,5 @@ void main() {
     color.rgb = clamp(color.rgb,0.01,1);
 
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = vec4(color.rgb,floor(color.a));
+    fragColor = vec4(color.rgb,(color.a));
 }

@@ -1073,7 +1073,7 @@ if(overworld == 1.0){
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
-        	atmosphere += ((pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*0.001)*clamp(1-(rainStrength),0,1);
+        	atmosphere += ((pow((1.0 / (1.0 + dot(-sunPosition, np3))),0.3)*suncol.rgb*0.05)*1)*clamp(1-(rainStrength),0,1);
             atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
             atmosphere += drawSun(dot(-sunPosition,np3),0, atmosphere,vec3(0.0))*clamp(1-rainStrength,0,1);
 
@@ -1179,17 +1179,34 @@ if(overworld == 1.0){
 	float shadeDir = 0;
 	float shadeDirS = 0;
 	float shadeDirM = 0;
+    vec3 sunPosition2 = sunPosition;
+	// Day
+	if (skyIntensity > 0.00001)
+	{
+
+		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
+       	if(isSSS) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount*0.4)*2, phaseg(dot(view, sunPosition),sssAmount*0.1))*3, shadeDirS, 0.35);
+           
+	}
+	// Night
+	if (skyIntensityNight > 0.00001)
+	{
+		shadeDirM = (skyIntensityNight*dot(normal, -sunPosition))*0.01;
+       	if(isSSS) shadeDirM = clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, -sunPosition),0.45), phaseg(dot(view, -sunPosition),0.1)), shadeDirS, 0.35);
+	  sunPosition2 = -sunPosition;
+
+	}
 
 			vec3 f0 = vec3(0.04);
             if(ggxAmmount2 > 0.001) {f0 = vec3(0.8);
             ggxAmmount = ggxAmmount2;}
-            float sunSpec = ((GGX(normal,-normalize(view),  sunPosition, 1-ggxAmmount, f0.x)));		
+            float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
 
 			float roughness = 1-ggxAmmount;
-			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition, roughness+0.05*0.95, f0);
+			vec3 specTerm = GGX2(normal, -normalize(view),  sunPosition2, roughness+0.05*0.95, f0);
             specTerm += vec3(sunSpec)*0.5;
-            normalize(specTerm);
+
 			vec3 indirectSpecular = vec3(0.0);
          
 			const int nSpecularSamples = 6;
@@ -1253,21 +1270,7 @@ if(overworld == 1.0){
         }
   
    
-	// Day
-	if (skyIntensity > 0.00001)
-	{
 
-		shadeDirS = clamp(skyIntensity*10,0,1)*dot(normal, sunPosition);
-       	if(isSSS) shadeDirS = clamp(skyIntensity*10,0,1)*mix(max(phaseg(dot(view, sunPosition),sssAmount*0.4)*2, phaseg(dot(view, sunPosition),sssAmount*0.1))*3, shadeDirS, 0.35);
-	}
-	// Night
-	if (skyIntensityNight > 0.00001)
-	{
-		shadeDirM = (skyIntensityNight*dot(normal, -sunPosition))*0.01;
-       	if(isSSS) shadeDirM = clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, -sunPosition),0.45), phaseg(dot(view, -sunPosition),0.1)), shadeDirS, 0.35);
-	
-
-	}
 
     
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
@@ -1311,7 +1314,7 @@ if(overworld == 1.0){
 
     	
 
-//		fragColor.rgb = clamp(vec3(cloudx),0.01,1); 
+//		fragColor.rgb = clamp(vec3(pbr),0.01,1); 
     }
 
 
