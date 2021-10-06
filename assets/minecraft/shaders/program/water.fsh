@@ -135,34 +135,6 @@ vec2 unpackUnorm2x4(float pack) {
 
 ////////////////////////////
 
-
-
-float GGX (vec3 n, vec3 v, vec3 l, float r, float F0) {
-  r*=r;r*=r;
-
-  vec3 h = l + v;
-  float hn = inversesqrt(dot(h, h));
-
-  float dotLH = clamp(dot(h,l)*hn,0.,1.);
-  float dotNH = clamp(dot(h,n)*hn,0.,1.);
-  float dotNL = clamp(dot(n,l),0.,1.);
-  float dotNHsq = dotNH*dotNH;
-
-  float denom = dotNHsq * r - dotNHsq + 1.;
-  float D = r / (3.141592653589793 * denom * denom);
-  float F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
-  float k2 = .25 * r;
-
-  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
-}
-vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
-    if (inctrl) {
-        return (texture(inSampler, coords - vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(0.0, oneTexel.y))) / 3.0;
-    } else {
-        return texture(inSampler, coords);
-    }
-}
-
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define NUMCONTROLS 26
 #define THRESH 0.5
@@ -303,8 +275,6 @@ void main() {
 
 
 
-
-    bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
         vec3 fragpos = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
         fragpos *= ldepth;
         vec3 p8 = (gbPI * vec4(texCoord + vec2(0.0, oneTexel.y), ldepth2, 1.0)).xyz;
@@ -323,10 +293,10 @@ void main() {
     vec3 view = normalize((gbufferModelViewInverse * screenPos).xyz);
 
         // first calculate approximate surface normal using depth map
-        float depth2 = getNotControl(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y), inctrl).r;
-        float depth3 = getNotControl(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0), inctrl).r;
-        float depth4 = getNotControl(TranslucentDepthSampler, texCoord - vec2(0.0, oneTexel.y), inctrl).r;
-        float depth5 = getNotControl(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0), inctrl).r;
+        float depth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
+        float depth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
+        float depth4 = texture(TranslucentDepthSampler, texCoord - vec2(0.0, oneTexel.y)).r;
+        float depth5 = texture(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0)).r;
     float depth = texture(TranslucentDepthSampler, texCoord).r;
 
    vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
