@@ -801,6 +801,46 @@ float decodeFloat24(vec3 raw) {
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
+       vec3 FindNormal(sampler2D tex, vec2 uv, vec2 u)
+            {
+                    //u is one uint size, ie 1.0/texture size
+                vec2 offsets[4];
+					 offsets[0] = uv + vec2(-u.x, 0);
+					 offsets[1] = uv + vec2(u.x, 0);
+					 offsets[2] = uv + vec2(0, -u.x);
+					 offsets[3] = uv + vec2(0, u.x);
+               
+                float hts[4];
+                for(int i = 0; i < 4; i++)
+                {
+				
+
+                    hts[i] = length(texture(tex, offsets[i]).x); 			
+
+                }
+               
+                vec2 _step = vec2(0.1, 0.0);
+               
+			   
+                vec3 va = normalize( vec3(_step.xy, hts[1]-hts[0]) );
+                vec3 vb = normalize( vec3(_step.yx, hts[3]-hts[2]) );
+				
+	//            if (vtexcoord.x > 1.0 - 0.01 || vtexcoord.y > 1.0 - 0.01)  return vec3(0.0);   
+	//            if (vtexcoord.x < 0.01 || vtexcoord.y < 0.01)              return vec3(0.0);
+			   
+                return cross(va,vb).rgb; //you may not need to swizzle the normal
+
+               
+            }
+    vec3 viewToWorld(vec3 viewPos) {
+
+    vec4 pos;
+    pos.xyz = viewPos;
+    pos.w = 0.0;
+    pos = gbufferModelViewInverse * pos ;
+
+    return pos.xyz;
+}
 
 void main() {
 
@@ -942,7 +982,7 @@ if(overworld == 1.0){
 
     vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
 
-    vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
+
     float postlight = 1;
 
         if(lmx == 1) {
@@ -970,15 +1010,24 @@ if(overworld == 1.0){
         float depth3 = depthd;
         float depth4 = depthb;
         float depth5 = depthe;
+        float normalstrength = 0.05;    
+        float normaldistance = 2.0;    
 
-
+        vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
+        fragpos.rgb += length(texture(DiffuseSampler,texCoord).rgb)*normalstrength;
+    
         vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
+        p2.rgb += length(texture(DiffuseSampler,texCoord + normaldistance*vec2(0.0, oneTexel.y)).rgb)*normalstrength;
         p2 = p2 - fragpos;
         vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
+            p3.rgb += length(texture(DiffuseSampler,texCoord + normaldistance* vec2(oneTexel.x, 0.0)).rgb)*normalstrength;
+
         p3 = p3 - fragpos;
         vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
+                    p4.rgb += length(texture(DiffuseSampler,texCoord - normaldistance* vec2(0.0, oneTexel.y)).rgb)*normalstrength;
         p4 = p4 - fragpos;
         vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
+                    p5.rgb += length(texture(DiffuseSampler,texCoord - normaldistance* vec2(oneTexel.x, 0.0)).rgb)*normalstrength;
         p5 = p5 - fragpos;
         vec3 normal = normalize(cross( p2,  p3)) 
                     + normalize(cross(-p4,  p3)) 
@@ -1212,7 +1261,9 @@ if(overworld == 1.0){
     }
 
 
-//		fragColor.rgb = clamp(vec3(pbr.b),0.01,1);     
+	//		normal.rg -= FindNormal(DiffuseSampler,texCoord.xy,oneTexel-0.0003).rg;
+
+//		fragColor.rgb = clamp(vec3(normal),0.01,1);     
 
 
 }

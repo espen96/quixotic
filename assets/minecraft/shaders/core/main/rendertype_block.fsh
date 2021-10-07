@@ -113,9 +113,9 @@ if(alpha0==255){
 vec3 test2 = floor(test.rgb*255);
 float test3  = floor(test2.r+test2.g+test2.b);
 
- if(test3 <= 560 && test3 >= 550)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
- if(test3 == 382 && test2.b == 83)  alpha0 = clamp((color.r*color.r*color.r)*255,lightMin,lightMax);
- if(test3 <= 316 && test3 >= 310)  alpha0 = clamp(procedual1,lightMax,lightMax);
+ //if(test3 <= 560 && test3 >= 550)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
+ //if(test3 == 382 && test2.b == 83)  alpha0 = clamp((color.r*color.r*color.r)*255,lightMin,lightMax);
+ //if(test3 <= 316 && test3 >= 310)  alpha0 = clamp(procedual1,lightMax,lightMax);
 }
 // if(test3 <= 316 && test3 >= 310)  color.rgb = vec3(1,0,0);
 //    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = clamp(alpha0+noise,sssMin,sssMax); // SSS
