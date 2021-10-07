@@ -297,10 +297,10 @@ void main() {
         float depth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
         float depth4 = texture(TranslucentDepthSampler, texCoord - vec2(0.0, oneTexel.y)).r;
         float depth5 = texture(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0)).r;
-    float depth = texture(TranslucentDepthSampler, texCoord).r;
+        float depth = texture(TranslucentDepthSampler, texCoord).r;
 
-   vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
-     vec3 fragpos2 = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
+        vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
+        vec3 fragpos2 = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
 
         vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
         p2 = p2 - fragpos2;

@@ -107,13 +107,13 @@ float Bayer2(vec2 a) {
 
 
 
-#define SSR_SAMPLES 64
+#define SSR_SAMPLES 5
 #define SSR_MAXREFINESAMPLES 1
-#define SSR_STEPREFINE 0.1
 #define SSR_STEPINCREASE 0.1
-#define SSR_IGNORETHRESH 0.0
+#define SSR_IGNORETHRESH 0.9
 
 #define NORMAL_SCATTER 0.006
+
 
 
 
@@ -678,7 +678,29 @@ mat3 CoordBase(vec3 n){
     return mat3(x,y,n);
 }
 
+vec3 ComplexFresnel(float fresnel, float f0) {
+    int metalidx = int(f0 * 255.0);
+    vec3 k = vec3(1.0);
+    vec3 n = vec3(0.0);
+    float f = 1.0 - fresnel;
 
+    vec3 k2 = k * k;
+    vec3 n2 = n * n;
+    float f2 = f * f;
+
+    vec3 rs_num = n2 + k2 - 2 * n * f + f2;
+    vec3 rs_den = n2 + k2 + 2 * n * f + f2;
+    vec3 rs = rs_num / rs_den;
+     
+    vec3 rp_num = (n2 + k2) * f2 - 2 * n * f + 1;
+    vec3 rp_den = (n2 + k2) * f2 + 2 * n * f + 1;
+    vec3 rp = rp_num / rp_den;
+    
+    vec3 fresnel3 = clamp(0.5 * (rs + rp), vec3(0.0), vec3(1.0));
+    fresnel3 *= fresnel3;
+
+    return fresnel3;
+}
 vec3 worldToView(vec3 worldPos) {
 
     vec4 pos = vec4(worldPos, 0.0);
@@ -712,7 +734,7 @@ vec3 sampleGGXVNDF(vec3 V_, float alpha_x, float alpha_y, float U1, float U2){
 vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
     vec3 rayStart   = fragpos.xyz;
     vec3 rayDir     = surfacenorm;
-//        vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
+//      vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
     vec3 rayStep    = 0.5 * rayDir;
     vec3 rayPos     = rayStart + rayStep;
     vec3 rayRefine  = rayStep;
@@ -727,14 +749,14 @@ vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
         dtmp = LinearizeDepth(texture(DiffuseDepthSampler, pos.xy).r);
         float dist = abs(rayPos.z - dtmp);
-
+/*
         if (dtmp + SSR_IGNORETHRESH > fragdepth && dist < length(rayStep) * pow(length(rayRefine), 0.11) * 2.0) {
             refine++;
             if (refine >= SSR_MAXREFINESAMPLES)	break;
             rayRefine  -= rayStep;
             rayStep    *= SSR_STEPREFINE;
         }
-
+*/
         rayStep        *= SSR_STEPINCREASE;
         rayRefine      += rayStep;
         rayPos          = rayStart+rayRefine;
@@ -744,7 +766,7 @@ vec3 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 
     vec4 candidate = vec4(0.0);
     if (fragdepth < dtmp + SSR_IGNORETHRESH && pos.y <= 1.0) {
-        vec3 colortmp = texture(DiffuseSampler, pos.xy).rgb;
+        vec3 colortmp = texture(PreviousFrameSampler, pos.xy).rgb;
 
 
 
@@ -959,7 +981,7 @@ if(overworld == 1.0){
 
 
     bool isSSS = sssa > 0.0;
-    vec2 poissonDisk[16];
+    vec2 poissonDisk[64];
     poissonDisk[0] = vec2(-0.613392, 0.617481);
     poissonDisk[1] = vec2(0.170019, -0.040254);
     poissonDisk[2] = vec2(-0.299417, 0.791925);
@@ -976,7 +998,54 @@ if(overworld == 1.0){
     poissonDisk[13] = vec2(-0.885922, 0.215369);
     poissonDisk[14] = vec2(0.566637, 0.605213);
     poissonDisk[15] = vec2(0.039766, -0.396100);
-
+    poissonDisk[16] = vec2(0.751946, 0.453352);
+    poissonDisk[17] = vec2(0.078707, -0.715323);
+    poissonDisk[18] = vec2(-0.075838, -0.529344);
+    poissonDisk[19] = vec2(0.724479, -0.580798);
+    poissonDisk[20] = vec2(0.222999, -0.215125);
+    poissonDisk[21] = vec2(-0.467574, -0.405438);
+    poissonDisk[22] = vec2(-0.248268, -0.814753);
+    poissonDisk[23] = vec2(0.354411, -0.887570);
+    poissonDisk[24] = vec2(0.175817, 0.382366);
+    poissonDisk[25] = vec2(0.487472, -0.063082);
+    poissonDisk[26] = vec2(-0.084078, 0.898312);
+    poissonDisk[27] = vec2(0.488876, -0.783441);
+    poissonDisk[28] = vec2(0.470016, 0.217933);
+    poissonDisk[29] = vec2(-0.696890, -0.549791);
+    poissonDisk[30] = vec2(-0.149693, 0.605762);
+    poissonDisk[31] = vec2(0.034211, 0.979980);
+    poissonDisk[32] = vec2(0.503098, -0.308878);
+    poissonDisk[33] = vec2(-0.016205, -0.872921);
+    poissonDisk[34] = vec2(0.385784, -0.393902);
+    poissonDisk[35] = vec2(-0.146886, -0.859249);
+    poissonDisk[36] = vec2(0.643361, 0.164098);
+    poissonDisk[37] = vec2(0.634388, -0.049471);
+    poissonDisk[38] = vec2(-0.688894, 0.007843);
+    poissonDisk[39] = vec2(0.464034, -0.188818);
+    poissonDisk[40] = vec2(-0.440840, 0.137486);
+    poissonDisk[41] = vec2(0.364483, 0.511704);
+    poissonDisk[42] = vec2(0.034028, 0.325968);
+    poissonDisk[43] = vec2(0.099094, -0.308023);
+    poissonDisk[44] = vec2(0.693960, -0.366253);
+    poissonDisk[45] = vec2(0.678884, -0.204688);
+    poissonDisk[46] = vec2(0.001801, 0.780328);
+    poissonDisk[47] = vec2(0.145177, -0.898984);
+    poissonDisk[48] = vec2(0.062655, -0.611866);
+    poissonDisk[49] = vec2(0.315226, -0.604297);
+    poissonDisk[50] = vec2(-0.780145, 0.486251);
+    poissonDisk[51] = vec2(-0.371868, 0.882138);
+    poissonDisk[52] = vec2(0.200476, 0.494430);
+    poissonDisk[53] = vec2(-0.494552, -0.711051);
+    poissonDisk[54] = vec2(0.612476, 0.705252);
+    poissonDisk[55] = vec2(-0.578845, -0.768792);
+    poissonDisk[56] = vec2(-0.772454, -0.090976);
+    poissonDisk[57] = vec2(0.504440, 0.372295);
+    poissonDisk[58] = vec2(0.155736, 0.065157);
+    poissonDisk[59] = vec2(0.391522, 0.849605);
+    poissonDisk[60] = vec2(-0.620106, -0.328104);
+    poissonDisk[61] = vec2(0.789239, -0.419965);
+    poissonDisk[62] = vec2(-0.545396, 0.538133);
+    poissonDisk[63] = vec2(-0.178564, -0.596057);
 
 
 	vec3 shading;
@@ -1003,7 +1072,7 @@ if(overworld == 1.0){
 	
 			vec3 indirectSpecular = vec3(0.0);
          
-			const int nSpecularSamples = 6;
+			const int nSpecularSamples = 16;
 
 
 
@@ -1022,43 +1091,60 @@ if(overworld == 1.0){
             vec3 fragpos3 = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
             fragpos3 *= ldepth;
   
+
+    float wdepth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
+    float wdepth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
+    float ldepth2 = LinearizeDepth(wdepth2);
+    float ldepth3 = LinearizeDepth(wdepth3);
+    ldepth2 = abs(ldepth - ldepth2) > NORMDEPTHTOLERANCE ? ldepth : ldepth2;
+    ldepth3 = abs(ldepth - ldepth3) > NORMDEPTHTOLERANCE ? ldepth : ldepth3;
+
+
+
+        vec3 fragpos = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
+        fragpos *= ldepth;
+        vec3 p8 = (gbPI * vec4(texCoord + vec2(0.0, oneTexel.y), ldepth2, 1.0)).xyz;
+        p8 *= ldepth2;
+        vec3 p7 = (gbPI * vec4(texCoord + vec2(oneTexel.x, 0.0), ldepth3, 1.0)).xyz;
+        p7 *= ldepth3;
+        vec3 normal3 = -normalize(cross(p8 - fragpos, p7 - fragpos));
+        
+        float ndlsq = dot(normal3, vec3(0.0, 0.0, 1.0));
+                float horizon = clamp(ndlsq * 100000.0, -1.0, 1.0);
+
+	    vec4 reflection2 = vec4(0.0);
 			for (int i = 0; i < nSpecularSamples; i++){
-				// Generate ray
-				int seed = int(Time*1000)*nSpecularSamples + i;
-				vec2 ij = fract(R2_samples(seed) + Bayer256(gl_FragCoord.xy));
-				vec3 H = sampleGGXVNDF(normSpaceView, roughness, roughness, ij.x, ij.y);
-				vec3 Ln = reflect(-normSpaceView, H);
-				vec3 L = basis * Ln;
-				// Ray contribution
-				float g1 = g(clamp(dot(normal2, L),0.0,1.0), roughness);
-				vec3 F = f0 + (1.0 - f0) * pow(clamp(1.0 + dot(-Ln, H),0.0,1.0), 5.0);
 
-				     rayContrib = F * g1;
-
-				// Skip calculations if ray does not contribute much to the lighting
-		
-				if (luma(rayContrib) > 0.05){
 				
-					vec4 reflection = vec4(0.0);
-					// Scale quality with ray contribution
-					float rayQuality = 35*sqrt(luma(rayContrib));
+				
 
-					// Skip SSR if ray contribution is low
-					if (rayQuality > 5.0) {
 
-                    vec3 r = SSR(fragpos3.xyz, depth,normalize(L), vec4(avgSky,1));
-								reflection.rgb = r;
-                                reflection.a = 1.0;
-					}
+                    vec3 r = SSR(fragpos3.xyz, depth,normalize(normal2 + (1-ggxAmmount) * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(avgSky,1));
+								reflection2.rgb += r;
+                                reflection2.a += 1.0;
+					
 
 	
-					indirectSpecular += (reflection.rgb * rayContrib);
 
-				}
+				
 	
 			}
-            
-  
+
+                        reflection2 = reflection2 / nSpecularSamples;    
+
+		float fresnel = pow(clamp(1.0 + dot(normal3, normalize(fragpos3.xyz)), 0.0, 1.0), 5.0);
+
+
+        float lookfresnel = clamp(exp(-13 * clamp(ndlsq * horizon, 0.0, 1.0) + 3.0)*100, 0.0, 1.0);
+        vec4 color2 = vec4(OutTexel,1);
+
+
+
+//           reflection2 = clamp(reflection2,0,10);           
+           reflection2 = mix(vec4(avgSky*0.7,1),reflection2,luma(reflection2.rgb));
+					indirectSpecular += ((reflection2.rgb )*(fresnel*OutTexel));
+        OutTexel *= 0.25;
+
         }
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
   
@@ -1079,16 +1165,14 @@ if(overworld == 1.0){
 		shading = mix(ambientLight,shading,1-rainStrength);	
  
 
-        vec3 speculars  = (indirectSpecular/nSpecularSamples);
-                                  speculars.rgb *= speculars.rgb;
-                                  speculars.rgb *= 5.0;
-  
+        vec3 speculars  = (indirectSpecular);
+
 		shading = mix(vec3(mixweight),shading,clamp((lmx)*5.0,0,1));
 		shading = mix(shading,vec3(1.0),clamp((lmy),0,1));   
 
     vec3 dlight =   ( OutTexel * clamp(shading,0.1,10));
-    dlight += (speculars*dlight); 
-    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight)*clamp(ao,0.75,1.00);           		     
+    dlight += (speculars); 
+    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight*clamp(ao,0.75,1.00));           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 
 
@@ -1108,7 +1192,7 @@ if(overworld == 1.0){
 
 
 
-//		fragColor.rgb = clamp(vec3(sunSpec),0.01,1);     
+//		fragColor.rgb = clamp(vec3(indirectSpecular),0.01,1);     
 
 
 }
