@@ -592,7 +592,7 @@ vec4 pbr (vec2 in1,vec2 in2){
 
     if(expanded >= metalMin && expanded <= metalMax)   alphatest.a = maps; // Metals
     float metal = map(alphatest.a*255,metalMin,metalMax,0,1);
-    if(rough < 0.001) rough = 0.1;
+//    if(rough < 0.001) rough = 0.1;
 
     pbr = vec4(emiss,sss,rough, metal);
  //   if(expanded > 170) pbr *=0;
@@ -827,12 +827,39 @@ void main() {
 
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
-//    if( (depthtest-deptha)*1000 >0.1) pbr =vec4(0.0);
+    vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
+
+vec3 test = vec3( (OutTexel));
+
+
+
+
+    if( pbr.b *255 < 17) {
+  float lum = luma(test);
+  vec3 diff = test-lum;
+ test = clamp(vec3(length(diff)),0.01,1);
+
+ if(test.r >0.3) test *= 0.3;
+
+ if(test.r < 0.05) test *= 5.0;
+ if(test.r < 0.05) test *= 2.0;
+ test = clamp(test*1.5-0.1,0,1);
+
+
+
+    pbr.b = test.r;
+
+
+    }
     float sssa = pbr.g;
     float ggxAmmount = pbr.b;
     float ggxAmmount2 = pbr.a;
     float light = pbr.r;
-    float depth = deptha;
+    float depth = deptha;         
+    
+    OutTexel = toLinear(OutTexel);    
+
+   fragColor.rgb = OutTexel;	
     if (depth > 1.0) light = 0;
 
 	if(overworld != 1.0 && end != 1.0){
@@ -859,12 +886,6 @@ void main() {
 	}
 
 
-
-    vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
-         OutTexel = toLinear(OutTexel);    
-
-
-   fragColor.rgb = OutTexel;	
 
 
 
@@ -1191,8 +1212,7 @@ if(overworld == 1.0){
     }
 
 
-
-//		fragColor.rgb = clamp(vec3(indirectSpecular),0.01,1);     
+//		fragColor.rgb = clamp(vec3(pbr.b),0.01,1);     
 
 
 }

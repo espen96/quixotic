@@ -18,7 +18,7 @@ in float vertexDistance;
 in float lm;
 in vec4 vertexColor;
 in vec4 lm2;
-in vec3 test;
+noperspective in vec3 test;
 in vec2 texCoord0;
 in vec2 texCoord2;
 in vec2 texCoord3;
@@ -103,22 +103,33 @@ void main() {
     float lum = luma4(albedo.rgb);
 	vec3 diff = albedo.rgb-lum;
 
-  float noise = luma4(rnd)*255;   
    float alpha0 = int(textureLod(Sampler0, texCoord0,0).a*255);
   float procedual1 = ((distance(textureLod(Sampler0, texCoord0,0).rgb,test.rgb)))*255;
- if (alpha0 ==255) {alpha0 = map(procedual1,0,255,roughMin,roughMax-16);
- }
+ //if (alpha0 ==255) {alpha0 = map(procedual1,0,255,roughMin,roughMax-16);
+ //}
 
+//color.rgb = test;
+if(alpha0==255){
+vec3 test2 = floor(test.rgb*255);
+float test3  = floor(test2.r+test2.g+test2.b);
 
- 
+ if(test3 <= 560 && test3 >= 550)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
+ if(test3 == 382 && test2.b == 83)  alpha0 = clamp((color.r*color.r*color.r)*255,lightMin,lightMax);
+ if(test3 <= 316 && test3 >= 310)  alpha0 = clamp(procedual1,lightMax,lightMax);
+}
+// if(test3 <= 316 && test3 >= 310)  color.rgb = vec3(1,0,0);
 //    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = clamp(alpha0+noise,sssMin,sssMax); // SSS
 
-    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = clamp(alpha0+0,lightMin,lightMax); // Emissives
+  float noise = luma4(rnd)*255;  
+ 
+    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+0,sssMin,sssMax)); // SSS
 
-    if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = clamp(alpha0+noise,roughMin,roughMax); // Roughness
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+noise,lightMin,lightMax)); // Emissives
+
+    if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = int(clamp(alpha0+noise,roughMin,roughMax)); // Roughness
 
 
-    if(alpha0 >= metalMin && alpha0 <= metalMax)   alpha0 = clamp(alpha0+noise,metalMin,metalMax); // Metals
+    if(alpha0 >= metalMin && alpha0 <= metalMax)   alpha0 = int(clamp(alpha0+noise,metalMin,metalMax)); // Metals
 
   noise /= 255;  
 
@@ -128,7 +139,6 @@ void main() {
 
   if(alpha0 <= 128) alpha1 = floor(map( alpha0,  0, 128, 0, 255))/255;
   if(alpha0 >= 128) alpha2 = floor(map( alpha0,  128, 255, 0, 255))/255;
-
 
   //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
@@ -141,7 +151,7 @@ void main() {
   }
   fragColor = color;
 //  fragColor.rgb = test.rgb;
-   
+//if(int(textureLod(Sampler0, texCoord0,0).a*255)==255)alpha3 = 1.0;   
   fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))/2),0,0.95));
   
   

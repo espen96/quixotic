@@ -24,7 +24,7 @@ out vec4 lm2;
 out float lmx;
 out float lmy;
 out vec4 vertexColor;
-out vec3 test;
+noperspective out vec3 test;
 out vec2 texCoord0;
 out vec2 texCoord2;
 

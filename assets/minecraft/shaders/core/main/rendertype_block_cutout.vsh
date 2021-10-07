@@ -28,7 +28,7 @@ out vec2 texCoord0;
 out vec2 texCoord2;
 out vec2 texCoord3;
 out vec4 normal;
-out vec3 test;
+noperspective out vec3 test;
 out vec4 glpos;
 
 #define WAVY_PLANTS
