@@ -1010,24 +1010,27 @@ if(overworld == 1.0){
         float depth3 = depthd;
         float depth4 = depthb;
         float depth5 = depthe;
-        float normalstrength = 0.05;    
-        float normaldistance = 2.0;    
+        #define normalstrength  0.1;    
+        float normaldistance = 4.0;    
 
         vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-        fragpos.rgb += length(texture(DiffuseSampler,texCoord).rgb)*normalstrength;
-    
+        fragpos.rgb += pow(luma(texture(DiffuseSampler,texCoord).rgb),4)*normalstrength;
+
         vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
-        p2.rgb += length(texture(DiffuseSampler,texCoord + normaldistance*vec2(0.0, oneTexel.y)).rgb)*normalstrength;
+        p2.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance*vec2(0.0, oneTexel.y)).rgb),3)*normalstrength;
         p2 = p2 - fragpos;
+
         vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
-            p3.rgb += length(texture(DiffuseSampler,texCoord + normaldistance* vec2(oneTexel.x, 0.0)).rgb)*normalstrength;
+            p3.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance* vec2(oneTexel.x, 0.0)).rgb),4)*normalstrength;
 
         p3 = p3 - fragpos;
         vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
-                    p4.rgb += length(texture(DiffuseSampler,texCoord - normaldistance* vec2(0.0, oneTexel.y)).rgb)*normalstrength;
+                    p4.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(0.0, oneTexel.y)).rgb),4)*normalstrength;
+
         p4 = p4 - fragpos;
         vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
-                    p5.rgb += length(texture(DiffuseSampler,texCoord - normaldistance* vec2(oneTexel.x, 0.0)).rgb)*normalstrength;
+                    p5.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(oneTexel.x, 0.0)).rgb),4)*normalstrength;
+                    
         p5 = p5 - fragpos;
         vec3 normal = normalize(cross( p2,  p3)) 
                     + normalize(cross(-p4,  p3)) 
