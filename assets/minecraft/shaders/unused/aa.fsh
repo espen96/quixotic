@@ -65,19 +65,19 @@ vec2 gradientAt(sampler2D tex, vec2 pos, vec2 sampling)
     vec2 stepy = vec2(0.0, sampling.y);
     
     /* Explicit Sobel
-    float left = rgb2lumi( texture2D(tex, pos-stepx) ) * 2.0
-               + rgb2lumi( texture2D(tex, pos-stepx-stepy) )
-               + rgb2lumi( texture2D(tex, pos-stepx+stepy) );
-    float right = rgb2lumi( texture2D(tex, pos+stepx) ) * 2.0
-                + rgb2lumi( texture2D(tex, pos+stepx-stepy) )
-                + rgb2lumi( texture2D(tex, pos+stepx+stepy) );
+    float left = rgb2lumi( texture(tex, pos-stepx) ) * 2.0
+               + rgb2lumi( texture(tex, pos-stepx-stepy) )
+               + rgb2lumi( texture(tex, pos-stepx+stepy) );
+    float right = rgb2lumi( texture(tex, pos+stepx) ) * 2.0
+                + rgb2lumi( texture(tex, pos+stepx-stepy) )
+                + rgb2lumi( texture(tex, pos+stepx+stepy) );
     
-    float top = rgb2lumi( texture2D(tex, pos-stepy) ) * 2.0
-              + rgb2lumi( texture2D(tex, pos-stepy-stepx) )
-              + rgb2lumi( texture2D(tex, pos-stepy+stepx) );
-    float bottom = rgb2lumi( texture2D(tex, pos+stepy) ) * 2.0
-                 + rgb2lumi( texture2D(tex, pos+stepy-stepx) )
-                 + rgb2lumi( texture2D(tex, pos+stepy+stepx) );
+    float top = rgb2lumi( texture(tex, pos-stepy) ) * 2.0
+              + rgb2lumi( texture(tex, pos-stepy-stepx) )
+              + rgb2lumi( texture(tex, pos-stepy+stepx) );
+    float bottom = rgb2lumi( texture(tex, pos+stepy) ) * 2.0
+                 + rgb2lumi( texture(tex, pos+stepy-stepx) )
+                 + rgb2lumi( texture(tex, pos+stepy+stepx) );
     */
     
     // 3x3 derivative kernel operator making use of bilinear interpolation.
@@ -92,15 +92,15 @@ vec2 gradientAt(sampler2D tex, vec2 pos, vec2 sampling)
     // Kroon (R=61/17):     alpha = 0.358
     
     float alpha = 0.358;
-    float left = rgb2lumi( texture2D(tex, pos-stepx - alpha*stepy) )
-               + rgb2lumi( texture2D(tex, pos-stepx + alpha*stepy) );
-    float right = rgb2lumi( texture2D(tex, pos+stepx - alpha*stepy) )
-                + rgb2lumi( texture2D(tex, pos+stepx + alpha*stepy) );
+    float left = rgb2lumi( texture(tex, pos-stepx - alpha*stepy) )
+               + rgb2lumi( texture(tex, pos-stepx + alpha*stepy) );
+    float right = rgb2lumi( texture(tex, pos+stepx - alpha*stepy) )
+                + rgb2lumi( texture(tex, pos+stepx + alpha*stepy) );
     
-    float top = rgb2lumi( texture2D(tex, pos-stepy - alpha*stepx) ) 
-              + rgb2lumi( texture2D(tex, pos-stepy + alpha*stepx) );
-    float bottom = rgb2lumi( texture2D(tex, pos+stepy - alpha*stepx) ) 
-                 + rgb2lumi( texture2D(tex, pos+stepy + alpha*stepx) );
+    float top = rgb2lumi( texture(tex, pos-stepy - alpha*stepx) ) 
+              + rgb2lumi( texture(tex, pos-stepy + alpha*stepx) );
+    float bottom = rgb2lumi( texture(tex, pos+stepy - alpha*stepx) ) 
+                 + rgb2lumi( texture(tex, pos+stepy + alpha*stepx) );
 
    
     // 5x5 derivative kernel operator making use of bilinear interpolation.
@@ -113,18 +113,18 @@ vec2 gradientAt(sampler2D tex, vec2 pos, vec2 sampling)
     float a2 = 1.06;  // 0.06; 0.03
     float a3 = 1.11157;  // 0.11157; 0.125  relation between two center elements
     float a4 = 2.3472;  // 2.3472; 2.3063  relation between center and corner
-    float left = rgb2lumi( texture2D(tex, pos - a3*stepx) ) * a4
-               + rgb2lumi( texture2D(tex, pos - a1*stepx - a2*stepy) )
-               + rgb2lumi( texture2D(tex, pos - a1*stepx + a2*stepy) );
-    float right = rgb2lumi( texture2D(tex, pos + a3*stepx) ) * a4
-                + rgb2lumi( texture2D(tex, pos + a1*stepx - a2*stepy) )
-                + rgb2lumi( texture2D(tex, pos + a1*stepx + a2*stepy) );  
-    float top = rgb2lumi( texture2D(tex, pos - a3*stepy) ) * a4
-                 + rgb2lumi( texture2D(tex, pos - a1*stepy - a2*stepx) )
-                 + rgb2lumi( texture2D(tex, pos - a1*stepy + a2*stepx) );
-    float bottom = rgb2lumi( texture2D(tex, pos + a3*stepy) ) * a4
-                 + rgb2lumi( texture2D(tex, pos + a1*stepy - a2*stepx) )
-                 + rgb2lumi( texture2D(tex, pos + a1*stepy + a2*stepx) );
+    float left = rgb2lumi( texture(tex, pos - a3*stepx) ) * a4
+               + rgb2lumi( texture(tex, pos - a1*stepx - a2*stepy) )
+               + rgb2lumi( texture(tex, pos - a1*stepx + a2*stepy) );
+    float right = rgb2lumi( texture(tex, pos + a3*stepx) ) * a4
+                + rgb2lumi( texture(tex, pos + a1*stepx - a2*stepy) )
+                + rgb2lumi( texture(tex, pos + a1*stepx + a2*stepy) );  
+    float top = rgb2lumi( texture(tex, pos - a3*stepy) ) * a4
+                 + rgb2lumi( texture(tex, pos - a1*stepy - a2*stepx) )
+                 + rgb2lumi( texture(tex, pos - a1*stepy + a2*stepx) );
+    float bottom = rgb2lumi( texture(tex, pos + a3*stepy) ) * a4
+                 + rgb2lumi( texture(tex, pos + a1*stepy - a2*stepx) )
+                 + rgb2lumi( texture(tex, pos + a1*stepy + a2*stepx) );
     */
     
     // Return gradient
@@ -162,7 +162,7 @@ void main() {
     
     // Stop if the edge is weak
     if ( gm < 0.05) {
-        fragColor.rgb = texture2D(DiffuseSampler, pos).rgb;
+        fragColor.rgb = texture(DiffuseSampler, pos).rgb;
         fragColor.a = 1.0;
         return;
     }
@@ -196,19 +196,19 @@ void main() {
     float extend = 1.5;
     
     // Initialize result with original value
-    vec3 result = texture2D(DiffuseSampler, pos).rgb * (1.0-strength);
+    vec3 result = texture(DiffuseSampler, pos).rgb * (1.0-strength);
     
     // todo: correct for undersampling at near-horizontal and near-vertical edges
     
     // Diffuse with samples along the edge
     // todo: what coefficients to use?
     N = extend * N;
-    result += texture2D(DiffuseSampler, pos+N*sampling).rgb * strength * 0.5;
-    result += texture2D(DiffuseSampler, pos-N*sampling).rgb * strength * 0.5;
-    //result += texture2D(DiffuseSampler, pos+N*sampling).rgb * strength * 0.333;
-    //result += texture2D(DiffuseSampler, pos-N*sampling).rgb * strength * 0.333;
-    //result += texture2D(DiffuseSampler, pos+N*2.0*sampling).rgb * strength * 0.16666;
-    //result += texture2D(DiffuseSampler, pos-N*2.0*sampling).rgb * strength * 0.16666;
+    result += texture(DiffuseSampler, pos+N*sampling).rgb * strength * 0.5;
+    result += texture(DiffuseSampler, pos-N*sampling).rgb * strength * 0.5;
+    //result += texture(DiffuseSampler, pos+N*sampling).rgb * strength * 0.333;
+    //result += texture(DiffuseSampler, pos-N*sampling).rgb * strength * 0.333;
+    //result += texture(DiffuseSampler, pos+N*2.0*sampling).rgb * strength * 0.16666;
+    //result += texture(DiffuseSampler, pos-N*2.0*sampling).rgb * strength * 0.16666;
     
     // Set result
     fragColor.rgb = result;

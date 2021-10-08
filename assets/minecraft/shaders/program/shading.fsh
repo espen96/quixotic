@@ -792,7 +792,7 @@ vec2 sphereToCarte(vec3 dir) {
 }
 vec3 skyFromTex(vec3 pos,sampler2D sampler){
 	vec2 p = sphereToCarte(pos);
-	return texture2D(sampler,p*oneTexel*256.+vec2(18.5,1.5)*oneTexel).rgb;
+	return texture(sampler,p*oneTexel*256.+vec2(18.5,1.5)*oneTexel).rgb;
 }
 
 float decodeFloat24(vec3 raw) {
@@ -992,7 +992,7 @@ if(overworld == 1.0){
             
         }
 
-    vec3 lightmap = texture2D(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
+    vec3 lightmap = texture(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
     if (light > 0.001)  lightmap.rgb = OutTexel* pow(clamp((light*10)-0.2,0.0,1.0)/0.65*0.65+0.35,10.0);
 
     if(postlight == 1)    OutTexel *= lightmap;
