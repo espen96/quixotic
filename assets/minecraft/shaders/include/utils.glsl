@@ -238,3 +238,36 @@ float decodeFloat24(vec3 raw) {
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
 
+float packUnorm2x4(vec2 xy) {
+	return dot(floor(15.0 * xy + 0.5), vec2(1.0 / 255.0, 16.0 / 255.0));
+}
+float packUnorm2x2(vec2 xy) {
+	return dot(floor(4.0 * xy + 0.5), vec2(1.0 / 16.0, 16.0 / 16.0));
+}
+float packUnorm2x4(float x, float y) { return packUnorm2x4(vec2(x, y)); }
+vec2 unpackUnorm2x4(float pack) {
+	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
+	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+}
+vec2 unpackUnorm2x2(float pack) {
+	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
+	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+}
+
+//Dithering from Jodie
+float Bayer2(vec2 a) {
+    a = floor(a+fract(GameTime * 1200));
+    return fract(dot(a, vec2(0.5, a.y * 0.75)));
+}
+
+#define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer8(a)   (Bayer4(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer16(a)  (Bayer8(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer32(a)  (Bayer16( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}

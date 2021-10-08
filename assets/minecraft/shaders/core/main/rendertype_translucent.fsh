@@ -21,22 +21,17 @@ in vec4 glpos;
 
 out vec4 fragColor;
 
-
-
-
-
-
 void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     color.rgb = clamp(color.rgb,0.01,1);
-
+//  color.rgb = (noise);
     fragColor = color;
 //    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);
 
 
- // color.rgb = (noise);
+
 //    if(water > 0.9 )    fragColor = linear_fog(color, vertexDistance, -8, FogEnd*0.1, FogColor);
 
 //    if(water > 0.9 )  fragColor.a = 0.75;

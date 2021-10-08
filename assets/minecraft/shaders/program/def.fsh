@@ -26,14 +26,14 @@ out vec4 fragColor;
 
 #define PI 3.141592
 
-#define MIN_LIGHT_AMOUNT 0.225 //[0.0 0.5 1.0 1.5 2.0 3.0 4.0 5.0]
-#define TORCH_AMOUNT 1.0 //[0.0 0.5 0.75 1. 1.2 1.4 1.6 1.8 2.0]
-#define TORCH_R 1.0 //[0.0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0]
-#define TORCH_G 0.5 //[0.0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0.42 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0]
-#define TORCH_B 0.2 //[0.0 0.05 0.1 0.11 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.85 0.9 0.95 1.0]
+#define MIN_LIGHT_AMOUNT 0.225
+#define TORCH_AMOUNT 1.0
+#define TORCH_R 1.0
+#define TORCH_G 0.5
+#define TORCH_B 0.2
 
-#define SKY_BRIGHTNESS_DAY 0.4//[0.0 0.5 0.75 1.0 1.2 1.4 1.6 1.8 2.0]
-#define SKY_BRIGHTNESS_NIGHT 0.1 //[0.0 0.5 0.75 1.0 1.2 1.4 1.6 1.8 2.0]
+#define SKY_BRIGHTNESS_DAY 0.4
+#define SKY_BRIGHTNESS_NIGHT 0.1
 #define fsign(a)  (clamp((a)*1e35,0.,1.)*2.-1.)
 
 
@@ -100,13 +100,7 @@ vec3 reinhard_jodie(vec3 v)
     vec3 tv = v / (1.0f + v);
     return mix(v / (1.0f + l), tv, tv);
 }
-/////////////////
 
-
-//////////////////
-vec2 sincos(float x){
-    return vec2(sin(x), cos(x));
-}
 
 
 void main() {
@@ -133,7 +127,7 @@ vec3 avgAmbient = ds+ms;
 
 }
 
-if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 ){
+else if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 ){
 
 
 
@@ -149,7 +143,7 @@ if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && g
 		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*1.5;
 	}
 	// Night
-	if (skyIntensityNight > 0.00001)
+	else if (skyIntensityNight > 0.00001)
 	{
 		moonSky = (skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4))*1.0;
 	}
@@ -161,7 +155,7 @@ if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && g
 
 
 
-if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
+else if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
   float cosY = clamp(floor(gl_FragCoord.x - 18.0)/256.*2.0-1.0,-1.0+1e-5,1.0-1e-5);
   cosY = pow(abs(cosY),1/3.0)*fsign(cosY);
   float mCosT = clamp(floor(gl_FragCoord.y-1.0)/256.,0.0,1.0);
@@ -186,7 +180,7 @@ if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
 		daySky = pow(L0,1.0-rainStrength*0.75)*skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*SKY_BRIGHTNESS_DAY;
 	}
 	// Night
-	if (skyIntensityNight > 0.00001)
+	else if (skyIntensityNight > 0.00001)
 	{
 		float L0Moon = (1.0+a*exp(b/mCosT))*(1.0+c*(exp(d*(PI-Y))-exp(d*3.1415/2.))+e*cosY*cosY);
 		moonSky = pow(L0Moon,1.0-rainStrength*0.75)*skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*SKY_BRIGHTNESS_NIGHT;

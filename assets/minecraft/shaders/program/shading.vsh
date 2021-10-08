@@ -207,6 +207,7 @@ float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
 float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
  skyIntensityNight=max(0.,1.0-exp(angSkyNight))*(1.0-rainStrength*0.4)*pow(fading2,5.0);
 ///////////////////////////
+
 	ambientUp = vec3(0.0);
 	ambientDown = vec3(0.0);
 	ambientLeft = vec3(0.0);
