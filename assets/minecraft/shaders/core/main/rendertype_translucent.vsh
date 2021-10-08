@@ -59,21 +59,20 @@ void main() {
 
       
           xs = sin(position.x + animation);
-          xs += sin(position.z );
           xs += sin(position.x + animation3);
-          xs += sin(position.x + animation3);    
+          xs += sin(position.x + animation);    
           xs *= sin(position.z *0.5);
           xs *= sin(position.z - 0.8 + animation) + 1.0 * sin((position.z + 0.5) / 3 + animation) + 2.0 * sin((position.z - 20.0) / 10.0 + animation3) + sin(position.z + 30 - animation);
 
 
           zs = cos(position.z + animation);
-          zs += cos(position.x + animation3);
-          zs += cos(position.z + animation);
+          zs += cos(position.x + animation);
+          zs += cos(position.z + animation3);
           zs += sin(position.z*0.5 );
           zs *= sin(position.x - 0.8 + animation3) + 1.0 * sin((position.x + 0.5) / 4 + animation) + 2.0 * sin((position.x - 20.0) / 10.0 + animation) + sin(position.x + 30 - animation);
 
 
-          xs *= 0.2;
+          xs *= 0.25 + (fract(GameTime)*0.01);
           zs *= 0.2;
           water = 1;
 
