@@ -846,6 +846,7 @@ float decodeFloat24(vec3 raw) {
 void main() {
 
 
+
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
     float deptha = texture(DiffuseDepthSampler, texCoord).r;
     if(deptha >= 1) lmtrans = vec2(0.0); 
@@ -864,8 +865,29 @@ void main() {
     vec2 lmtrans5 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(oneTexel.x,0)).a));
     float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
     lmtrans5 *= 1-(depthe -deptha);
-    
+        float depth = deptha;   
+	if(overworld != 1.0 && end != 1.0){
 
+    vec2 p_m = texCoord;
+    vec2 p_d = p_m;
+    p_d.xy -= Time * 0.1;
+    vec2 dst_map_val = vec2(Nnoise(p_d.xy));
+    vec2 dst_offset = dst_map_val.xy;
+
+    dst_offset *= 2.0;
+
+    dst_offset *= 0.01;
+	
+    //reduce effect towards Y top
+	
+    dst_offset *= (1. - p_m.t);	
+    vec2 dist_tex_coord = p_m.st + (dst_offset*depth*0.2);
+
+	vec2 coord = dist_tex_coord;
+  	vec2 texCoord = texCoord; 
+  	 texCoord = coord; 
+
+	}
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
     vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
@@ -896,35 +918,13 @@ vec3 test = vec3( (OutTexel));
     float ggxAmmount = pbr.b;
     float ggxAmmount2 = pbr.a;
     float light = pbr.r;
-    float depth = deptha;         
+      
     
     OutTexel = toLinear(OutTexel);    
 
    fragColor.rgb = OutTexel;	
     if (depth > 1.0) light = 0;
 
-	if(overworld != 1.0 && end != 1.0){
-
-    vec2 p_m = texCoord;
-    vec2 p_d = p_m;
-    p_d.xy -= Time * 0.1;
-    vec2 dst_map_val = vec2(Nnoise(p_d.xy));
-    vec2 dst_offset = dst_map_val.xy;
-
-    dst_offset *= 2.0;
-
-    dst_offset *= 0.01;
-	
-    //reduce effect towards Y top
-	
-    dst_offset *= (1. - p_m.t);	
-    vec2 dist_tex_coord = p_m.st + (dst_offset*depth*0.2);
-
-	vec2 coord = dist_tex_coord;
-  	vec2 texCoord = texCoord; 
-  	 texCoord = coord; 
-
-	}
 
 
 
