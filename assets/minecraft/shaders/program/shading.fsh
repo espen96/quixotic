@@ -846,7 +846,7 @@ float decodeFloat24(vec3 raw) {
 void main() {
 
 
-
+  	vec2 texCoord = texCoord; 
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
     float deptha = texture(DiffuseDepthSampler, texCoord).r;
     if(deptha >= 1) lmtrans = vec2(0.0); 
@@ -884,7 +884,7 @@ void main() {
     vec2 dist_tex_coord = p_m.st + (dst_offset*depth*0.2);
 
 	vec2 coord = dist_tex_coord;
-  	vec2 texCoord = texCoord; 
+
   	 texCoord = coord; 
 
 	}
