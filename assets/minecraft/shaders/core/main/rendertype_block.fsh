@@ -109,7 +109,7 @@ float test3  = floor(test2.r+test2.g+test2.b);
   fragColor = color;
 //  fragColor.rgb = test.rgb;
 //if(int(textureLod(Sampler0, texCoord0,0).a*255)==255)alpha3 = 1.0;   
-  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))/2),0,0.95));
+  fragColor.a = packUnorm2x4( alpha3,clamp(lm+(luma4(rnd*clamp(lm*100,0,1))),0,0.95));
   
   
   }
