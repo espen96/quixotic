@@ -58,6 +58,8 @@ in mat4 gbP;
 out vec4 fragColor;
 
 
+
+
 //Dithering from Jodie
 float Bayer2(vec2 a) {
     a = floor(a);
@@ -72,10 +74,9 @@ float Bayer2(vec2 a) {
 #define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
 
-#define TORCH_R 1.00 // [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.0]
-#define TORCH_G 0.5 // [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.0]
-#define TORCH_B 0.2 // [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.0]
-
+#define TORCH_R 1.0 
+#define TORCH_G 0.5 
+#define TORCH_B 0.2 
 
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define NUMCONTROLS 26
@@ -85,7 +86,7 @@ float Bayer2(vec2 a) {
 #define Dirt_Amount 0.01 
 
 
-#define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog. [0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 ]
+#define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog. 
 
 
 #define Dirt_Absorb_R 0.65 
@@ -96,10 +97,10 @@ float Bayer2(vec2 a) {
 #define Water_Absorb_G 0.03751
 #define Water_Absorb_B 0.01150
 
-#define BASE_FOG_AMOUNT 0.2 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0 10.0 20.0 30.0 50.0 100.0 150.0 200.0]  Base fog amount amount (does not change the "cloudy" fog)
-#define CLOUDY_FOG_AMOUNT 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0]
-#define FOG_TOD_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of time of day on fog amount
-#define FOG_RAIN_MULTIPLIER 1.0 //[0.0 0.2 0.4 0.6 0.8 1.0 1.25 1.5 1.75 2.0 3.0 4.0 5.0] //Influence of rain on fog amount
+#define BASE_FOG_AMOUNT 0.2 //Base fog amount amount (does not change the "cloudy" fog)
+#define CLOUDY_FOG_AMOUNT 1.0 
+#define FOG_TOD_MULTIPLIER 1.0 //Influence of time of day on fog amount
+#define FOG_RAIN_MULTIPLIER 1.0 //Influence of rain on fog amount
 
 #define SSAO_SAMPLES 6
 
@@ -114,11 +115,67 @@ float Bayer2(vec2 a) {
 
 #define NORMAL_SCATTER 0.006
 
+#define CLOUDS_QUALITY 0.5
+
+////////////////////////////////
+    #define sssMin 22
+    #define sssMax 47
+    #define lightMin 48
+    #define lightMax 72
+    #define roughMin 73
+    #define roughMax 157
+    #define metalMin 158
+    #define metalMax 251
+//////////////////////////////////////////////////////////////////////////////////////////
+vec2 unpackUnorm2x4(float pack) {
+	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
+	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+}
+
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}
 
 
+vec4 pbr (vec2 in1,vec2 in2){
 
-#define CLOUDS_QUALITY 0.5 //[0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
+    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+    float res = mod(mod2, 2.0f);
 
+    vec4 alphatest = vec4(0.0);
+    vec4 pbr = vec4(0.0);
+
+
+    float maps1 = mix(in1.x,in2.x,res);
+    float maps2 = mix(in2.x,in1.x,res);
+
+    maps1 = map(maps1,  0, 1, 128, 255);
+    if(maps1 == 128) maps1 = 0.0;
+    maps2 = map(maps2,  0, 1, 0, 128);
+
+    float maps = (maps1+maps2)/255;
+    float expanded = int(maps * 255);
+
+    if(expanded >=  sssMin && expanded <=  sssMax)   alphatest.g = maps; // SSS
+    float sss = map(alphatest.g*255,  sssMin, sssMax,0,1);    
+
+    if(expanded >=  lightMin && expanded <= lightMax)   alphatest.r = maps; // Emissives
+    float emiss = map(alphatest.r*255, lightMin,lightMax,0,1);    
+
+    if(expanded >= roughMin && expanded <= roughMax)   alphatest.b = maps; // Roughness
+    float rough = map(alphatest.b*255,roughMin,roughMax,0,1);
+
+
+    if(expanded >= metalMin && expanded <= metalMax)   alphatest.a = maps; // Metals
+    float metal = map(alphatest.a*255,metalMin,metalMax,0,1);
+//    if(rough < 0.001) rough = 0.1;
+
+    pbr = vec4(emiss,sss,rough, metal);
+ //   if(expanded > 170) pbr *=0;
+    return pbr;    
+}
+
+/////////////////////////////////////////////////////////////////////////
 
 vec3 toLinear(vec3 sRGB){
 	return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
@@ -543,63 +600,7 @@ vec3 reconstructPosition(in vec2 uv, in float z, in mat4  InvVP)
 
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-vec2 unpackUnorm2x4(float pack) {
-	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
-	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
-}
 
-float map(float value, float min1, float max1, float min2, float max2) {
-  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
-}
-    #define sssMin 22
-    #define sssMax 47
-    #define lightMin 48
-    #define lightMax 72
-    #define roughMin 73
-    #define roughMax 157
-    #define metalMin 158
-    #define metalMax 251
-
-vec4 pbr (vec2 in1,vec2 in2){
-
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res = mod(mod2, 2.0f);
-
-    vec4 alphatest = vec4(0.0);
-    vec4 pbr = vec4(0.0);
-
-
-    float maps1 = mix(in1.x,in2.x,res);
-    float maps2 = mix(in2.x,in1.x,res);
-
-    maps1 = map(maps1,  0, 1, 128, 255);
-    if(maps1 == 128) maps1 = 0.0;
-    maps2 = map(maps2,  0, 1, 0, 128);
-
-    float maps = (maps1+maps2)/255;
-    float expanded = int(maps * 255);
-
-    if(expanded >=  sssMin && expanded <=  sssMax)   alphatest.g = maps; // SSS
-    float sss = map(alphatest.g*255,  sssMin, sssMax,0,1);    
-
-    if(expanded >=  lightMin && expanded <= lightMax)   alphatest.r = maps; // Emissives
-    float emiss = map(alphatest.r*255, lightMin,lightMax,0,1);    
-
-    if(expanded >= roughMin && expanded <= roughMax)   alphatest.b = maps; // Roughness
-    float rough = map(alphatest.b*255,roughMin,roughMax,0,1);
-
-
-    if(expanded >= metalMin && expanded <= metalMax)   alphatest.a = maps; // Metals
-    float metal = map(alphatest.a*255,metalMin,metalMax,0,1);
-//    if(rough < 0.001) rough = 0.1;
-
-    pbr = vec4(emiss,sss,rough, metal);
- //   if(expanded > 170) pbr *=0;
-    return pbr;    
-}
-
-/////////////////////////////////////////////////////////////////////////
 
 float square(float x){
   return x*x;

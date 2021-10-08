@@ -56,23 +56,6 @@ float getLayeredNoise(vec3 seed)
            (0.125 * getNoise(seed * 0.2)) +
            (0.0625 * getNoise(seed * 0.4));
 }
-float _smooth(float inVal)
-{
-    return inVal * inVal * (3.0 - (2.0 * inVal));
-}
-
-vec3 EncodeRangeV3( in float value, in float minVal, in float maxVal )
-{
-    value        = clamp( (value-minVal) / (maxVal-minVal), 0.0, 1.0 );
-    value       *= (256.0*256.0*256.0 - 1.0) / (256.0*256.0*256.0);
-    vec4 encode  = fract( value * vec4(1.0, 256.0, 256.0*256.0, 256.0*256.0*256.0) );
-    return encode.xyz - encode.yzw / 256.0 + 1.0/512.0;
-}
-float unpack8BitVec3IntoFloat(vec3 v, float min, float max) {
-   float zeroTo24Bit = v.x + v.y * 256.0 + v.z * 256.0 * 256.0;
-   float zeroToOne = zeroTo24Bit / 256.0 / 256.0 / 256.0;
-   return zeroToOne * (max - min) + min;
-}
 
 void main() {
     	float aspectRatio = ScreenSize.x/ScreenSize.y;

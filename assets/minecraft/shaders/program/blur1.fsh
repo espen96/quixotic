@@ -9,7 +9,8 @@ out vec4 fragColor;
 
 in vec2 texCoord;
 
-
+#define SAMPLE_OFFSET 5.
+#define INTENSITY 1.
 
 
 
@@ -18,9 +19,7 @@ vec2 unpackUnorm2x4(float pack) {
 	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 
-#define SAMPLE_OFFSET 5.
 
-#define INTENSITY 1.
 
 void main() {
 float Intensity = 1.0;
