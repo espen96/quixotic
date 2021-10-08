@@ -87,7 +87,7 @@ int decodeInt(vec3 ivec) {
 float decodeFloat(vec3 ivec) {
     return decodeInt(ivec) / FPRECISION;
 }
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
 	float mCosT = clamp(cosT,0.0,1.);
@@ -221,7 +221,7 @@ float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 			vec3 pos = normalize(rodSample(ij));
 
 
-			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunPosition,pos.y,temporals3Sampler)/maxIT;
+			vec3 samplee = 2.2*skyLut(pos.xyz,sunPosition,pos.y,temporals3Sampler)/maxIT;
 			avgSky += samplee/2.2;
             
 			ambientUp += samplee*(pos.y+abs(pos.x)/7.+abs(pos.z)/7.);

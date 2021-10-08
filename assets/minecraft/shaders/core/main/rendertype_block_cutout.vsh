@@ -32,8 +32,8 @@ noperspective out vec3 test;
 out vec4 glpos;
 
 #define WAVY_PLANTS
-#define WAVY_STRENGTH 0.2 //[0.1 0.25 0.5 0.75 1.0 1.25 1.5 1.75 2.0]
-#define WAVY_SPEED 1000.25 //[0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 1.0 1.25 1.5 2.0 3.0 4.0]
+#define WAVY_STRENGTH 0.2 
+#define WAVY_SPEED 1000.25 
 const float PI48 = 150.796447372*WAVY_SPEED;
     float animation = GameTime;
 float pi2wt = PI48*animation;

@@ -295,7 +295,7 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 
 
 
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
 	float mCosT = clamp(cosT,0.0,1.);
@@ -963,7 +963,7 @@ if(overworld == 1.0){
  if (depthtest >= 1.0 || luma(OutTexel) == 0){
 
 
-    vec3 atmosphere = ((getSkyColorLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
+    vec3 atmosphere = ((skyLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
@@ -1012,25 +1012,26 @@ if(overworld == 1.0){
         float depth4 = depthb;
         float depth5 = depthe;
         #define normalstrength  0.1;    
-        float normaldistance = 4.0;    
+        float normaldistance = 2.0;    
+        float normalpow = 4.0;    
 
         vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-        fragpos.rgb += pow(luma(texture(DiffuseSampler,texCoord).rgb),4)*normalstrength;
+        fragpos.rgb += pow(luma(texture(DiffuseSampler,texCoord).rgb),normalpow)*normalstrength;
 
         vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
-        p2.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance*vec2(0.0, oneTexel.y)).rgb),3)*normalstrength;
+        p2.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance*vec2(0.0, oneTexel.y)).rgb),normalpow)*normalstrength;
         p2 = p2 - fragpos;
 
         vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
-            p3.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance* vec2(oneTexel.x, 0.0)).rgb),4)*normalstrength;
+            p3.rgb += pow(luma(texture(DiffuseSampler,texCoord + normaldistance* vec2(oneTexel.x, 0.0)).rgb),normalpow)*normalstrength;
 
         p3 = p3 - fragpos;
         vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
-                    p4.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(0.0, oneTexel.y)).rgb),4)*normalstrength;
+                    p4.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(0.0, oneTexel.y)).rgb),normalpow)*normalstrength;
 
         p4 = p4 - fragpos;
         vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
-                    p5.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(oneTexel.x, 0.0)).rgb),4)*normalstrength;
+                    p5.rgb += pow(luma(texture(DiffuseSampler,texCoord - normaldistance* vec2(oneTexel.x, 0.0)).rgb),normalpow)*normalstrength;
                     
         p5 = p5 - fragpos;
         vec3 normal = normalize(cross( p2,  p3)) 
@@ -1055,7 +1056,7 @@ if(overworld == 1.0){
 
 
     bool isSSS = sssa > 0.0;
-    vec2 poissonDisk[64];
+    vec2 poissonDisk[32];
     poissonDisk[0] = vec2(-0.613392, 0.617481);
     poissonDisk[1] = vec2(0.170019, -0.040254);
     poissonDisk[2] = vec2(-0.299417, 0.791925);
@@ -1088,38 +1089,7 @@ if(overworld == 1.0){
     poissonDisk[29] = vec2(-0.696890, -0.549791);
     poissonDisk[30] = vec2(-0.149693, 0.605762);
     poissonDisk[31] = vec2(0.034211, 0.979980);
-    poissonDisk[32] = vec2(0.503098, -0.308878);
-    poissonDisk[33] = vec2(-0.016205, -0.872921);
-    poissonDisk[34] = vec2(0.385784, -0.393902);
-    poissonDisk[35] = vec2(-0.146886, -0.859249);
-    poissonDisk[36] = vec2(0.643361, 0.164098);
-    poissonDisk[37] = vec2(0.634388, -0.049471);
-    poissonDisk[38] = vec2(-0.688894, 0.007843);
-    poissonDisk[39] = vec2(0.464034, -0.188818);
-    poissonDisk[40] = vec2(-0.440840, 0.137486);
-    poissonDisk[41] = vec2(0.364483, 0.511704);
-    poissonDisk[42] = vec2(0.034028, 0.325968);
-    poissonDisk[43] = vec2(0.099094, -0.308023);
-    poissonDisk[44] = vec2(0.693960, -0.366253);
-    poissonDisk[45] = vec2(0.678884, -0.204688);
-    poissonDisk[46] = vec2(0.001801, 0.780328);
-    poissonDisk[47] = vec2(0.145177, -0.898984);
-    poissonDisk[48] = vec2(0.062655, -0.611866);
-    poissonDisk[49] = vec2(0.315226, -0.604297);
-    poissonDisk[50] = vec2(-0.780145, 0.486251);
-    poissonDisk[51] = vec2(-0.371868, 0.882138);
-    poissonDisk[52] = vec2(0.200476, 0.494430);
-    poissonDisk[53] = vec2(-0.494552, -0.711051);
-    poissonDisk[54] = vec2(0.612476, 0.705252);
-    poissonDisk[55] = vec2(-0.578845, -0.768792);
-    poissonDisk[56] = vec2(-0.772454, -0.090976);
-    poissonDisk[57] = vec2(0.504440, 0.372295);
-    poissonDisk[58] = vec2(0.155736, 0.065157);
-    poissonDisk[59] = vec2(0.391522, 0.849605);
-    poissonDisk[60] = vec2(-0.620106, -0.328104);
-    poissonDisk[61] = vec2(0.789239, -0.419965);
-    poissonDisk[62] = vec2(-0.545396, 0.538133);
-    poissonDisk[63] = vec2(-0.178564, -0.596057);
+
 
 
 	vec3 shading;
@@ -1264,8 +1234,6 @@ if(overworld == 1.0){
 
     }
 
-
-	//		normal.rg -= FindNormal(DiffuseSampler,texCoord.xy,oneTexel-0.0003).rg;
 
 //		fragColor.rgb = clamp(vec3(normal),0.01,1);     
 

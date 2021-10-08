@@ -87,7 +87,7 @@ vec3 cosineHemisphereSample(vec2 Xi)
 
 
 
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
@@ -170,7 +170,7 @@ vec3 sunVec=vec3(sunPosX,sunPosY,sunPosZ);
 		for (int j = 0; j < 5; j++) {
 			vec2 ij = vec2(i,j)/5.*0.9+0.05;
 			vec3 pos = cosineHemisphereSample(ij);
-            ambientUp = getSkyColorLut(pos.xyz,sunVec,pos.y,tempSampler);
+            ambientUp = skyLut(pos.xyz,sunVec,pos.y,tempSampler);
 	}
 	}
     ambientUp *= 0.5; 

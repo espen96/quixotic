@@ -59,7 +59,7 @@ float decodeFloat24(vec3 raw) {
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
-#define CLOUDS_QUALITY 0.5 //[0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
+#define CLOUDS_QUALITY 0.5 
 #define PI 3.141592
 
 vec2 R2_samples(int n){
@@ -73,7 +73,7 @@ vec3 rodSample(vec2 Xi)
 
     return normalize(vec3(cos(phi) * r, sin(phi) * r, Xi.x)).xzy;
 }
-vec3 getSkyColorLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
 	float mCosT = clamp(cosT,0.0,1.);
@@ -157,7 +157,7 @@ vec3 upVec=vec3(upPosX,upPosY,upPosZ);
 	for (int i = 0; i < maxIT; i++) {
 			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
 			vec3 pos = normalize(rodSample(ij));
-			vec3 samplee = 2.2*getSkyColorLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
+			vec3 samplee = 2.2*skyLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
 			avgSky += samplee/2.2;
 	}
 

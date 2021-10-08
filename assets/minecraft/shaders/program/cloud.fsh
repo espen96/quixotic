@@ -27,7 +27,7 @@ in vec3 sunVec;
 
 out vec4 fragColor;
 
-#define PI 3.141592
+
 
 
 
@@ -37,7 +37,6 @@ vec3 toLinear(vec3 sRGB){
 
 
 
-// with improvments from Bobcao3
 
 
 
@@ -45,7 +44,7 @@ vec3 toLinear(vec3 sRGB){
 
 float frameTimeCounter =  sunElevation*1000;
 
-
+const float PI = 3.141592;
 const vec3 cameraPosition = vec3(0);
 const float cloud_height = 1500.;
 const float maxHeight = 1650.;
@@ -77,24 +76,6 @@ float phaseg(float x, float g){
     return (gg * -0.25 /3.14 + 0.25 /3.14) * pow(-2.0 * (g * x) + (gg + 1.0), -1.5);
 }											   
 
-
-vec4 textureBilinear(sampler2D tex, vec2 coord, const int res) {
-    ivec2 texSize = textureSize(tex, 0)*res;
-    vec2 texelSize = (1.0/vec2(texSize));
-    vec4 p0q0 = texture(tex, coord);
-    vec4 p1q0 = texture(tex, coord + vec2(texelSize.x, 0));
-
-    vec4 p0q1 = texture(tex, coord + vec2(0, texelSize.y));
-    vec4 p1q1 = texture(tex, coord + vec2(texelSize.x , texelSize.y));
-
-    float a = fract(coord.x * texSize.x);
-
-    vec4 pInterp_q0 = mix(p0q0, p1q0, a);
-    vec4 pInterp_q1 = mix(p0q1, p1q1, a);
-
-    float b = fract(coord.y*texSize.y);
-    return mix(pInterp_q0, pInterp_q1, b);
-}
 
 
 float cubeSmooth(float x) {

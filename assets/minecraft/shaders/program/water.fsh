@@ -34,7 +34,7 @@ in float far;
 #define SSR_MAXREFINESAMPLES 10
 #define SSR_STEPREFINE 0.2
 #define SSR_STEPINCREASE 1.2
-#define SSR_IGNORETHRESH 0.0
+#define SSR_IGNORETHRESH 1.0
 #define NORMAL_SCATTER 0.006
 
 
@@ -53,24 +53,14 @@ in mat4 gbufferModelView;
 in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
 
-//Thanks to Jessie for dithering
-float Bayer2  (vec2 c) { c = 0.5 * floor(c); return fract(1.5 * fract(c.y) + c.x); }
-float Bayer4  (vec2 c) { return 0.25 * Bayer2  (0.5 * c) + Bayer2(c); }
-float Bayer8  (vec2 c) { return 0.25 * Bayer4  (0.5 * c) + Bayer2(c); }
-float Bayer16 (vec2 c) { return 0.25 * Bayer8  (0.5 * c) + Bayer2(c); }
-float Bayer32 (vec2 c) { return 0.25 * Bayer16 (0.5 * c) + Bayer2(c); }
-float Bayer64 (vec2 c) { return 0.25 * Bayer32 (0.5 * c) + Bayer2(c); }
-float Bayer128(vec2 c) { return 0.25 * Bayer64 (0.5 * c) + Bayer2(c); }
-float Bayer256(vec2 c) { return 0.25 * Bayer128(0.5 * c) + Bayer2(c); }
+
   
 float LinearizeDepth(float depth) 
 {
     return (2.0 * near * far) / (far + near - depth * (far - near));    
 }
 
-float ditherGradNoise() {
-  return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
-}
+
 
 float luminance(vec3 rgb) {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
@@ -83,7 +73,7 @@ float luma4(vec3 color) {
 
 
 
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 approxreflection, vec2 randsamples[16]) {
+vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
     vec3 rayStart   = fragpos.xyz;
     vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
     vec3 rayStep    = 0.5 * rayDir;
@@ -112,6 +102,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, vec4 appr
     if (fragdepth < dtmp + SSR_IGNORETHRESH && pos.y <= 1.0) {
         vec3 colortmp = texture(TerrainCloudsSampler, pos.xy).rgb*2.0;
         candidate = mix(vec4(colortmp, 1.0), skycol, float(dtmp + SSR_IGNORETHRESH < 1.0) * clamp(pos.z * 1.1, 0.0, 1.0));
+
     }
     
     candidate = mix(candidate, skycol, pos.y );
@@ -138,27 +129,6 @@ vec2 unpackUnorm2x4(float pack) {
 vec4 backProject(vec4 vec) {
     vec4 tmp = gbufferModelViewInverse * vec;
     return tmp / tmp.w;
-}
-
-
-int inControl(vec2 screenCoord, float screenWidth) {
-    if (screenCoord.y < 1.0) {
-        float index = floor(screenWidth / 2.0) + THRESH / 2.0;
-        index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
-            return int(index);
-        }
-    }
-    return -1;
-}
-
-vec3 lumaBasedReinhardToneMapping(vec3 color)
-{
-	float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-	float toneMappedLuma = luma / (1. + luma);
-	color *= toneMappedLuma / luma;
-	color = pow(color, vec3(1. / 2.2));
-	return color;
 }
 
 
@@ -256,10 +226,8 @@ void main() {
 
         vec4 r = vec4(0.0);
         for (int i = 0; i < SSR_TAPS; i += 1) {
-            r += SSR(fragpos, ldepth, normalize(normal + NORMAL_SCATTER * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(sky,1), vec4(sky,1), poissonDisk);
-
-
-            
+            r += SSR(fragpos, ldepth, normalize(normal + NORMAL_SCATTER * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(sky,1));
+   
         }
         reflection = r.rgb / SSR_TAPS;
         
