@@ -111,30 +111,29 @@ void VXAAUpsampleT4x( out vec4 vtex[4], vec4 current, vec4 history, vec4 currN[4
 
 
 void main() {
-    vec2 iResolution = ScreenSize;
-    vec2 uv = texCoord;
+
     
     // Sample scene and neighbourhood.
     
-    vec4 current = clamp( vec4( texture( VXAA_TEXTURE_CURRENT, uv ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
-    vec4 history = clamp( vec4( texture( VXAA_TEXTURE_PREV, uv ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
+    vec4 current = clamp( vec4( texture( VXAA_TEXTURE_CURRENT, texCoord ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
+    vec4 history = clamp( vec4( texture( VXAA_TEXTURE_PREV, texCoord ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
     current.a = VXAALuma( current.rgb ); history.a = VXAALuma( history.rgb );
     
     vec4 currN[4];
-    currN[VXAA_W] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2( -1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_E] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_N] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    currN[VXAA_S] = clamp( texture( VXAA_TEXTURE_CURRENT, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_W] = clamp( texture( VXAA_TEXTURE_CURRENT, texCoord + vec2( -1.0f,  0.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_E] = clamp( texture( VXAA_TEXTURE_CURRENT, texCoord + vec2(  1.0f,  0.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_N] = clamp( texture( VXAA_TEXTURE_CURRENT, texCoord + vec2(  0.0f, -1.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    currN[VXAA_S] = clamp( texture( VXAA_TEXTURE_CURRENT, texCoord + vec2(  0.0f, -1.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
     currN[VXAA_W].a = VXAALuma( currN[ VXAA_W ].rgb );
     currN[VXAA_E].a = VXAALuma( currN[ VXAA_E ].rgb );
     currN[VXAA_N].a = VXAALuma( currN[ VXAA_N ].rgb );
     currN[VXAA_S].a = VXAALuma( currN[ VXAA_S ].rgb );
     
     vec4 histN[4];
-    histN[VXAA_W] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2( -1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_E] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  1.0f,  0.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_N] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
-    histN[VXAA_S] = clamp( texture( VXAA_TEXTURE_PREV, uv + vec2(  0.0f, -1.0f ) / iResolution.xy ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_W] = clamp( texture( VXAA_TEXTURE_PREV, texCoord + vec2( -1.0f,  0.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_E] = clamp( texture( VXAA_TEXTURE_PREV, texCoord + vec2(  1.0f,  0.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_N] = clamp( texture( VXAA_TEXTURE_PREV, texCoord + vec2(  0.0f, -1.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
+    histN[VXAA_S] = clamp( texture( VXAA_TEXTURE_PREV, texCoord + vec2(  0.0f, -1.0f ) / ScreenSize ), vec4( 0.0f ), vec4( 1.0f ) );
     histN[VXAA_W].a = VXAALuma( histN[ VXAA_W ].rgb );
     histN[VXAA_E].a = VXAALuma( histN[ VXAA_E ].rgb );
     histN[VXAA_N].a = VXAALuma( histN[ VXAA_N ].rgb );

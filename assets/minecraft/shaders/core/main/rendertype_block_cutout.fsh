@@ -81,16 +81,8 @@ void main() {
   if (color.a*255 <= 17.0) {
     discard;
   }
-  color.rgb +=rnd/16; 
+    color.rgb +=rnd/16; 
     color.rgb = clamp(color.rgb,0.001,1);
-    #define sssMin 22
-    #define sssMax 47
-    #define lightMin 48
-    #define lightMax 72
-    #define roughMin 73
-    #define roughMax 157
-    #define metalMin 158
-    #define metalMax 251
 
   float translucent = 0;
 
