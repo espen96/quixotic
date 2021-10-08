@@ -390,7 +390,7 @@ vec2 Nnoise(vec2 coord)
 
 uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
-
+/*
 const float FXS = 0.02;         // font/screen resolution ratio
 const float FYS = 0.02;         // font/screen resolution ratio
 
@@ -489,7 +489,7 @@ void c(int character) {
     textIndex++;
 }
 
-
+*/
 
 
 ///////////////////////////////////
