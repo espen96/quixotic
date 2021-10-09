@@ -1235,7 +1235,7 @@ if(overworld == 1.0){
     }
 
 
-//		fragColor.rgb = clamp(vec3(pbr),0.01,1);     
+//		fragColor.rgb = clamp(vec3(lightmap),0.01,1);     
 
 
 }
