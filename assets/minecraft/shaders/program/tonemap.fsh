@@ -6,6 +6,7 @@ uniform sampler2D MainSampler;
 uniform sampler2D BloomSampler;
 uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
+uniform vec2 OutSize;
 out vec4 fragColor;
 
 in vec2 texCoord;
@@ -172,6 +173,30 @@ vec4 textureQuadratic( in sampler2D sam, in vec2 p )
 */
     
 }
+#define NUMCONTROLS 100
+#define THRESH 0.5
+#define FPRECISION 4000000.0
+#define PROJNEAR 0.05
+#define FUDGE 32.0
+int inControl(vec2 screenCoord, float screenWidth) {
+    if (screenCoord.y < 1.0) {
+        float index = floor(screenWidth / 2.0) + THRESH / 2.0;
+        index = (screenCoord.x - index) / 2.0;
+        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+            return int(index);
+        }
+    }
+    return -1;
+}
+
+vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
+    vec2 oneTexel = 1/ScreenSize;
+    if (inctrl) {
+        return (texture(inSampler, coords - vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(0.0, oneTexel.y))) / 3.0;
+    } else {
+        return texture(inSampler, coords);
+    }
+}
 void main() {
 
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
@@ -187,8 +212,9 @@ void main() {
 
     float depth = texture(DiffuseDepthSampler, texCoord).r;
 
+    bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
+    vec3 color = texture(DiffuseSampler, texCoord + vec2(0.0, oneTexel.y)).rgb;
 
-    vec3 color = texture(DiffuseSampler, texCoord).rgb;
 
 
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy/2. +.25;
@@ -234,6 +260,6 @@ void main() {
 	color = color + diff*(-lumC*CROSSTALK + SATURATION);
   //  color.rgb = vec3(VL_abs);
 
-	fragColor= vec4(int8Dither(vec3(color)), 1.0);
+	fragColor= vec4(int8Dither(vec3(color.rgb)), 1.0);
     
 }

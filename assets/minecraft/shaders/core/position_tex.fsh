@@ -24,7 +24,7 @@ out vec4 fragColor;
 
 void main() {
     vec4 color = vec4(0.0);
-
+    bool gui =isGUI( ModelViewMat);
     int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
     if(index != -1) {
@@ -34,17 +34,19 @@ void main() {
             vec4 sunDir = ModelViewMat * vec4(normalize(c1 / cscale.x + c3 / cscale.z), 0.0);
        
             color = vec4(encodeFloat(sunDir[index]), 1.0);
+
+            
         }
          
         else if (isSun < 0.25) {
             color = texture(Sampler0, texCoord0) * ColorModulator;
         }
 
-        if (index == 30) {
-                    color = vec4(ColorModulator.aaa,1);
+        if (isSun > 0.75 && index == 30) {
+                    color = vec4(ColorModulator.a,0,0,1);
                 
         }
-        if (index == 31 && ColorModulator.a == 0.1) {
+        if (isSun > 0.75 && index == 31 && ColorModulator.a == 0.1) {
                     color = vec4(1);
             
                 
