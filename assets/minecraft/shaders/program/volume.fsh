@@ -352,7 +352,10 @@ void main() {
     fragColor.rgb *= exp(-length(fragpos)*vec3(0.2,0.7,4.0)*4.);
     fragColor.rgb += vec3(4.0,0.5,0.1)*0.5;
    }
+   if (fogcol.r == 0 && fogcol.g == 0 && fogcol.b == 0){	 
 
+    fragColor.rgb *= exp(-length(fragpos)*vec3(1.0)*0.25);
+   }
 //  fragColor = vec4(vec3(lmx),1);
 
 }
