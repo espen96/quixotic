@@ -136,8 +136,10 @@ void main() {
 
     fogcol = vec4((texture(DiffuseSampler, start + 25.0 * inc)));
     skycol = vec4((texture(DiffuseSampler, start + 26.0 * inc)));
+    
     overworld = vec4((texture(DiffuseSampler, start + 28.0 * inc))).r;
     end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
+
     rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
     cloudx = (vec4((texture(clouds, start + 50.0 * inc))));
 
