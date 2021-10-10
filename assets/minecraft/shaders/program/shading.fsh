@@ -66,7 +66,7 @@ float Bayer2(vec2 a) {
     a = floor(a);
     return fract(dot(a, vec2(0.5, a.y * 0.75)));
 }
-#define AOStrength 0.9
+#define AOStrength 1.0
 #define radius 1.0
 #define steps 6
 #define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
@@ -725,7 +725,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
     int sr = 0;
 
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < 3; i++) {
         pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
 
@@ -1181,9 +1181,9 @@ vec4  reflection2 = vec4(0.0);
 
 
             vec4 color2 = vec4(OutTexel,1);
-            reflection2 = mix(vec4(avgSky,1),reflection2,luma(reflection2.rgb));
+            reflection2 = mix(vec4(avgSky,1),reflection2,reflection2.a);
             indirectSpecular += ((reflection2.rgb )*(fresnel*OutTexel));
-            OutTexel *= 0.15;
+            OutTexel *= 0.1;
 
         }
         
@@ -1216,7 +1216,7 @@ vec4  reflection2 = vec4(0.0);
     	float comp = 1.0 - near / far / far;
 	    bool sky = depth > comp;
 		ao3 *= (1.0 - AOStrength) + jaao(texCoord, sky,normal3) * AOStrength;
-    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight)*ao3;           		     
+    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight*ao3);           		     
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 
 
