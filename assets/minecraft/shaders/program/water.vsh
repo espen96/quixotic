@@ -4,12 +4,13 @@ in vec4 Position;
 
 uniform mat4 ProjMat;
 uniform vec2 InSize;
-uniform float FOV;
+
 uniform float Time;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D DiffuseSampler;
 uniform vec2 OutSize;
 out mat4 gbufferModelViewInverse;
+out mat4 wgbufferModelViewInverse;
 out mat4 gbufferModelView;
 out mat4 gbufferProjection;
 out mat4 gbufferProjectionInverse;
@@ -108,6 +109,8 @@ void main(){
 
 
     gbufferProjection = (ProjMat);
+        wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
+
     gbufferProjectionInverse = inverse(ProjMat);
 	// normal = normalize(gl_NormalMatrix * normalize(vec3(0.0, 1.0, 0.0)));
     aspectRatio = InSize.x / InSize.y;
@@ -116,7 +119,7 @@ void main(){
     oneTexel = 1.0 / InSize;
     fogcol = vec4((texture(DiffuseSampler, start + 25.0 * inc)));
 
-    float FOVrad = FOV / 360.0 * 3.1415926535;
+    float FOVrad = 70 / 360.0 * 3.1415926535;
     cosFOVrad = cos(FOVrad);
     tanFOVrad = tan(FOVrad);
     gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,

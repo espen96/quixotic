@@ -149,14 +149,6 @@
             "name":"shading",
             "id":"shading"
           }
-        ],
-        "uniforms":[
-          {
-            "name":"FOV",
-            "values":[
-              70.0
-            ]
-          }
         ]
       },
       {

@@ -127,7 +127,7 @@ vec3 avgAmbient = ds+ms;
   float torch_lightmap = ((torchLut*torchLut)*(torchLut*torchLut))*(torchLut*10.0)+torchLut;
 	float avgEyeIntensity = ((sunIntensity*120.0+moonIntensity*4.0)+skyIntensity*230.0+skyIntensityNight*3.0)*sky_lightmap;
 	float exposure =  0.18/log2(max(avgEyeIntensity*0.16+1.0,1.13));
-  vec3 ambient = (((avgAmbient)*15.0)*sky_lightmap*log2(1.13+sky_lightmap*1.5)+torch_lightmap*0.05*vec3(TORCH_R,TORCH_G,TORCH_B)*TORCH_AMOUNT)*exposure * vec3(1.0,0.96,0.96)+MIN_LIGHT_AMOUNT*0.001*vec3(0.75,1.0,1.25);
+  vec3 ambient = (((avgAmbient)*10.0)*sky_lightmap*log2(1.13+sky_lightmap*1.5)+torch_lightmap*0.05*vec3(TORCH_R,TORCH_G,TORCH_B)*TORCH_AMOUNT)*exposure * vec3(1.0,0.96,0.96)+MIN_LIGHT_AMOUNT*0.001*vec3(0.75,1.0,1.25);
 
   fragColor = vec4(reinhard_jodie(ambient*10.0),1.0);
 

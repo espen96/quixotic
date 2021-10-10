@@ -5,9 +5,7 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
-uniform sampler2D PreviousFrameSampler;
 uniform sampler2D clouds;
 
 uniform vec2 InSize;
@@ -20,40 +18,43 @@ uniform float FOV;
  out vec3 ambientF;
  out vec3 ambientDown;
  out vec3 avgSky;
- out vec4 cloudx;
- out float cloudy;
- out float cloudz;
 
 
 
-out float cosFOVrad;
-out float tanFOVrad;
-out mat4 gbPI;
+
+
+
 out mat4 gbP;
 
 out vec2 texCoord;
 out vec2 oneTexel;
 out vec3 sunDir;
 out vec4 fogcol;
-out vec4 skycol;
+
 out vec4 rain;
-out mat4 gbufferModelViewInverse;
-out mat4 gbufferModelView;
-out mat4 gbufferProjection;
-out mat4 gbufferProjectionInverse;
+
+
+
+
+flat out mat4 gbufferProjection;
+//flat out mat4 gbufferProjectionInverse;
 out float near;
 out float far;
 out float end;
 out float overworld;
 out float aspectRatio;
 
-out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
 out vec3 sunPosition;
 out float skyIntensity;
 out float skyIntensityNight;
 
+//out mat4 wgbufferModelViewInverse;
+out mat4 wgbufferModelView;
+
+flat out mat4 gbufferModelViewInverse;
+flat out mat4 gbufferModelView;
 
 uniform float Time;
 
@@ -135,13 +136,12 @@ void main() {
 
 
     fogcol = vec4((texture(DiffuseSampler, start + 25.0 * inc)));
-    skycol = vec4((texture(DiffuseSampler, start + 26.0 * inc)));
+
     
     overworld = vec4((texture(DiffuseSampler, start + 28.0 * inc))).r;
     end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
 
     rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
-    cloudx = (vec4((texture(clouds, start + 50.0 * inc))));
 
 
 
@@ -154,29 +154,37 @@ void main() {
                                                     decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz),
                                                     1.0)).xyz);
     
-    gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
-    gbufferModelView = (ProjMat * ModeViewMat);
+
+    gbufferModelViewInverse = inverse(ModeViewMat);
+//    wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
+
+    gbufferModelView = (ModeViewMat);
+    wgbufferModelView = (ProjMat * ModeViewMat);
+
+
     gbufferProjection = ProjMat;
-    gbufferProjectionInverse = inverse(ProjMat);
+//    gbufferProjectionInverse = inverse(ProjMat);
     aspectRatio = InSize.x / InSize.y;
 
 const float pi = 3.141592653589793238462643383279502884197169;
 
 
     float FOVrad = 70 / 360.0 * 3.1415926535;
-    cosFOVrad = cos(FOVrad);
-    tanFOVrad = tan(FOVrad);
-    gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,
-                0.0,                           2.0 * tanFOVrad, 0.0, 0.0,
-                0.0,                           0.0,             0.0, 0.0,
-                -tanFOVrad * aspectRatio,     -tanFOVrad,       1.0, 1.0);
+float    cosFOVrad = cos(FOVrad);
+float    tanFOVrad = tan(FOVrad);
+
+
 
     gbP = mat4(1.0 / (2.0 * tanFOVrad * aspectRatio), 0.0,               0.0, 0.0,
                0.0,                             1.0 / (2.0 * tanFOVrad), 0.0, 0.0,
                0.5,                             0.5,                     1.0, 0.0,
                0.0,                             0.0,                     0.0, 1.0);
 
-
+/*    gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,
+                0.0,                           2.0 * tanFOVrad, 0.0, 0.0,
+                0.0,                           0.0,             0.0, 0.0,
+                -tanFOVrad * aspectRatio,     -tanFOVrad,       1.0, 1.0);
+*/
 
 ////////////////////////////////////////////////
  rainStrength = 1-rain.r;
@@ -199,7 +207,7 @@ float upPosX = upPosition.x/normUpVec;
 float upPosY = upPosition.y/normUpVec;
 float upPosZ = upPosition.z/normUpVec;
 
- sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
+float sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
 float angSky= -(( pi * 0.5128205128205128 - acos(sunElevation*0.95+0.05))/1.5);
 float angSkyNight= -(( pi * 0.5128205128205128 -acos(-sunElevation*0.95+0.05))/1.5);

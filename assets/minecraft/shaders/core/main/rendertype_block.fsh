@@ -100,9 +100,9 @@ float test3  = floor(test2.r+test2.g+test2.b);
   //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
   float alpha3 = alpha1;
-  float lm = lmx+(luma4(rnd*clamp(lmx*100,0,1))/1);;
+  float lm = lmx+(luma4(rnd*clamp(lmx*100,0,1)));
   if (res == 0.0f)    {
-    lm = lmy+(luma4(rnd*clamp(lmy*100,0,1))/1);
+    lm = lmy+(luma4(rnd*clamp(lmy*100,0,1)));
     alpha3 = alpha2;
     //color.rgb = normal.rgb;
   }
