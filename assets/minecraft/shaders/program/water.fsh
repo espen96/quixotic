@@ -14,8 +14,7 @@ in vec2 oneTexel;
 in float aspectRatio;
 in float cosFOVrad;
 in float tanFOVrad;
-in mat4 gbPI;
-in mat4 gbP;
+
 flat in vec3 ambientUp;
 flat in vec3 ambientLeft;
 flat in vec3 ambientRight;
@@ -27,6 +26,7 @@ flat in float isEyeInLava;
 flat in float isEyeInWater;
 #define near 0.00004882812 
 in float far;
+in mat4 wgbufferModelViewInverse;
 
 #define NORMDEPTHTOLERANCE 1.0
 #define SSR_TAPS 3
@@ -54,6 +54,25 @@ in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
 
 
+float GGX (vec3 n, vec3 v, vec3 l, float r, float F0) {
+  r*=r;r*=r;
+
+  vec3 h = l + v;
+  float hn = inversesqrt(dot(h, h));
+
+  float dotLH = clamp(dot(h,l)*hn,0.,1.);
+  float dotNH = clamp(dot(h,n)*hn,0.,1.);
+  float dotNL = clamp(dot(n,l),0.,1.);
+  float dotNHsq = dotNH*dotNH;
+
+  float denom = dotNHsq * r - dotNHsq + 1.;
+  float D = r / (3.141592653589793 * denom * denom);
+  float F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
+  float k2 = .25 * r;
+
+  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
+}
+
   
 float LinearizeDepth(float depth) 
 {
@@ -73,42 +92,6 @@ float luma4(vec3 color) {
 
 
 
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
-    vec3 rayStart   = fragpos.xyz;
-    vec3 rayDir     = reflect(normalize(fragpos.xyz), surfacenorm);
-    vec3 rayStep    = 0.5 * rayDir;
-    vec3 rayPos     = rayStart + rayStep;
-    vec3 rayRefine  = rayStep;
-
-    int refine  = 0;
-    vec3 pos    = vec3(0.0);
-    float dtmp  = 0.0;
-
-    for (int i = 0; i < SSR_SAMPLES; i += 1) {
-        pos = (gbP * vec4(rayPos.xyz, 1.0)).xyz;
-        pos.xy /= rayPos.z;
-		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
-        dtmp = LinearizeDepth(texture(DiffuseDepthSampler, pos.xy).r);
-        float dist = abs(rayPos.z - dtmp);
-
-        rayStep        *= SSR_STEPINCREASE;
-        rayRefine      += rayStep;
-        rayPos          = rayStart+rayRefine;
-
-    }
-
-
-    vec4 candidate = vec4(0.0);
-    if (pos.y <= 1.0) {
-        vec3 colortmp = texture(TerrainCloudsSampler, pos.xy).rgb*2.0;
-        candidate =vec4(colortmp,1);
-    }
-    
-    candidate = mix(candidate, skycol, pos.y );
-
-    return candidate;
-}
-
 
 
 vec2 unpackUnorm2x4(float pack) {
@@ -125,12 +108,99 @@ vec2 unpackUnorm2x4(float pack) {
 #define PROJNEAR 0.05
 #define FUDGE 32.0
 
+
+
+/////////
+float invLinZ (float lindepth){
+	return -((2.0*near/lindepth)-far-near)/(far-near);
+}
+float ld(float dist) {
+    return (2.0 * near) / (far + near - dist * (far - near));
+}
+vec3 nvec3(vec4 pos){
+    return pos.xyz/pos.w;
+}
+
+vec4 nvec4(vec3 pos){
+    return vec4(pos.xyz, 1.0);
+}
+#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
+#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
+
+vec3 toClipSpace3(vec3 viewSpacePosition) {
+    return projMAD(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
+}
+vec3 rayTrace(vec3 dir,vec3 position,float dither, float fresnel){
+
+    float quality = mix(15,10,fresnel);
+    vec3 clipPosition = toClipSpace3(position);
+	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ?
+       (-near -position.z) / dir.z : far*sqrt(3.);
+    vec3 direction = normalize(toClipSpace3(position+dir*rayLength)-clipPosition);  //convert to clip space
+    direction.xy = normalize(direction.xy);
+
+    //get at which length the ray intersects with the edge of the screen
+    vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+    float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+
+
+    vec3 stepv = direction * mult / quality;
+
+
+
+
+	vec3 spos = clipPosition + stepv*dither;
+	float minZ = clipPosition.z;
+	float maxZ = spos.z+stepv.z*0.5;
+	spos.xy+=0*oneTexel*0.5;
+	//raymarch on a quarter res depth buffer for improved cache coherency
+
+
+    for (int i = 0; i < int(quality+1); i++) {
+
+			float sp=texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x;
+
+            if(sp <= max(maxZ,minZ)-0.0004 && sp >= min(maxZ,minZ)+0.0004){
+			    
+                return vec3(spos.xy,sp);
+
+	        }
+        spos += stepv;
+		//small bias
+		minZ = maxZ-0.00004/ld(spos.z);
+		maxZ += stepv.z;
+    }
+
+    return vec3(1.1);
+//    return vec3(clipPosition);
+}
+
+float ditherGradNoise() {
+  return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
+}
+float R2_dither(){
+	vec2 alpha = vec2(0.75487765, 0.56984026);
+	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y);
+}
+
+vec3 toScreenSpace(vec3 p) {
+	vec4 iProjDiag = vec4(gbufferProjectionInverse[0].x, gbufferProjectionInverse[1].y, gbufferProjectionInverse[2].zw);
+    vec3 p3 = p * 2. - 1.;
+    vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,gbufferProjectionInverse[3].ba);
+    return fragposition.xyz / fragposition.w;
+}
 vec4 backProject(vec4 vec) {
-    vec4 tmp = gbufferModelViewInverse * vec;
+    vec4 tmp = wgbufferModelViewInverse * vec;
     return tmp / tmp.w;
 }
 
+vec3 worldToView(vec3 worldPos) {
 
+    vec4 pos = vec4(worldPos, 0.0);
+    pos = gbufferModelView * pos +gbufferModelView[3];
+
+    return pos.xyz;
+}
 
 void main() {
 
@@ -179,72 +249,94 @@ void main() {
 
     vec3 sky = mix(color.rgb*2.0,avgSky,0.5);
 
-    float wdepth = texture(TranslucentDepthSampler, texCoord).r;
-    float wdepth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
-    float wdepth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
-    float ldepth = LinearizeDepth(wdepth);
-    float ldepth2 = LinearizeDepth(wdepth2);
-    float ldepth3 = LinearizeDepth(wdepth3);
-    ldepth2 = abs(ldepth - ldepth2) > NORMDEPTHTOLERANCE ? ldepth : ldepth2;
-    ldepth3 = abs(ldepth - ldepth3) > NORMDEPTHTOLERANCE ? ldepth : ldepth3;
+    float deptha = texture(TranslucentDepthSampler, texCoord).r;
+    float depthb = texture(TranslucentDepthSampler, texCoord-vec2(0,oneTexel.y)).r;
+    float depthc = texture(TranslucentDepthSampler, texCoord+vec2(0,oneTexel.y)).r;
+    float depthd = texture(TranslucentDepthSampler, texCoord+vec2(oneTexel.x,0)).r;
+    float depthe = texture(TranslucentDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
+
+        float depth2 = depthc;
+        float depth3 = depthd;
+        float depth4 = depthb;
+        float depth5 = depthe;
+        #define normalstrength  0.1;    
+        float normaldistance = 2.5;    
+        float normalpow = 4.0;    
+        vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
+        vec3 fragpos = backProject(vec4(scaledCoord, deptha, 1.0)).xyz;
+
+        vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
+        p2 = p2 - fragpos;
+
+        vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
+        p3 = p3 - fragpos;
+
+        vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
+        p4 = p4 - fragpos;
+
+        vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
+        p5 = p5 - fragpos;
+
+        vec3 normal = normalize(cross( p2,  p3)) 
+                    + normalize(cross(-p4,  p3)) 
+                    + normalize(cross( p2, -p5)) 
+                    + normalize(cross(-p4, -p5));
+        normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
+        vec3 normal2 = normal;
+        normal = worldToView (normal);
+
+////////////////////
+    float z = texture(TranslucentDepthSampler,texCoord).x;
+    vec3 fragpos3 = toScreenSpace(vec3(texCoord-vec2(0)*oneTexel*0.5,z));
+
+
+		float f0 = 0.02;
+
+		float roughness = 0.02;
+
+		float emissive = 0.0;
+		float F0 = f0;
+
+		vec3 reflectedVector = reflect(normalize(fragpos3), normal);
+		float normalDotEye = dot(normal, normalize(fragpos3));
+		float fresnel2 = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0);
+		fresnel2 = mix(F0,1.0,fresnel2);
+	
+			fresnel2 = fresnel2*0.87+0.04;	//faking additionnal roughness to the water
+			roughness = 0.1;
+		
 
 
 
-        vec3 fragpos = (gbPI * vec4(texCoord, ldepth, 1.0)).xyz;
-        fragpos *= ldepth;
-        vec3 p8 = (gbPI * vec4(texCoord + vec2(0.0, oneTexel.y), ldepth2, 1.0)).xyz;
-        p8 *= ldepth2;
-        vec3 p7 = (gbPI * vec4(texCoord + vec2(oneTexel.x, 0.0), ldepth3, 1.0)).xyz;
-        p7 *= ldepth3;
-        vec3 normal = -normalize(cross(p8 - fragpos, p7 - fragpos));
-        
-        float ndlsq = dot(normal, vec3(0.0, 0.0, 1.0));
-                float horizon = clamp(ndlsq * 100000.0, -1.0, 1.0);
+		vec3 sky_c = avgSky.rgb;
 
-        ndlsq = ndlsq * ndlsq;
+
     vec4 screenPos = gl_FragCoord;
          screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
          screenPos.zw = vec2(1.0);
-    vec3 view = normalize((gbufferModelViewInverse * screenPos).xyz);
+    vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
 
-        // first calculate approximate surface normal using depth map
-        float depth2 = texture(TranslucentDepthSampler, texCoord + vec2(0.0, oneTexel.y)).r;
-        float depth3 = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0.0)).r;
-        float depth4 = texture(TranslucentDepthSampler, texCoord - vec2(0.0, oneTexel.y)).r;
-        float depth5 = texture(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0.0)).r;
-        float depth = texture(TranslucentDepthSampler, texCoord).r;
+		vec4 reflection = vec4(sky_c.rgb,0.);
 
-        vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
-        vec3 fragpos2 = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
+		vec3 rtPos = rayTrace(reflectedVector,fragpos3.xyz,R2_dither(), fresnel2);
+		if (rtPos.z <1.){
+	    vec4 fragpositionPrev = gbufferProjectionInverse * vec4(rtPos*2.-1.,1.);
+		fragpositionPrev /= fragpositionPrev.w;
+	    reflection.a = 1.0;
+		reflection.rgb = texture(TerrainCloudsSampler,rtPos.xy).rgb;
+		}
+        float sunSpec = ((GGX(normal2,-normalize(view),  sunDir, roughness, F0)))*0.1;		
 
-        vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
-        p2 = p2 - fragpos2;
-        vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
-        p3 = p3 - fragpos2;
+		reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
 
+        vec3 reflected= reflection.rgb*fresnel2+1.0*sunSpec;
 
-        vec4 r = vec4(0.0);
-        for (int i = 0; i < SSR_TAPS; i += 1) {
-            r += SSR(fragpos, ldepth, normalize(normal + NORMAL_SCATTER * (normalize(p2) * poissonDisk[i].x + normalize(p3) * poissonDisk[i].y)), vec4(sky,1));
-   
-        }
-        reflection = r.rgb / SSR_TAPS;
-        
-        float fresnel = pow(1.0 - pow(dot(normalize(fragpos), normal), 0.8), 3.0);
-              fresnel = clamp(exp((fresnel - 1.0) * (4.0 + clamp(exp(clamp(ndlsq - 0.05, 0.0, 1.0) * 2.0) - 1.0, 0.0, 1.0) * 25.0)), 0.0, 1.0);
-              fresnel = clamp(exp(-35 * pow(dot(normalize(fragpos), normal), 2.0))*5.0,0,1);
-        float lookfresnel = clamp(exp(-25 * clamp(ndlsq * horizon, 0.0, 1.0) + 3.0)*100, 0.0, 1.0);
-	
-
-           color = vec4(mix(sky*0.7,reflection,(fresnel *lookfresnel)), color.a);
-           color = ((color2*luma4(sky.rgb) ) +color)*0.6;
-           color = mix(color2,color,1-clamp(luminance(color2.rgb)*luminance(color2.rgb)*0.1,0,1));
-           color = pow(color,vec4(1.2));
-
-//         color = vec4(reflection.rgb,color.a);
+        float alpha0 = color2.a;
+	    color.a = -color2.a*fresnel2+color2.a+fresnel2;
+		color.rgb =clamp((color2.rgb*8)/color.a*alpha0*(1.0-fresnel2)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
 
     }        
    
 
-    fragColor= vec4(color.rgb,color2.a);
+    fragColor= vec4(color.rgba);
 }

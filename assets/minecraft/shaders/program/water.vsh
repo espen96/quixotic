@@ -22,8 +22,7 @@ out vec2 oneTexel;
 out float aspectRatio;
 out float cosFOVrad;
 out float tanFOVrad;
-out mat4 gbPI;
-out mat4 gbP;
+
 out vec4 fogcol;
 flat out vec3 ambientUp;
 flat out vec3 ambientLeft;
@@ -98,11 +97,15 @@ void main(){
                             decodeFloat(texture(DiffuseSampler, start + 19.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 20.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 21.0 * inc).xyz), 0.0,
                             decodeFloat(texture(DiffuseSampler, start + 22.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 23.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 24.0 * inc).xyz), 0.0,
                             0.0, 0.0, 0.0, 1.0);
+
+
+                            
     sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), 
                                                     decodeFloat(texture(DiffuseSampler, start + inc).xyz), 
                                                     decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz),
                                                     1.0)).xyz);
-
+vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
+ sunDir = sunDir2;
     fogcol = vec4((texture(DiffuseSampler, start + 25.0 * inc)));
     near = PROJNEAR;
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
@@ -122,15 +125,6 @@ void main(){
     float FOVrad = 70 / 360.0 * 3.1415926535;
     cosFOVrad = cos(FOVrad);
     tanFOVrad = tan(FOVrad);
-    gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,
-                0.0,                           2.0 * tanFOVrad, 0.0, 0.0,
-                0.0,                           0.0,             0.0, 0.0,
-                -tanFOVrad * aspectRatio,     -tanFOVrad,       1.0, 1.0);
-
-    gbP = mat4(1.0 / (2.0 * tanFOVrad * aspectRatio), 0.0,               0.0, 0.0,
-               0.0,                             1.0 / (2.0 * tanFOVrad), 0.0, 0.0,
-               0.5,                             0.5,                     1.0, 0.0,
-               0.0,                             0.0,                     0.0, 1.0);
 
 
 	avgSky = vec3(0.0);

@@ -798,7 +798,8 @@ float decodeFloat24(vec3 raw) {
     uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
-}	vec3 toScreenSpace(vec2 p) {
+}	
+vec3 toScreenSpace(vec2 p) {
 		vec4 fragposition = gbufferProjectionInverse * vec4(vec3(p, texture2D(DiffuseDepthSampler, p).x) * 2.0 - 1.0, 1.0);
 		return fragposition.xyz /= fragposition.w;
 	}
@@ -862,23 +863,68 @@ float decodeFloat24(vec3 raw) {
 		return ao;
 
 	}
+float wave(float n) {
+return sin(2 * pi * (n));
+}
+
+float waterH(vec3 posxz) {
+
+float wave = 0.0;
+
+
+float factor = 1.0;
+float amplitude = 0.2;
+float speed = 8.5;
+float size = 0.2;
+
+float px = posxz.x/50.0 + 250.0;
+float py = posxz.z/50.0  + 250.0;
+
+float fpx = abs(fract(px*20.0)-0.5)*2.0;
+float fpy = abs(fract(py*20.0)-0.5)*2.0;
+
+float d = length(vec2(fpx,fpy));
+
+for (int i = 0; i < 3; i++) {
+wave -= d*factor*cos( (1/factor)*px*py*size + 1.0*Time*speed);
+factor /= 2;
+}
+
+factor = 1.0;
+px = -posxz.x/50.0 + 250.0;
+py = -posxz.z/150.0 - 250.0;
+
+fpx = abs(fract(px*20.0)-0.5)*2.0;
+fpy = abs(fract(py*20.0)-0.5)*2.0;
+
+d = length(vec2(fpx,fpy));
+float wave2 = 0.0;
+for (int i = 0; i < 3; i++) {
+wave2 -= d*factor*cos( (1/factor)*px*py*size + 1.0*Time*speed);
+factor /= 2;
+}
+
+return amplitude*wave2+amplitude*wave;
+}
+
+
 void main() {
 
 
   	vec2 texCoord = texCoord; 
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
-    float deptha = texture(DiffuseDepthSampler, texCoord).r;
+    float deptha = texture(TranslucentDepthSampler, texCoord).r;
     if(deptha >= 1) lmtrans = vec2(0.0); 
     vec2 lmtrans2 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(0,oneTexel.y)).a));
-    float depthb = texture(DiffuseDepthSampler, texCoord-vec2(0,oneTexel.y)).r;
+    float depthb = texture(TranslucentDepthSampler, texCoord-vec2(0,oneTexel.y)).r;
     lmtrans2 *= 1-(depthb -deptha);
 
     vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(0,oneTexel.y)).a));
-    float depthc = texture(DiffuseDepthSampler, texCoord+vec2(0,oneTexel.y)).r;
+    float depthc = texture(TranslucentDepthSampler, texCoord+vec2(0,oneTexel.y)).r;
     lmtrans3 *= 1-(depthc -deptha);
 
     vec2 lmtrans4 = unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.x,0)).a));
-    float depthd = texture(DiffuseDepthSampler, texCoord+vec2(oneTexel.x,0)).r;
+    float depthd = texture(TranslucentDepthSampler, texCoord+vec2(oneTexel.x,0)).r;
     lmtrans4 *= 1-(depthd -deptha);
 
     vec2 lmtrans5 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(oneTexel.x,0)).a));
@@ -907,9 +953,14 @@ void main() {
   	 texCoord = coord; 
 
 	}
+
+
+
     float depthtest = (deptha+depthb+depthc+depthd+depthe)/5;
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
     vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
+
+
 
 vec3 test = vec3( (OutTexel));
 
@@ -1057,8 +1108,25 @@ if(overworld == 1.0){
                     + normalize(cross( p2, -p5)) 
                     + normalize(cross(-p4, -p5));
         normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
+      vec3 normal3 = worldToView (normal);
+
+    float isWater = 0;
+    if (texture(TranslucentSampler, texCoord).a *255 ==200) isWater = 1;
+   /*
+    if (isWater == 1){
+    vec3 fragpos = toScreenSpace(vec3(texCoord-vec2(0.0)*oneTexel*0.5,deptha));
+  	vec3 np3 = mat3(gbufferModelViewInverse) * fragpos + gbufferModelViewInverse[3].xyz;
+    float norm = waterH(np3);
+    float displ = norm/(length(fragpos)/far)/80.;
+    texCoord += displ*0.002;
+         OutTexel = (texture(DiffuseSampler, texCoord).rgb);
+
+    OutTexel = toLinear(OutTexel);    
 
 
+
+  }
+*/
 	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
 
 		vec3 ambientLight  = ambientUp   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssa);
@@ -1137,7 +1205,7 @@ vec3 viewPos = tmp.xyz / tmp.w;
 
 
 
-      vec3 normal3 = worldToView (normal);
+
             
         if(ggxAmmount2 > 0.001){ 
             f0 = vec3(0.8);  
@@ -1220,9 +1288,7 @@ vec4  reflection2 = vec4(0.0);
     if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
 
 
-    float isWater = 0;
-    if (texture(TranslucentSampler, texCoord).a *255 ==200) isWater = 1;
-   
+
     if (isWater == 1){
 
 
@@ -1234,7 +1300,7 @@ vec4  reflection2 = vec4(0.0);
 
     }	
 
-//		fragColor.rgb = clamp(vec3(lightmap),0.01,1);     
+//		fragColor.rgb = clamp(vec3(length(normal3)*10-5),0.01,1);     
 
 
 //}
