@@ -124,57 +124,116 @@ vec3 nvec3(vec4 pos){
 vec4 nvec4(vec3 pos){
     return vec4(pos.xyz, 1.0);
 }
+float linZ(float depth) {
+    return (2.0 * near) / (far + near - depth * (far - near));
+	// l = (2*n)/(f+n-d(f-n))
+	// f+n-d(f-n) = 2n/l
+	// -d(f-n) = ((2n/l)-f-n)
+	// d = -((2n/l)-f-n)/(f-n)
+
+}
 #define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
 #define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
 
 vec3 toClipSpace3(vec3 viewSpacePosition) {
     return projMAD(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
 }
-vec3 rayTrace(vec3 dir,vec3 position,float dither, float fresnel){
-
-    float quality = mix(15,10,fresnel);
-    vec3 clipPosition = toClipSpace3(position);
-	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ?
-       (-near -position.z) / dir.z : far*sqrt(3.);
-    vec3 direction = normalize(toClipSpace3(position+dir*rayLength)-clipPosition);  //convert to clip space
-    direction.xy = normalize(direction.xy);
-
-    //get at which length the ray intersects with the edge of the screen
-    vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
-    float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+#define SSPTBIAS 0.9 //[0.0 0.001 0.01 0.015 0.025 0.05 0.1 0.125 0.15 0.2 0.25 0.3 0.35 0.4 0.45 0.5 0.55 0.6 0.65 0.7 0.75 0.8 0.9 1.0]
 
 
-    vec3 stepv = direction * mult / quality;
+#define RAY_COUNT 2 // [1 2 3 4 5 6 7 8 9 10 12 14 16 18 21 24 28 32 37 43 49 57 65 75 86 100]
+#define STEPS Unlimited	// [Unlimited 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99]
+#define STEP_LENGTH 11.	// [ 4.  5.  6.  7.  8.  9. 10. 11. 12. 13. 14. 15. 16. 17. 18. 19. 20. 21. 22. 23. 24. 25. 26. 27. 28. 29. 30. 60. 90.]
+vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
+		//	float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
 
+	float ssptbias = SSPTBIAS;
+	float stepSize = STEP_LENGTH;
+#if STEPS != Unlimited
+	int maxSteps = STEPS;
+#endif
 
 
 
-	vec3 spos = clipPosition + stepv*dither;
-	float minZ = clipPosition.z;
-	float maxZ = spos.z+stepv.z*0.5;
-	spos.xy+=0*oneTexel*0.5;
-	//raymarch on a quarter res depth buffer for improved cache coherency
 
 
-    for (int i = 0; i < int(quality+1); i++) {
+	vec3 clipPosition = toClipSpace3(position);
+	
+	float rayLength = ((position.z + dir.z * sqrt(3.0)*far) > -sqrt(3.0)*near) ? (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*far;
 
-			float sp=texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x;
+	vec3 end = toClipSpace3(position+dir*rayLength);
+	vec3 direction = end-clipPosition;  //convert to clip space
 
-            if(sp <= max(maxZ,minZ)-0.0004 && sp >= min(maxZ,minZ)+0.0004){
-			    
-                return vec3(spos.xy,sp);
+	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
 
-	        }
-        spos += stepv;
-		//small bias
-		minZ = maxZ-0.00004/ld(spos.z);
-		maxZ += stepv.z;
-    }
+	//get at which length the ray intersects with the edge of the screen
+	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+	vec3 stepv =direction * mult / 15;
+//    vec3 stepv = direction/len;
 
-    return vec3(1.1);
-//    return vec3(clipPosition);
+#if STEPS == Unlimited
+	int iterations = int(min(len, mult*len)-2);
+#else	
+	int iterations = min(int(min(len, mult*len)-2), maxSteps);
+#endif
+	
+	//Do one iteration for closest texel (good contact shadows)
+	vec3 spos = clipPosition*vec3(1.0) + stepv/stepSize*6.0;
+
+	spos.xy += 0*oneTexel*0.5;
+
+	float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
+	float currZ = linZ(spos.z);
+
+	
+
+	stepv *= vec3(1.0);
+
+		
+	spos += stepv*noise;
+
+ //   for(int i = 0; i < iterations; i++){
+    for(int i = 0; i < 15; i++){
+        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
+		// decode depth buffer
+		float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
+			
+		float currZ = linZ(spos.z);
+	//	if( sp < currZ && abs(sp-ld(spos.z))/ld(spos.z) < 0.1) {
+		if( sp < currZ -0.00001) {
+			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
+			float dist = abs(sp-currZ)/currZ;
+
+			if (dist <= ssptbias) return vec3(spos.xy, invLinZ(sp))/vec3(1.0);
+
+		}
+		
+
+			spos += stepv;	
+
+	}
+
+
+
+
+	return vec3(1.1);
+
+	
 }
 
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
+
+	float mCosT = clamp(cosT,0.0,1.);
+	float cosY = dot(sunVec,sVector);
+	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
+	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
+
+	return texture(lut,vec2(x,y)).rgb;
+
+
+}
 float ditherGradNoise() {
   return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
 }
@@ -306,15 +365,20 @@ void main() {
 			roughness = 0.1;
 		
 
-
-
-		vec3 sky_c = avgSky.rgb;
-
-
     vec4 screenPos = gl_FragCoord;
          screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
          screenPos.zw = vec2(1.0);
     vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
+    vec3 view2 = view;
+         view2.y = -view2.y;
+
+		vec3 sky_c = avgSky.rgb;
+            vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*0.7;
+
+    sky_c = ((skyLut(view2,sunDir.xyz,view2.y,temporals3Sampler))*suncol)  ;
+
+
+
 
 		vec4 reflection = vec4(sky_c.rgb,0.);
 
@@ -325,7 +389,8 @@ void main() {
 	    reflection.a = 1.0;
 		reflection.rgb = texture(TerrainCloudsSampler,rtPos.xy).rgb;
 		}
-        float sunSpec = ((GGX(normal2,-normalize(view),  sunDir, roughness, F0)))*0.1;		
+
+        float sunSpec = ((GGX(normal2,-normalize(view),  sunDir, roughness, F0)))*0;		
 
 		reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
 
@@ -334,6 +399,7 @@ void main() {
         float alpha0 = color2.a;
 	    color.a = -color2.a*fresnel2+color2.a+fresnel2;
 		color.rgb =clamp((color2.rgb*8)/color.a*alpha0*(1.0-fresnel2)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
+//        color.rgb = vec3(sky_c);
 
     }        
    
