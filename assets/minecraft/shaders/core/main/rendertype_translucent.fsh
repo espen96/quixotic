@@ -26,6 +26,7 @@ void main() {
     
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     color.rgb = clamp(color.rgb,0.01,1);
+    color.rgb += vec3(glpos.xyz)*0.05;
 //  color.rgb = (noise);
     fragColor = color;
 //    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);

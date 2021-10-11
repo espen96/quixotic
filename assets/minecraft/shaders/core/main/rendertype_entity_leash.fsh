@@ -8,7 +8,7 @@ uniform float FogEnd;
 uniform vec4 FogColor;
 
 in float vertexDistance;
-flat in vec4 vertexColor;
+ in vec4 vertexColor;
 in vec4 glpos;
 
 out vec4 fragColor;

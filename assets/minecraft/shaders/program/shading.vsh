@@ -36,8 +36,8 @@ out vec4 rain;
 
 
 
-flat out mat4 gbufferProjection;
-//flat out mat4 gbufferProjectionInverse;
+ out mat4 gbufferProjection;
+// out mat4 gbufferProjectionInverse;
 out float near;
 out float far;
 out float end;
@@ -53,8 +53,8 @@ out float skyIntensityNight;
 //out mat4 wgbufferModelViewInverse;
 out mat4 wgbufferModelView;
 
-flat out mat4 gbufferModelViewInverse;
-flat out mat4 gbufferModelView;
+ out mat4 gbufferModelViewInverse;
+ out mat4 gbufferModelView;
 
 uniform float Time;
 

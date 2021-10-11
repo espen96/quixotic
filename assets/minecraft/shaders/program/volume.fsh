@@ -16,21 +16,21 @@ uniform float Time;
 
 in vec2 texCoord;
 in vec2 oneTexel;
-flat in vec4 fogcol;
-flat in vec4 skycol;
+ in vec4 fogcol;
+ in vec4 skycol;
 in vec4 rain;
 in mat4 gbufferModelViewInverse;
-flat in float near;
-flat in float far;
-flat in float end;
-flat in float overworld;
-flat in vec3 currChunkOffset;
+ in float near;
+ in float far;
+ in float end;
+ in float overworld;
+ in vec3 currChunkOffset;
 
-flat in float sunElevation;
-flat in vec3 sunVec;
-flat in vec3 sunPosition;
-flat in float fogAmount;
-flat in vec2 eyeBrightnessSmooth;
+ in float sunElevation;
+ in vec3 sunVec;
+ in vec3 sunPosition;
+ in float fogAmount;
+ in vec2 eyeBrightnessSmooth;
 in vec3 avgSky;
 
 #define VL_SAMPLES 4 

@@ -11,8 +11,8 @@ uniform sampler2D shading;
 out vec2 texCoord;
 out vec2 oneTexel;
 out vec3 sunDir;
-flat out vec4 fogcol;
-flat out vec4 skycol;
+ out vec4 fogcol;
+ out vec4 skycol;
 out vec4 rain;
 out mat4 gbufferModelViewInverse;
 
@@ -23,17 +23,17 @@ out vec3 ambientRight;
 out vec3 ambientB;
 out vec3 ambientF;
 out vec3 ambientDown;
-flat out float near;
-flat out float far;
-flat out float end;
-flat out float overworld;
-flat out vec3 currChunkOffset;
+ out float near;
+ out float far;
+ out float end;
+ out float overworld;
+ out vec3 currChunkOffset;
 
-flat out float sunElevation;
-flat out vec3 sunVec;
-flat out vec3 sunPosition;
-flat out float fogAmount;
-flat out vec2 eyeBrightnessSmooth;
+ out float sunElevation;
+ out vec3 sunVec;
+ out vec3 sunPosition;
+ out float fogAmount;
+ out vec2 eyeBrightnessSmooth;
 
 
 float map(float value, float min1, float max1, float min2, float max2) {

@@ -20,7 +20,7 @@ float pt = texelFetch(PreviousFrameSampler,ivec2(17,0),0).r;
 #define VXAA_TEMPORALEDGE_TIME_MIN 0.0000001
 #define VXAA_TEMPORALEDGE_TIME_MAX 1.15
 #define VXAA_SPATIAL_FLICKER_TIME 2.35
-#define VXAA_MORPHOLOGICAL_STRENGTH 0.7
+#define VXAA_MORPHOLOGICAL_STRENGTH 0.85
 #define VXAA_MORPHOLOGICAL_SHARPEN 0.05
 #define iTimeDelta 1000.0/abs(Time - pt)
 #define VXAA_W 0
