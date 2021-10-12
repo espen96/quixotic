@@ -97,6 +97,10 @@
           {
             "name":"clouds",
             "id":"clouds"
+          },          
+          {
+            "name":"PreviousFrameSampler",
+            "id":"previousFrame"
           },
           {
             "name":"cloudsample",

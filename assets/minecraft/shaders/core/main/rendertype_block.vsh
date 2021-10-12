@@ -46,7 +46,7 @@ vec2 halton(int index) {
 }
 
 vec2 calculateJitter() {
-    return (halton(int(mod(GameTime * 24000.0, 128))) - 0.5) / 1024.0;
+    return (halton(int(mod((GameTime*3.0) * 24000.0, 128))) - 0.5) / 1024.0;
 }
 
 void main() {
@@ -73,7 +73,7 @@ void main() {
     normal = normalize(ModelViewMat * vec4(Normal, 0.0));
     lm2 = minecraft_sample_lightmap2(Sampler2, UV2);
  
-    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0))+ vec4(calculateJitter()*0.0, 0, 0);
+    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0))+vec4(calculateJitter()*1.5, 0, 0);
 
    glpos = gl_Position;        
 }

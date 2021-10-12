@@ -102,10 +102,15 @@ float linZ(float depth) {
 vec3 toClipSpace3(vec3 viewSpacePosition) {
     return projMAD(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
 }
-#define SSPTBIAS 0.2
+#define SSPTBIAS 0.5
 
 #define SSR_STEPS 20 //[10 15 20 25 30 35 40 50 100 200 400]
-
+float hash12(vec2 p)
+{
+	vec3 p3  = fract(vec3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
 vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
 
 
@@ -128,12 +133,12 @@ vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
 
 
     for(int i = 0; i < quality; i++){
-        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
+//        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
 
 		float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
 			
 		float currZ = linZ(spos.z);
-	    if( sp < currZ -0.003) {
+	    if( sp < currZ -0.004) {
 			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
 			float dist = abs(sp-currZ)/currZ;
 
@@ -166,7 +171,11 @@ vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 
 
 }
-
+vec2 Nth_weyl(vec2 p0, int n) {
+    
+    //return fract(p0 + float(n)*vec2(0.754877669, 0.569840296));
+    return fract(p0 + vec2(n*12664745, n*9560333)/exp2(24.));	// integer mul to avoid round-off
+}
 float R2_dither(){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 1.0/1.6180339887 * Time);
@@ -251,7 +260,57 @@ vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
     vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);    
 	return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
 }
+// simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
+// see also https://www.shadertoy.com/view/MdtGD7
 
+// --- checkerboard noise : to decorelate the pattern between size x size tiles 
+
+// simple x-y decorrelated noise seems enough
+#define stepnoise0(p, size) rnd( floor(p/size)*size ) 
+#define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
+
+//   joeedh's original noise (cleaned-up)
+vec2 stepnoise(vec2 p, float size) { 
+    p = floor((p+10.)/size)*size;          // is p+10. useful ?   
+    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;    
+    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
+    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );      
+    return p;    
+}
+
+// --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
+
+#define SEED1 1.705
+#define DMUL  8.12235325       // are exact DMUL and -.5 important ?
+
+float mask(vec2 p) { 
+
+    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+
+    //return f;  // If you want to skeep the tone mapping
+    f *= 1.03; //  to avoid zero-stipple in plain white ?
+
+    // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
+    // returned value in [0,37.2] , but < 0.57 with P=50% 
+
+    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}                                        
+
+//Dithering from Jodie
+float Bayer2(vec2 a) {
+    a = floor(a+(Time));
+    return fract(dot(a, vec2(0.5, a.y * 0.75)));
+}
+
+#define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer8(a)   (Bayer4(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer16(a)  (Bayer8(  0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer32(a)  (Bayer16( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
 void main() {
 
 
@@ -306,7 +365,7 @@ void main() {
 
 		vec4 reflection = vec4(sky_c.rgb,0.);
 
-		vec3 rtPos = rayTrace(reflectedVector,fragpos3.xyz,R2_dither(), fresnel2);
+		vec3 rtPos = rayTrace(reflectedVector,fragpos3.xyz,mask(gl_FragCoord.xy+(Time*100)) , fresnel2);
 		if (rtPos.z <1.){
 	    vec4 fragpositionPrev = gbufferProjectionInverse * vec4(rtPos*2.-1.,1.);
 		fragpositionPrev /= fragpositionPrev.w;

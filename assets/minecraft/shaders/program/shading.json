@@ -10,6 +10,7 @@
     "samplers": [
         { "name": "DiffuseSampler" },
         { "name": "DiffuseDepthSampler" },
+        { "name": "PreviousFrameSampler" },
         { "name": "TranslucentSampler" },
         { "name": "temporals3Sampler" },
         { "name": "TranslucentSpecSampler" },

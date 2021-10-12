@@ -84,6 +84,24 @@ factor /= 2;
 return amplitude*wave2+amplitude*wave;
 }
 
+const vec2 COPRIMES = vec2(2, 3);
+
+vec2 halton(int index) {
+    vec2 f = vec2(1);
+    vec2 result = vec2(0);
+    vec2 ind = vec2(index);
+
+    while (ind.x > 0.0 && ind.y > 0.0) {
+        f /= COPRIMES;
+        result += f * mod(ind, COPRIMES);
+        ind = floor(ind / COPRIMES);
+    }
+    return result;
+}
+
+vec2 calculateJitter() {
+    return (halton(int(mod((GameTime*3.0) * 24000.0, 128))) - 0.5) / 1024.0;
+}
 
 void main() {
  //   gl_Position = ProjMat * ModelViewMat * vec4(Position + ChunkOffset, 1.0);
@@ -130,8 +148,8 @@ void main() {
 
     noise = vec3(xs,zs,0);
     float wavea = 0.0;
-    if(wtest*255 == 200)  wavea = waterH(posxz)*clamp((float(UV2.y)/255),0.1,1);
- vec4 viewPos = ModelViewMat * vec4(Position+ vec3( 0, wavea,0 ) + ChunkOffset, 1.0);
+    if(wtest*255 == 200)  wavea = (waterH(posxz)*clamp((float(UV2.y)/255),0.1,1));
+    vec4 viewPos = ModelViewMat * vec4(Position+ vec3( 0, wavea,0 ) + ChunkOffset, 1.0)+vec4(calculateJitter()*1.5, 0, 0);
     gl_Position = ProjMat * viewPos;
 
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);

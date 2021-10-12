@@ -9,6 +9,7 @@ uniform vec2 ScreenSize;
 uniform sampler2D PreviousFrameSampler;
 uniform sampler2D PreviousFrameDepthSampler;
 uniform float Time;
+float time = Time-0.01;
 
 out vec4 fragColor;
 
@@ -20,9 +21,10 @@ float pt = texelFetch(PreviousFrameSampler,ivec2(17,0),0).r;
 #define VXAA_TEMPORALEDGE_TIME_MIN 0.0000001
 #define VXAA_TEMPORALEDGE_TIME_MAX 1.15
 #define VXAA_SPATIAL_FLICKER_TIME 2.35
-#define VXAA_MORPHOLOGICAL_STRENGTH 0.85
-#define VXAA_MORPHOLOGICAL_SHARPEN 0.05
-#define iTimeDelta 1000.0/abs(Time - pt)
+#define VXAA_MORPHOLOGICAL_STRENGTH 0.7
+#define VXAA_MORPHOLOGICAL_SHARPEN 0.1
+
+#define iTimeDelta abs(distance(pt,time))*10
 #define VXAA_W 0
 #define VXAA_E 1
 #define VXAA_N 2
@@ -219,12 +221,12 @@ void main() {
 
     // Filmic pass.    
     fragColor = VXAAFilmic( uv, current, history, currN, histN );
-
+//    fragColor = current;
 
 //}
 
 if (gl_FragCoord.x < 18. && gl_FragCoord.y < 1.){
 
-     fragColor = vec4(Time);
+     fragColor = vec4(time);
     }
 }
