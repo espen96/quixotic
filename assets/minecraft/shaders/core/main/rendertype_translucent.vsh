@@ -106,6 +106,7 @@ vec2 calculateJitter() {
 void main() {
  //   gl_Position = ProjMat * ModelViewMat * vec4(Position + ChunkOffset, 1.0);
     vec3 position = Position + ChunkOffset;
+    
     mat4 gbufferModelViewInverse = inverse(ModelViewMat);
    
 

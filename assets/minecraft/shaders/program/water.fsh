@@ -113,7 +113,6 @@ float hash12(vec2 p)
 }
 vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
 
-
 	float ssptbias = SSPTBIAS;
 
     float quality = mix(10,SSR_STEPS,fresnel);
@@ -138,7 +137,7 @@ vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
 		float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
 			
 		float currZ = linZ(spos.z);
-	    if( sp < currZ -0.004) {
+	    if( sp < currZ -(sp*0.1)) {
 			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
 			float dist = abs(sp-currZ)/currZ;
 
@@ -184,7 +183,7 @@ float R2_dither(){
 vec3 toScreenSpace(vec3 p) {
 	vec4 iProjDiag = vec4(gbufferProjectionInverse[0].x, gbufferProjectionInverse[1].y, gbufferProjectionInverse[2].zw);
     vec3 p3 = p * 2. - 1.;
-    vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,gbufferProjectionInverse[3].ba);
+    vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,gbufferProjectionInverse[3].b,gbufferProjectionInverse[3].a);
     return fragposition.xyz / fragposition.w;
 }
 vec4 backProject(vec4 vec) {
@@ -333,7 +332,7 @@ void main() {
 
 
 ////////////////////
-    vec3 fragpos3 = toScreenSpace(vec3(texCoord-vec2(0)*oneTexel*0.5,deptha));
+    vec3 fragpos3 = toScreenSpace(vec3(texCoord,deptha));
 
 
 
@@ -382,9 +381,9 @@ void main() {
 	    color.a = -color2.a*fresnel2+color2.a+fresnel2;
 		color.rgb =clamp((color2.rgb*6.5)/color.a*alpha0*(1.0-fresnel2)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
     //    color.rgb = vec3(normal.rgb);
-
+ //color.rgb = vec3(fragpos3.xyz*2-1);
     }        
    
-
+   
     fragColor= vec4(color.rgba);
 }
