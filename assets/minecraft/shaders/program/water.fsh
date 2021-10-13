@@ -135,27 +135,18 @@ vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
 //        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
 
 		float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
-			
+
 		float currZ = linZ(spos.z);
 	    if( sp < currZ -(sp*0.1)) {
 			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
 			float dist = abs(sp-currZ)/currZ;
 
 			if (dist <= ssptbias) return vec3(spos.xy, invLinZ(sp))/vec3(1.0);
-
 		}
-		
-
 			spos += stepv;	
-
 	}
-
-
-
-
 	return vec3(1.1);
 
-	
 }
 
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
@@ -310,6 +301,8 @@ float Bayer2(vec2 a) {
 #define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
+
+
 void main() {
 
 

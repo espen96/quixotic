@@ -18,6 +18,7 @@ uniform float FOV;
  out vec3 ambientF;
  out vec3 ambientDown;
  out vec3 avgSky;
+ out vec3 upPosition;
 
 
 
@@ -47,6 +48,7 @@ out float aspectRatio;
 out float rainStrength;
 out vec3 sunVec;
 out vec3 sunPosition;
+out vec3 sunPosition3;
 out float skyIntensity;
 out float skyIntensityNight;
 
@@ -189,10 +191,10 @@ float    tanFOVrad = tan(FOVrad);
 ////////////////////////////////////////////////
  rainStrength = 1-rain.r;
 vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
- sunPosition = sunDir2;
-const vec3 upPosition = vec3(0,1,0);
+ sunPosition = mat3(gbufferModelView) * sunDir2;
+ sunPosition3 =  sunDir2;
+upPosition = vec3(gbufferModelView[1].xyz);
 const vec3 cameraPosition = vec3(0.0);
- sunVec = sunDir2;
 
 
 float normSunVec = sqrt(sunPosition.x*sunPosition.x+sunPosition.y*sunPosition.y+sunPosition.z*sunPosition.z);
@@ -201,7 +203,7 @@ float normUpVec = sqrt(upPosition.x*upPosition.x+upPosition.y*upPosition.y+upPos
 float sunPosX = sunPosition.x/normSunVec;
 float sunPosY = sunPosition.y/normSunVec;
 float sunPosZ = sunPosition.z/normSunVec;
-
+sunVec=vec3(sunPosX,sunPosY,sunPosZ);
 
 float upPosX = upPosition.x/normUpVec;
 float upPosY = upPosition.y/normUpVec;

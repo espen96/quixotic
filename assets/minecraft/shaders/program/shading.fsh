@@ -20,10 +20,10 @@ uniform mat4 ProjMat;
  in vec3 ambientF;
  in vec3 ambientDown;
  in vec3 avgSky;
+ in vec3 upPosition;
 
 
 
-in vec2 texCoord;
 in vec2 oneTexel;
 in vec3 sunDir;
 in vec4 fogcol;
@@ -50,6 +50,7 @@ in vec3 sunVec;
 
 
 in vec3 sunPosition;
+in vec3 sunPosition3;
 in float skyIntensity;
 in float skyIntensityNight;
 
@@ -59,7 +60,7 @@ out vec4 fragColor;
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);
 mat4 wgbufferModelViewInverse = inverse(wgbufferModelView);
 
-
+vec2 texCoord = gl_FragCoord.xy*oneTexel;
 #define AOStrength 1.0
 #define radius 1.0
 #define steps 6
@@ -338,8 +339,8 @@ vec2 Nnoise(vec2 coord)
 /////////////////////////////////
 
 uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
-
 /*
+
 const float FXS = 0.02;         // font/screen resolution ratio
 const float FYS = 0.02;         // font/screen resolution ratio
 
@@ -438,8 +439,8 @@ void c(int character) {
     textIndex++;
 }
 
-*/
 
+*/
 
 ///////////////////////////////////
 
@@ -639,10 +640,16 @@ vec2 tapLocation(int sampleNumber, float spinAngle,int nb, float nbRot,float r0)
 vec3 toScreenSpace(vec3 p) {
 	vec4 iProjDiag = vec4(gbufferProjectionInverse[0].x, gbufferProjectionInverse[1].y, gbufferProjectionInverse[2].zw);
     vec3 p3 = p * 2. - 1.;
-    vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,gbufferProjectionInverse[3].ba);
+    vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,-1.0,10);
     return fragposition.xyz / fragposition.w;
 }
 
+vec3 toScreenSpace2(vec3 p) {
+	vec4 iProjDiag = vec4(gbufferProjectionInverse[0].x, gbufferProjectionInverse[1].y, gbufferProjectionInverse[2].zw);
+    vec3 p3 = p * 2. - 1.;
+    vec4 fragposition = iProjDiag * p3.xyzz + gbufferProjectionInverse[3];
+    return fragposition.xyz / fragposition.w;
+}
 
 vec3 nvec3(vec4 pos) {
     return pos.xyz/pos.w;
@@ -695,135 +702,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 
 	return vec4(pos, dist);
-}/*
-vec3 sspr(vec3 dir,vec3 position,float noise, float fresnel){
-	
-
-	
-
-
-	
-	float stepSize = 15;
-	int maxSteps = 15;	
-	int maxLength = 15;	
-	
-	
-
-
-	vec3 clipPosition = toClipSpace3(position);	
-	
-
-	float rayLength = ((position.z + dir.z * sqrt(3.0)*maxLength) > -sqrt(3.0)*near) ?  (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*maxLength;
-
-	vec3 end = toClipSpace3(position+dir*rayLength);
-	vec3 direction = end-clipPosition;  //convert to clip space
-	
-	
-	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
-	
-	
-	//get at which length the ray intersects with the edge of the screen
-	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
-	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
-
-
-	vec3 stepv = direction/len;
-
-	
-	int iterations = min(int(min(len, mult*len)-2), maxSteps);	
-
-	//Do one iteration for closest texel (good contact shadows)
-	vec3 spos = clipPosition*vec3(1.0) + stepv/stepSize*4.0;
-//	spos.xy+= TAA_Offset*texelSize*0.5;
-	
-	float sp = sqrt(texelFetch2D(colortex4,ivec2(spos.xy/texelSize/4),0).w/65000.0);
-	float currZ = linZ(spos.z);
-
-
-	
-	spos += stepv*noise;	
-	
- for(int i = 0; i < iterations; i++){
-		float sp = sqrt(texelFetch2D(colortex4,ivec2(spos.xy/texelSize/4),0).w/65000.0);
-		float currZ = linZ(spos.z);
-		if( sp < currZ) {
-			float dist = abs(sp-currZ)/currZ;
-			if (dist <= 0.036 ) return vec3(spos.xy, invLinZ(sp));
-		}
-			spos += stepv;
-	}
-	
-    return vec3(1.1);
 }
-vec3 cosineHemisphereSample2(vec2 Xi)
-{
-    float r = sqrt(Xi.x);
-    float theta = 2.0 * 3.14159265359 * Xi.y;
-
-    float x = r * cos(theta);
-    float y = r * sin(theta);
-
-    return vec3(x, y, sqrt(max(0.0f, 1 - Xi.x)));
-}
-
-vec2 R2_samples2(int n){
-	vec2 alpha = vec2(0.75487765, 0.56984026);
-	return fract(alpha * n);
-}
-
-vec3 TangentToWorld2(vec3 N, vec3 H)
-{
-    vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    vec3 T = normalize(cross(UpVector, N));
-    vec3 B = cross(N, T);
-
-    return vec3((T * H.x) + (B * H.y) + (N * H.z));
-}
-
-vec3 SSPTR(vec3 normal,vec4 noise,vec3 fragpos,float roughness, float f0, float fresnel, vec3 sky){
-	int nrays = 1;
-	vec3 intRadiance = vec3(0.0);
-
-	for (int i = 0; i < nrays; i++){
-
-
-
-	
-
-	
-		int seed = (frameCounter%10000)*nrays+i;
-		vec2 ij = fract(R2_samples2(seed) + noise.rg);
-		vec3 rayDir = normalize(cosineHemisphereSample2(ij));
-		rayDir = TangentToWorld2(normal,rayDir);
-
-
-		vec3 reflectedVector = reflect(normalize(fragpos), (mix(normal,rayDir,(roughness))));
-
-		vec3 rayHit = sspr(reflectedVector, fragpos, R2_dither(),fresnel);
-
-		if (rayHit.z < 1.0){
-
-
-		
-		
-			vec3 previousPosition = mat3(gbufferModelViewInverse) * toScreenSpace(rayHit) + gbufferModelViewInverse[3].xyz + cameraPosition-previousCameraPosition;
-			previousPosition = mat3(gbufferPreviousModelView) * previousPosition + gbufferPreviousModelView[3].xyz;
-			previousPosition.xy = projMAD(gbufferPreviousProjection, previousPosition).xy / -previousPosition.z * 0.5 + 0.5;
-		
-			
-			if (previousPosition.x > 0.0 && previousPosition.y > 0.0 && previousPosition.x < 1.0 && previousPosition.x < 1.0)
-			intRadiance = texture2D(colortex3,rayHit.xy*RENDER_SCALE).rgb;
-
-			
-
-		
-		}else{ 
-
-			intRadiance += sky;}
-
-	}
-	return intRadiance*f0;
-}*/
 vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 
     vec3 pos    = vec3(0.0);
@@ -937,6 +816,113 @@ vec3 toScreenSpace(vec2 p) {
 
 	}
 
+    float linZ(float depth) {
+    return (2.0 * near) / (far + near - depth * (far - near));
+}
+#define  projMAD2(m, v) (diagonal3(m) * (v) + vec3(0,0,m[3].b))
+vec3 calculate_view_position(vec2 texture_coordinate, float depth, vec2 scale_factor)  // "scale_factor" is "v_fov_scale".
+{
+    vec2 half_ndc_position = vec2(0.5) - texture_coordinate;    // No need to multiply by two, because we already baked that into "v_tan_fov.xy".
+    vec3 view_space_position = vec3(half_ndc_position * scale_factor.xy * -depth, -depth); // "-depth" because in OpenGL the camera is staring down the -z axis (and we're storing the unsigned depth).
+    return(view_space_position);
+}
+vec3 toClipSpace3(vec3 viewSpacePosition) {
+    return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
+}
+float ld(float dist) {
+    return (2.0 * near) / (far + near - dist * (far - near));
+}
+#define SSPTBIAS 0.5
+float invLinZ (float lindepth){
+	return -((2.0*near/lindepth)-far-near)/(far-near);
+}
+float rayTraceShadow(vec3 dir,vec3 position,float dither){
+
+    const float quality = 16.;
+    vec3 clipPosition = toClipSpace3(position);
+	//prevents the ray from going behind the camera
+	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ?
+       (-near -position.z) / dir.z : far*sqrt(3.);
+    vec3 direction = toClipSpace3(position+dir*rayLength)-clipPosition;  //convert to clip space
+    direction.xyz = direction.xyz/max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y);	//fixed step size
+
+
+
+
+    vec3 stepv = direction *30.0;
+
+	vec3 spos = clipPosition*vec3(1.0)+vec3(0*vec2(oneTexel.x,oneTexel.y)*0.5,0.0)+stepv;
+
+	for (int i = 0; i < int(quality); i++) {
+		spos += stepv*dither;
+
+		float sp = texture(DiffuseDepthSampler,spos.xy).x;
+		if (sp >0.998) return 1.0;
+        if( sp < spos.z) {
+
+			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
+
+			if (dist < 0.05 ) return 0.0 + clamp(ld(sp)*10-1,0,1);
+	}
+
+	}
+    return 1.0;
+}
+
+
+
+// simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
+// see also https://www.shadertoy.com/view/MdtGD7
+
+// --- checkerboard noise : to decorelate the pattern between size x size tiles 
+
+// simple x-y decorrelated noise seems enough
+#define stepnoise0(p, size) rnd( floor(p/size)*size ) 
+#define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
+
+//   joeedh's original noise (cleaned-up)
+vec2 stepnoise(vec2 p, float size) { 
+    p = floor((p+10.)/size)*size;          // is p+10. useful ?   
+    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;    
+    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
+    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );      
+    return p;    
+}
+
+// --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
+
+#define SEED1 1.705
+#define DMUL  8.12235325       // are exact DMUL and -.5 important ?
+
+float mask(vec2 p) { 
+
+    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+
+    //return f;  // If you want to skeep the tone mapping
+    f *= 1.03; //  to avoid zero-stipple in plain white ?
+
+    // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
+    // returned value in [0,37.2] , but < 0.57 with P=50% 
+
+    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}                                        
+vec4 ViewSpace(vec2 coord, float depth) 
+{
+  vec3 view = vec3(coord, depth) * 2.0 - 1.0;
+  vec4 view2 = (gbufferProjectionInverse * vec4(view,1.0));
+  view2.xyz /= view2.w;
+  return view2;
+}
+vec3 calculate_view_position(vec2 texture_coordinate, float depth_from_depth_buffer)
+{
+    vec3 clip_space_position = vec3(texture_coordinate, depth_from_depth_buffer) * 2.0 - vec3(1.0);
+
+    vec4 view_position = vec4(vec2(gbufferProjectionInverse[0][0], gbufferProjectionInverse[1][1]) * clip_space_position.xy,
+                                   gbufferProjectionInverse[2][3] * clip_space_position.z + gbufferProjectionInverse[3][3],-1);
+
+    return(view_position.xyz / view_position.w);
+}
 void main() {
 
 
@@ -1062,19 +1048,20 @@ if(overworld == 1.0){
  if (depthtest >= 1.0 || luma(OutTexel) == 0){
 
 
-    vec3 atmosphere = ((skyLut(view,sunPosition.xyz,view.y,temporals3Sampler)))  ;
+    vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
 
-            atmosphere += drawSun(dot(sunPosition,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
-            atmosphere += drawSun(dot(-sunPosition,np3),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(sunPosition3,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(-sunPosition3,np3),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
             vec4 cloud = textureQuadratic(cloudsample, texCoord*CLOUDS_QUALITY);
             atmosphere = atmosphere*cloud.a+(cloud.rgb*1.1);
 		}
 
 
     fragColor.rgb = reinhard(atmosphere) ;
+//    fragColor.rgb = mat3(gbufferModelView) * sunPosition ;
 
     return;
  } 
@@ -1151,6 +1138,8 @@ if(overworld == 1.0){
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight *= (1.0+rainStrength*0.2);
+    //         direct *= 2.0;
+   
 
     
 	
@@ -1197,7 +1186,7 @@ if(overworld == 1.0){
 	float shadeDir = 0;
 	float shadeDirS = 0;
 	float shadeDirM = 0;
-    vec3 sunPosition2 = mix(sunPosition,-sunPosition,clamp(skyIntensityNight*3,0,1));
+    vec3 sunPosition2 = mix(sunPosition3,-sunPosition3,clamp(skyIntensityNight*3,0,1));
 
 
 	shadeDirS  = clamp(skyIntensity,0,1)*dot(normal, sunPosition2);
@@ -1210,7 +1199,7 @@ if(overworld == 1.0){
     vec3 fragpos2 = toScreenSpace(vec3(texCoord-vec2(0)*oneTexel*0.5,z));
 vec3 screenPos2 = vec3(texCoord, z);
 vec3 clipPos = screenPos2 * 2.0 - 1.0;
-vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
+vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0) + (gbufferProjectionInverse[3]*0.0001);
 vec3 viewPos = tmp.xyz / tmp.w;	
 
 		vec3 f0 = vec3(0.04);
@@ -1220,7 +1209,7 @@ vec3 viewPos = tmp.xyz / tmp.w;
 
 
 
-
+        float ldepth = LinearizeDepth(depth);
             
         if(ggxAmmount2 > 0.001){ 
             f0 = vec3(0.8);  
@@ -1230,9 +1219,8 @@ vec3 viewPos = tmp.xyz / tmp.w;
 	
 			vec3 rayContrib = vec3(0.0);
 			vec3 reflection = vec3(0.0);    
-            float wdepth = texture(TranslucentDepthSampler, texCoord).r;
 
-            float ldepth = LinearizeDepth(wdepth);
+  
             vec3 fragpos3 = (1 * vec4(texCoord, ldepth, 1.0)).xyz;
             fragpos3 *= ldepth;
   
@@ -1251,14 +1239,16 @@ vec3 viewPos = tmp.xyz / tmp.w;
         }
         
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
-  
+  				vec3 vec = sunVec;
 
    
         float mixweight = 0.1;
 
     
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
-        
+    
+        float screenShadow = (rayTraceShadow(vec,fragpos2,mask(gl_FragCoord.xy+(Time*100)))*clamp((lmx*2-1.0)*2,0,1))*shadeDir;
+        if(!isSSS)shadeDir = screenShadow;
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
         shading += (sunSpec*direct);
         
@@ -1267,14 +1257,14 @@ vec3 viewPos = tmp.xyz / tmp.w;
         mixweight = 1.0;
         }
 		shading = mix(ambientLight,shading,1-rainStrength);	
- 
+
         vec3 speculars  = (indirectSpecular);
 
 		shading = mix(vec3(mixweight),shading,clamp((lmx)*5.0,0,1));
-		shading = mix(shading,vec3(1.0),clamp((lmy),0,1));   
-
+		shading = mix(shading,clamp(vec3(1.0)*(screenShadow+lmy),0,1),clamp((lmy),0,1));   
     vec3 dlight =   ( OutTexel * clamp(shading,0.1,10));
     dlight += (speculars); 
+ 
         float ao3 =  (1.0);
     	float comp = 1.0 - near / far / far;
 	    bool sky = depth > comp;
@@ -1294,8 +1284,7 @@ vec3 viewPos = tmp.xyz / tmp.w;
     fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }	
-
-//		fragColor.rgb = clamp(vec3(length(normal3)*10-5),0.01,1);     
+//		fragColor.rgb = clamp(abs(vec3(shading)),0.01,1);     
 
 
 //}
@@ -1312,9 +1301,9 @@ vec3 viewPos = tmp.xyz / tmp.w;
 	}
 
 
-/*
-	vec4 numToPrint = vec4(decodeFloat24(cloudx.xyz));
 
+	vec4 numToPrint = vec4(gbufferProjection[3].b);
+/*
 	// Define text to draw
     clearTextBuffer();
     c('R'); c('e'); c('d'); c(':'); c(' '); floatToDigits(numToPrint.r);
@@ -1333,8 +1322,8 @@ vec3 viewPos = tmp.xyz / tmp.w;
     printTextAt(1.0, 4.0);
 
     fragColor += colour;
-
-
 */
+
+
 
 }

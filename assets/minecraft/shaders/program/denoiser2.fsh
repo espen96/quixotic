@@ -221,7 +221,7 @@ void main() {
 
     // Filmic pass.    
     fragColor = VXAAFilmic( uv, current, history, currN, histN );
-//    fragColor = current;
+    fragColor = current;
 
 //}
 
