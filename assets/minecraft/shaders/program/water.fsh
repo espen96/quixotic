@@ -23,26 +23,6 @@ in mat4 gbufferProjectionInverse;
 in mat4 wgbufferModelViewInverse;
 
 
-float GGX (vec3 n, vec3 v, vec3 l, float r, float F0) {
-  r*=r;r*=r;
-
-  vec3 h = l + v;
-  float hn = inversesqrt(dot(h, h));
-
-  float dotLH = clamp(dot(h,l)*hn,0.,1.);
-  float dotNH = clamp(dot(h,n)*hn,0.,1.);
-  float dotNL = clamp(dot(n,l),0.,1.);
-  float dotNHsq = dotNH*dotNH;
-
-  float denom = dotNHsq * r - dotNHsq + 1.;
-  float D = r / (3.141592653589793 * denom * denom);
-  float F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
-  float k2 = .25 * r;
-
-  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
-}
-
-  
 float LinearizeDepth(float depth) 
 {
     return (2.0 * near * far) / (far + near - depth * (far - near));    
@@ -99,9 +79,13 @@ float linZ(float depth) {
 #define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
 #define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
 
+
+#define  projMAD2(m, v) (diagonal3(m) * (v) + vec3(0,0,m[3].b))
+
 vec3 toClipSpace3(vec3 viewSpacePosition) {
-    return projMAD(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
+    return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
 }
+
 #define SSPTBIAS 0.5
 
 #define SSR_STEPS 20 //[10 15 20 25 30 35 40 50 100 200 400]
@@ -161,11 +145,7 @@ vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 
 
 }
-vec2 Nth_weyl(vec2 p0, int n) {
-    
-    //return fract(p0 + float(n)*vec2(0.754877669, 0.569840296));
-    return fract(p0 + vec2(n*12664745, n*9560333)/exp2(24.));	// integer mul to avoid round-off
-}
+
 float R2_dither(){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 1.0/1.6180339887 * Time);
@@ -177,10 +157,6 @@ vec3 toScreenSpace(vec3 p) {
     vec4 fragposition = iProjDiag * p3.xyzz + vec4(0,0,gbufferProjectionInverse[3].b,gbufferProjectionInverse[3].a);
     return fragposition.xyz / fragposition.w;
 }
-vec4 backProject(vec4 vec) {
-    vec4 tmp = wgbufferModelViewInverse * vec;
-    return tmp / tmp.w;
-}
 
 vec3 worldToView(vec3 worldPos) {
 
@@ -190,14 +166,7 @@ vec3 worldToView(vec3 worldPos) {
     return pos.xyz;
 }
 
-vec3 reconstructPosition(in vec2 uv, in float z, in mat4 InvVP)
-{
-  float x = uv.x * 2.0f - 1.0f;
-  float y = (1.0 - uv.y) * 2.0f - 1.0f;
-  vec4 position_s = vec4(x, y, z, 1.0f);
-  vec4 position_v = InvVP*position_s;
-  return position_v.xyz / position_v.w;
-}
+
 vec3 getDepthPoint(vec2 coord, float depth) {
     vec4 pos;
     pos.xy = coord;
@@ -229,27 +198,7 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
 
 	return normalize(normal);
 }
-vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
-    vec2 res = (textureSize(channel,0).xy);
-    vec2 q = fract(uv * res);
-    ivec2 t = ivec2(uv * res);
-    const ivec3 e = ivec3(-1, 0, 1);
-    vec4 s00 = texelFetch(channel, t + e.xx, 0);
-    vec4 s01 = texelFetch(channel, t + e.xy, 0);
-    vec4 s02 = texelFetch(channel, t + e.xz, 0);
-    vec4 s12 = texelFetch(channel, t + e.yz, 0);
-    vec4 s11 = texelFetch(channel, t + e.yy, 0);
-    vec4 s10 = texelFetch(channel, t + e.yx, 0);
-    vec4 s20 = texelFetch(channel, t + e.zx, 0);
-    vec4 s21 = texelFetch(channel, t + e.zy, 0);
-    vec4 s22 = texelFetch(channel, t + e.zz, 0);    
-    vec2 q0 = (q+1.0)/2.0;
-    vec2 q1 = q/2.0;	
-    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
-    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
-    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);    
-	return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
-}
+
 // simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
 // see also https://www.shadertoy.com/view/MdtGD7
 
@@ -302,7 +251,73 @@ float Bayer2(vec2 a) {
 #define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
 
+float cdist(vec2 coord) {
+	return max(abs(coord.x - 0.5), abs(coord.y - 0.5)) * 1.85;
+}
 
+vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out float border, 
+			  float maxf, float stp, float ref, float inc) {
+	vec3 pos = vec3(0.0);
+	float dist = 0.0;
+    int sr = 0;
+
+
+	vec3 start = viewPos;
+
+    vec3 vector = stp * reflect(normalize(viewPos), normalize(normal));
+    viewPos += vector;
+	vec3 tvector = vector;
+
+
+
+    for(int i = 0; i < 12; i++) {
+        pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
+		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
+
+		vec3 rfragpos = vec3(pos.xy, texture(DiffuseDepthSampler,pos.xy).r);
+        rfragpos = nvec3(gbufferProjectionInverse * nvec4(rfragpos * 2.0 - 1.0));
+		dist = length(start - rfragpos);
+
+        float err = length(viewPos - rfragpos);
+		if (err < pow(length(vector) * pow(length(tvector), 0.11), 1.1) * 1.2) {
+			sr++;
+			if (sr >= maxf) break;
+			tvector -= vector;
+			vector *= ref;
+		}
+        vector *= inc;
+        tvector += vector;
+		viewPos = start + tvector * (dither * 0.05 + 0.975);
+    }
+
+	border = cdist(pos.st);
+
+
+	return vec4(pos, dist);
+}
+vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
+
+    vec3 pos    = vec3(0.0);
+
+
+
+
+    vec4 color = vec4(0.0);
+	float border = 0.0;
+     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm,  mask(gl_FragCoord.xy+(Time*100)), border, 4, 1.0, 0.1, 2.0).xyz;
+
+	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
+	
+	if (pos.z < 1.0 - 1e-5) {
+		color.a = texture(TerrainCloudsSampler, pos.st).a;
+		if (color.a > 0.001) color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
+        color.rgb *= border;
+		
+		color.a *= border;
+	}
+
+    return color;
+}
 void main() {
 
 
@@ -319,13 +334,17 @@ void main() {
 
 
 
-    float deptha = texture(TranslucentDepthSampler, texCoord).r;
+    float depth = texture(TranslucentDepthSampler, texCoord).r;
 
-    vec3 normal = constructNormal(deptha, texCoord,  TranslucentDepthSampler);
+    vec3 normal = constructNormal(depth, texCoord,  TranslucentDepthSampler);
 
 
 ////////////////////
-    vec3 fragpos3 = toScreenSpace(vec3(texCoord,deptha));
+    vec3 fragpos3 = toScreenSpace(vec3(texCoord,depth));
+    vec3 screenPos2 = vec3(texCoord, depth);
+    vec3 clipPos = screenPos2 * 2.0 - 1.0;
+    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
+    vec3 viewPos = tmp.xyz / tmp.w;	
 
 
 
@@ -336,45 +355,45 @@ void main() {
 
 		vec3 reflectedVector = reflect(normalize(fragpos3), normal);
 		float normalDotEye = dot(normal, normalize(fragpos3));
-		float fresnel2 = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0)*0.87+0.04;
-		fresnel2 = mix(F0,1.0,fresnel2);
+		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0)*0.87+0.04;
+		fresnel = mix(F0,1.0,fresnel);
 
 		
 
-    vec4 screenPos = gl_FragCoord;
-         screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
-         screenPos.zw = vec2(1.0);
-    vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
-    vec3 view2 = view;
-         view2.y = -view2.y;
+        vec4 screenPos = gl_FragCoord;
+             screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
+             screenPos.zw = vec2(1.0);
+        vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
+        vec3 view2 = view;
+             view2.y = -view2.y;
 
-            vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*0.5;
+        vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*0.5;
 
-    vec3 sky_c = (mix(skyLut(view2,sunDir.xyz,view2.y,temporals3Sampler),suncol,0.5))  ;
+        vec3 sky_c = (mix(skyLut(view2,sunDir.xyz,view2.y,temporals3Sampler),suncol,0.5))  ;
 
 
 
 
 		vec4 reflection = vec4(sky_c.rgb,0.);
-
-		vec3 rtPos = rayTrace(reflectedVector,fragpos3.xyz,mask(gl_FragCoord.xy+(Time*100)) , fresnel2);
+    /*
+		vec3 rtPos = rayTrace(reflectedVector,viewPos.xyz,mask(gl_FragCoord.xy+(Time*100)) , fresnel);
 		if (rtPos.z <1.){
-	    vec4 fragpositionPrev = gbufferProjectionInverse * vec4(rtPos*2.-1.,1.);
-		fragpositionPrev /= fragpositionPrev.w;
-	    reflection.a = 1.0;
-		reflection.rgb = texture(TerrainCloudsSampler,rtPos.xy).rgb;
+            vec4 fragpositionPrev = gbufferProjectionInverse * vec4(rtPos*2.-1.,1.);
+            fragpositionPrev /= fragpositionPrev.w;
+            reflection.a = 1.0;
+            reflection.rgb = texture(TerrainCloudsSampler,rtPos.xy).rgb;
 		}
 
-
-		reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
-
-        vec3 reflected= reflection.rgb*fresnel2;
+    */
+		
+        reflection = vec4(SSR(viewPos.xyz, depth,normal, vec4(sky_c,1)));	
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
+        vec3 reflected= reflection.rgb*fresnel;
 
         float alpha0 = color2.a;
-	    color.a = -color2.a*fresnel2+color2.a+fresnel2;
-		color.rgb =clamp((color2.rgb*6.5)/color.a*alpha0*(1.0-fresnel2)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
-    //    color.rgb = vec3(normal.rgb);
- //color.rgb = vec3(fragpos3.xyz*2-1);
+	    color.a = -color2.a*fresnel+color2.a+fresnel;
+		color.rgb =clamp((color2.rgb*6.5)/color.a*alpha0*(1.0-fresnel)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
+
     }        
    
    
