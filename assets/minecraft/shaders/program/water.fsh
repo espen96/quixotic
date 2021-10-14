@@ -310,7 +310,8 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 	
 	if (pos.z < 1.0 - 1e-5) {
 		color.a = texture(TerrainCloudsSampler, pos.st).a;
-		if (color.a > 0.001) color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
+		if (color.a > 0.001) {color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
+		color.rgb += texture(TranslucentSampler, pos.st).rgb*0.45;}
         color.rgb *= border;
 		
 		color.a *= border;
