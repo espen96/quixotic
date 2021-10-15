@@ -167,8 +167,8 @@ float TextureCubic(sampler2D tex, vec2 pos) {
 }
 
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-     vec2 offsetB = vec2(0.0,oneTexel.y);
-     vec2 offsetC = vec2(oneTexel.x,0.0);
+     vec2 offsetB = vec2(0.0,oneTexel.y)*3;
+     vec2 offsetC = vec2(oneTexel.x,0.0)*3;
   
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;
@@ -290,7 +290,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
 
     vec3 pos    = vec3(0.0);
 
-float maxf = 1.0; // 4.0 max refinement steps
+float maxf = 4.0; // 4.0 max refinement steps
 float stp  = 1.0; // 1.0 initial length of the reflected vector
 float ref  = 0.1; // 0.1 refinement multiplier
 float inc  = 2.0; // 2.0 iteration multiplier

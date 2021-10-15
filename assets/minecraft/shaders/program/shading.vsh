@@ -262,7 +262,7 @@ float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 			vec3 pos = normalize(rodSample(ij));
 
 
-			vec3 samplee = 2.2*skyLut(pos.xyz,sunPosition,pos.y,temporals3Sampler)/maxIT;
+			vec3 samplee = 2.2*skyLut(pos.xyz,sunPosition3,pos.y,temporals3Sampler)/maxIT;
 			avgSky += samplee/2.2;
             
 			ambientUp += samplee*(pos.y+abs(pos.x)/7.+abs(pos.z)/7.);

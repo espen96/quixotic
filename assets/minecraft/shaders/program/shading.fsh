@@ -66,8 +66,8 @@ vec2 texCoord = gl_FragCoord.xy*oneTexel;
 #define steps 6
 
 #define TORCH_R 1.0 
-#define TORCH_G 0.5 
-#define TORCH_B 0.2 
+#define TORCH_G 0.7 
+#define TORCH_B 0.5 
 
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define NUMCONTROLS 26
@@ -749,7 +749,18 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
     return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
 }
 
+int xorshift(int value) {
+    // Xorshift*32
+    value ^= value << 13;
+    value ^= value >> 17;
+    value ^= value << 5;
+    return value;
+}
 
+float PRNG(int seed) {
+    seed = xorshift(seed);
+    return abs(fract(float(seed) / 3141.592653));
+}
 float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
     const float quality = 16.0;
@@ -779,7 +790,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
-			if (dist < 0.05 ) return exp2(position.z/8.);
+			if (dist < 0.05 ) return exp2(position.z/4.);
 
 
 
@@ -931,6 +942,7 @@ if(overworld == 1.0){
 
 
         vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
+        //atmosphere.rgb += vec3(PRNG(int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(OutSize.x))) / 128.0;
 
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
@@ -961,7 +973,7 @@ if(overworld == 1.0){
         }
 
     vec3 lightmap = texture(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
-    if (light > 0.001)  lightmap.rgb = OutTexel* pow(clamp((light*10)-0.2,0.0,1.0)/0.65*0.65+0.35,10.0);
+    //if (light > 0.001)  lightmap.rgb = OutTexel* pow(clamp((light*10)-0.2,0.0,1.0)/0.65*0.65+0.35,10.0);
 
     if(postlight == 1)    OutTexel *= lightmap;
 
@@ -1019,9 +1031,10 @@ if(overworld == 1.0){
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight += ambientF    *mix((clamp(-ambientCoefs.z,0.,1.)), 0.166, sssa);
              ambientLight *= (1.0+rainStrength*0.2);
-             direct *= 2.0;
-             //ambientLight = avgSky;
+      
 
+            ambientLight = ambientLight * (pow(lmx,8.0)*1.5) + lmy*vec3(TORCH_R,TORCH_G,TORCH_B) ;
+            direct *= 2.0;
     
 	
 
@@ -1035,7 +1048,7 @@ if(overworld == 1.0){
 	float shadeDirM = 0;
     vec3 sunPosition2 = mix(sunPosition3,-sunPosition3,clamp(skyIntensityNight*3,0,1));
 
-
+    sssa *= 6.0; 
 	shadeDirS  = clamp(skyIntensity,0,1)*dot(normal, sunPosition2);
     shadeDirS +=(clamp(skyIntensity,0,1)   *  mix(max(phaseg(dot(view, sunPosition2),sssa*0.4)*2, phaseg(dot(view, sunPosition2),sssa*0.1))*3, shadeDirS, 0.35))*float(isSSS);
            
@@ -1080,29 +1093,28 @@ if(overworld == 1.0){
         
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
-   
-        float mixweight = 0.1;
-
     
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
     
-        float screenShadow = (rayTraceShadow(sunVec,viewPos,mask(gl_FragCoord.xy+(Time*100)))*clamp((lmx-0.7)*100,0,1));
-       // float screenShadow = 1.0*clamp((lmx*2-1.0)*2,0,1)*shadeDir;
-        if(!isSSS)shadeDir *= screenShadow;
+        float screenShadow = (rayTraceShadow(sunVec,viewPos,mask(gl_FragCoord.xy+(Time*100)))*clamp((lmx-0.5)*100,0,1));
+        screenShadow = mix(screenShadow,((screenShadow+lmy),0,1),clamp((lmy),0,1));
+        shadeDir *= screenShadow;
+        shadeDir = mix(0,shadeDir,clamp((lmx)*5.0,0,1));
+      
         direct += (sunSpec*direct);      
-		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
+		shading = ambientLight + (direct*shadeDir);
+        shading += lightmap*0.1;
   
         
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
-        if(postlight == 1){ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-rainStrength);
-        mixweight = 1.0;
-        }
+        if(postlight == 1)ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-rainStrength);
+
+        
 		shading = mix(ambientLight,shading,1-rainStrength);	
 
-        vec3 speculars  = (indirectSpecular);
 
-		shading = mix(vec3(mixweight),shading,clamp((lmx)*5.0,0,1));
-		shading = mix(shading,clamp(vec3(1.0)*(screenShadow+lmy),0,1),clamp((lmy),0,1));   
+    vec3 speculars  = (indirectSpecular);
+
     vec3 dlight =   ( OutTexel * clamp(shading,0.1,10))+speculars;
 
 
@@ -1126,8 +1138,8 @@ if(overworld == 1.0){
     }	
 
 
-		//fragColor.rgb = clamp(vec3(worldtime),0.01,1);     
-	//	fragColor.rgb = clamp(vec3(rts),0.01,1);     
+	//	fragColor.rgb = clamp(vec3(shading),0.01,1);     
+	//	fragColor.rgb = clamp(vec3(pbr),0.01,1);     
 
 
 //}

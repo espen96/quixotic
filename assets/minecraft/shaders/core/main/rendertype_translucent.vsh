@@ -147,12 +147,12 @@ void main() {
     vec3 posxz = sin(Position-0.145); 
 
 
-    noise = vec3(xs,zs,0);
+    
     float wavea = 0.0;
     if(wtest*255 == 200)  wavea = (waterH(posxz)*clamp((float(UV2.y)/255),0.1,1));
     vec4 viewPos = ModelViewMat * vec4(Position+ vec3( 0, wavea,0 ) + ChunkOffset, 1.0)+vec4(calculateJitter()*1.5, 0, 0);
     gl_Position = ProjMat * viewPos;
-
+noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
     vertexColor = Color * texelFetch(Sampler2, UV2 / 16, 0);
     

@@ -193,7 +193,7 @@ lightCol=vec4((sunlightR*3.*sunAmount*sunIntensity+0.16/5.-0.16/5.*lightSign)*(1
 	{
 		vec3 skyColor0 = mix(vec3(0.05,0.5,1.)/1.5,vec3(0.4,0.5,0.6)/1.5,rainStrength*2);
 		vec3 skyColor = mix(skyColor0,nsunColor,0.5);
-		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*0.4;
+		daySky = skyIntensity*skyColor*vec3(0.8,0.9,1.)*15.*0.5;
 	}
 	// Night
 	if (skyIntensityNight > 0.00001)

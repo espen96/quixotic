@@ -174,7 +174,9 @@ else if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
 		moonSky = pow(L0Moon,1.0-rainStrength*0.75)*skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*SKY_BRIGHTNESS_NIGHT;
 	}
   fragColor.rgb =(daySky + moonSky);
-		fragColor.rgb = mix(fragColor.rgb*vec3(0.2,0.2,0.2)*1.0,fragColor.rgb,1-rainStrength);	
+	fragColor.rgb = mix(fragColor.rgb*vec3(0.2,0.2,0.2)*1.0,fragColor.rgb,1-rainStrength);	
+  
+
 
 }
 
