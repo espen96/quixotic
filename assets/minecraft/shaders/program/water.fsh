@@ -178,10 +178,34 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     
     return pos.xyz;
 }
+float cubeSmooth(float x) {
+    return (x * x) * (3.0 - 2.0 * x);
+}
+
+
+
+float TextureCubic(sampler2D tex, vec2 pos) {
+    ivec2 texSize = textureSize(tex, 0) * 5;
+    vec2 texelSize = (1.0/vec2(texSize));    
+    float p0q0 = texture(tex, pos).a;
+    float p1q0 = texture(tex, pos + vec2(texelSize.x, 0)).a;
+
+    float p0q1 = texture(tex, pos + vec2(0, texelSize.y)).a;
+    float p1q1 = texture(tex, pos + vec2(texelSize.x , texelSize.y)).a;
+
+    float a = cubeSmooth(fract(pos.x * texSize.x));
+
+    float pInterp_q0 = mix(p0q0, p1q0, a);
+    float pInterp_q1 = mix(p0q1, p1q1, a);
+
+    float b = cubeSmooth(fract(pos.y*texSize.y));
+
+    return mix(pInterp_q0, pInterp_q1, b);
+}
 
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-    const vec2 offsetB = vec2(0.0,0.001);
-    const vec2 offsetC = vec2(0.001,0.0);
+     vec2 offsetB = vec2(0.0,oneTexel.y);
+     vec2 offsetC = vec2(oneTexel.x,0.0);
   
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;
@@ -262,6 +286,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
     int sr = 0;
 
 
+
 	vec3 start = viewPos;
 
     vec3 vector = stp * reflect(normalize(viewPos), normalize(normal));
@@ -295,7 +320,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 	return vec4(pos, dist);
 }
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
+vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noise) {
 
     vec3 pos    = vec3(0.0);
 
@@ -304,7 +329,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 
     vec4 color = vec4(0.0);
 	float border = 0.0;
-     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm,  mask(gl_FragCoord.xy+(Time*100)), border, 4, 1.0, 0.1, 2.0).xyz;
+     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, 4, 1.0, 0.1, 2.0).xyz;
 
 	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
 	
@@ -346,7 +371,7 @@ void main() {
     vec3 clipPos = screenPos2 * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;	
-
+    
 
 
 		float roughness = 0.1;
@@ -358,7 +383,7 @@ void main() {
 		float normalDotEye = dot(normal, normalize(fragpos3));
 		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0)*0.87+0.04;
 		fresnel = mix(F0,1.0,fresnel);
-
+        float noise = mask(gl_FragCoord.xy+(Time*100));
 		
 
         vec4 screenPos = gl_FragCoord;
@@ -386,14 +411,15 @@ void main() {
 		}
 
     */
-		
-        reflection = vec4(SSR(viewPos.xyz, depth,normal, vec4(sky_c,1)));	
+        normal += noise*0.02;
+        reflection = vec4(SSR(viewPos.xyz, depth,normal, vec4(sky_c,1), noise ));	
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
         vec3 reflected= reflection.rgb*fresnel;
 
         float alpha0 = color2.a;
 	    color.a = -color2.a*fresnel+color2.a+fresnel;
 		color.rgb =clamp((color2.rgb*6.5)/color.a*alpha0*(1.0-fresnel)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
+    //    color.rgb = normal;
 
     }        
    

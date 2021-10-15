@@ -65,7 +65,7 @@ void main() {
             gl_FragDepth = 0.0;
     }
 
-    fragColor = texture(Sampler0, vec2((gl_FragCoord.xy/ScreenSize)/ vec2(1,aspectRatio)) );    
+    fragColor = texture(Sampler0, vec2((gl_FragCoord.xy/256)) );    
 //    fragColor.a =  0.1;
         int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
