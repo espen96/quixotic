@@ -21,7 +21,7 @@ uniform mat4 ProjMat;
  in vec3 ambientDown;
  in vec3 avgSky;
  in vec3 upPosition;
-
+ in float worldTime;
 
 
 in vec2 oneTexel;
@@ -749,16 +749,15 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
     return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
 }
 
-#define SSPTBIAS 0.5
 
 float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
     const float quality = 16.0;
-    vec3 clipPosition = toClipSpace3(position);
+    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
 	//prevents the ray from going behind the camera
-	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ?
-       (-near -position.z) / dir.z : far*sqrt(3.);
-    vec3 direction = toClipSpace3(position+dir*rayLength)-clipPosition;  //convert to clip space
+	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ? (-near -position.z) / dir.z : far*sqrt(3.);
+    //vec3 direction = ((position+dir*rayLength))-clipPosition;  //convert to clip space
+    vec3 direction = toClipSpace3(position+dir*rayLength)-clipPosition;
     direction.xyz = direction.xyz/max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y);	//fixed step size
 
 
@@ -766,26 +765,29 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
     vec3 stepv = direction *10.0;
 
-	vec3 spos = clipPosition*vec3(1.0)+vec3(0*vec2(oneTexel.x,oneTexel.y)*0.5,0.0)+stepv;
+	vec3 spos = clipPosition+stepv;
+
+
+
+
 
 	for (int i = 0; i < int(quality); i++) {
 		spos += stepv*dither;
 
-		float sp = texture(DiffuseDepthSampler,spos.xy).x;
-//		if (sp >0.998) return 1.0;
+		float sp = texture2D(DiffuseDepthSampler,spos.xy).x;
         if( sp < spos.z) {
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
-			if (dist < 0.05 ) return 0.0 + clamp(linZ(sp)*10-1,0,1);
+			if (dist < 0.05 ) return exp2(position.z/8.);
+
+
+
 	}
 
 	}
     return 1.0;
 }
-
-
-
 // simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
 // see also https://www.shadertoy.com/view/MdtGD7
 
@@ -824,7 +826,6 @@ float mask(vec2 p) {
 }                                        
 
 void main() {
-
 
   	vec2 texCoord = texCoord; 
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
@@ -1005,20 +1006,21 @@ if(overworld == 1.0){
         normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
       vec3 normal3 = worldToView (normal);
 
+
     float isWater = 0;
     if (texture(TranslucentSampler, texCoord).a *255 ==200) isWater = 1;
 
-	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.));
+	    vec3 ambientCoefs = normal/dot(abs(normal),vec3(1.0));
 
 		vec3 ambientLight  = ambientUp   *mix(clamp( ambientCoefs.y,0.,1.), 0.166, sssa);
              ambientLight += ambientDown*1.5 *mix(clamp(-ambientCoefs.y,0.,1.), 0.166, sssa);
              ambientLight += ambientRight*mix(clamp( ambientCoefs.x,0.,1.), 0.166, sssa);
              ambientLight += ambientLeft *mix(clamp(-ambientCoefs.x,0.,1.), 0.166, sssa);
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssa);
-             ambientLight += ambientF    *mix(clamp(-ambientCoefs.z,0.,1.), 0.166, sssa);
+             ambientLight += ambientF    *mix((clamp(-ambientCoefs.z,0.,1.)), 0.166, sssa);
              ambientLight *= (1.0+rainStrength*0.2);
-             //direct *= 1.5;
-   
+             direct *= 2.0;
+             //ambientLight = avgSky;
 
     
 	
@@ -1084,11 +1086,12 @@ if(overworld == 1.0){
     
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);
     
-        //float screenShadow = (rayTraceShadow(vec,fragpos2,mask(gl_FragCoord.xy+(Time*100)))*clamp((lmx*2-1.0)*2,0,1))*shadeDir;
-        float screenShadow = 1.0*clamp((lmx*2-1.0)*2,0,1)*shadeDir;
-        if(!isSSS)shadeDir = screenShadow;
+        float screenShadow = (rayTraceShadow(sunVec,viewPos,mask(gl_FragCoord.xy+(Time*100)))*clamp((lmx-0.7)*100,0,1));
+       // float screenShadow = 1.0*clamp((lmx*2-1.0)*2,0,1)*shadeDir;
+        if(!isSSS)shadeDir *= screenShadow;
+        direct += (sunSpec*direct);      
 		shading = ambientLight + mix(vec3(0.0),direct, shadeDir);
-        shading += (sunSpec*direct);
+  
         
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
         if(postlight == 1){ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-rainStrength);
@@ -1121,7 +1124,10 @@ if(overworld == 1.0){
     fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }	
-//		fragColor.rgb = clamp(abs(vec3(shading)),0.01,1);     
+
+
+		//fragColor.rgb = clamp(vec3(worldtime),0.01,1);     
+	//	fragColor.rgb = clamp(vec3(rts),0.01,1);     
 
 
 //}
@@ -1139,7 +1145,7 @@ if(overworld == 1.0){
 
 
 
-	vec4 numToPrint = vec4(gbufferProjection[3].b);
+	vec4 numToPrint = vec4(worldTime);
 /*
 	// Define text to draw
     clearTextBuffer();

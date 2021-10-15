@@ -58,7 +58,6 @@ float getLayeredNoise(vec3 seed)
 }
 
 void main() {
-    	float aspectRatio = ScreenSize.x/ScreenSize.y;
 
     if (gl_PrimitiveID >= 2) {
 
@@ -67,6 +66,7 @@ void main() {
 
     fragColor = texture(Sampler0, vec2((gl_FragCoord.xy/256)) );    
 //    fragColor.a =  0.1;
+/*
         int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
     if(index != -1) {
@@ -77,7 +77,7 @@ void main() {
 
 
     }
-
+*/
 
 
 //    fragColor.a *= (luma(FogColor.rgb)*luma(FogColor.rgb));

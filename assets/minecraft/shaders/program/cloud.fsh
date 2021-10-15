@@ -10,7 +10,6 @@ uniform float Time;
 
 in vec2 texCoord;
 in vec2 oneTexel;
-in vec3 sunDir;
 in vec3 avgSky;
 
 in vec4 fogcol;

@@ -11,8 +11,8 @@ uniform sampler2D shading;
 out vec2 texCoord;
 out vec2 oneTexel;
 out vec3 sunDir;
- out vec4 fogcol;
- out vec4 skycol;
+flat out vec4 fogcol;
+flat out vec4 skycol;
 out vec4 rain;
 out mat4 gbufferModelViewInverse;
 
@@ -23,17 +23,17 @@ out vec3 ambientRight;
 out vec3 ambientB;
 out vec3 ambientF;
 out vec3 ambientDown;
- out float near;
- out float far;
- out float end;
- out float overworld;
- out vec3 currChunkOffset;
+flat out float near;
+flat out float far;
+flat out float end;
+flat out float overworld;
+flat out vec3 currChunkOffset;
 
- out float sunElevation;
- out vec3 sunVec;
- out vec3 sunPosition;
- out float fogAmount;
- out vec2 eyeBrightnessSmooth;
+flat out float sunElevation;
+flat out vec3 sunVec;
+flat out vec3 sunPosition;
+flat out float fogAmount;
+flat out vec2 eyeBrightnessSmooth;
 
 
 float map(float value, float min1, float max1, float min2, float max2) {
@@ -148,9 +148,32 @@ void main() {
 
 
 ////////////////////////////////////////////////
+// 0     = +0.9765 +0.2154
+// 6000  = +0.0 +1.0
+// 12000 = -0.9765 +0.2154
+// 18000 = -0.0 -1.0
+// 24000 = +0.9765 +0.2154
+float time3 = map(sunDir.y,-1,+1,0,1);
+bool time8 = sunDir.y > 0;
+float time4 = map(sunDir.x,-1,+1,0,1);
+float time5 = mix(12000,0,time4);
+float time6 = mix(24000,12000,1-time4);
+float time7 = mix(time6,time5,time8);
+
+
+float worldTime = time7;
+float modWT = worldTime;
+const float sunPathRotation = 30.0;
+const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
+
+//minecraft's native calculateCelestialAngle() function, ported to GLSL.
+float ang = fract(worldTime / 24000.0 - 0.25);
+ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
+
+sunDir =  vec3(-sin(ang), cos(ang) * sunRotationData);
 
 float rainStrength = (1-rain.r)*0.75;
-vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
+vec3 sunDir2 = sunDir;
 sunPosition = sunDir2;
 vec3 upPosition = vec3(0,1,0);
 sunVec = sunDir2;
@@ -179,10 +202,7 @@ float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
 float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
 
 
-float sunElev = sunPosX;
-float time = map(sunElev,-1,+1,13000,0);
-float time2 = map(sunElev,-1,+1,13000,24000);
-float modWT = mix(time2,time,fading);
+
 float fogAmount0 = 1/2500.+FOG_TOD_MULTIPLIER*(1/180.*(clamp(modWT-11000.,0.,2000.0)/2000.+(1.0-clamp(modWT,0.,3000.0)/3000.))*
                    (clamp(modWT-11000.,0.,2000.0)/2000.+(1.0-clamp(modWT,0.,3000.0)/3000.)) + 
                    1/200.*clamp(modWT-13000.,0.,1000.0)/1000.*(1.0-clamp(modWT-23000.,0.,1000.0)/1000.));

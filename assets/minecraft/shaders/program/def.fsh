@@ -8,7 +8,6 @@ in vec2 texCoord;
 in vec4 skycol;
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D prevsky;
 in float skyIntensity;
 in vec3 nsunColor;
 in vec3 sunDir;

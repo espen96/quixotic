@@ -38,7 +38,9 @@ int decodeInt(vec3 ivec) {
 float decodeFloat(vec3 ivec) {
     return decodeInt(ivec) / FPRECISION;
 }
-
+float map(float value, float min1, float max1, float min2, float max2) {
+  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+}
 void main(){
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
     //simply decoding all the control data and constructing the sunDir, ProjMat, ModelViewMat
@@ -70,8 +72,30 @@ void main(){
                                                     decodeFloat(texture(DiffuseSampler, start + inc).xyz), 
                                                     decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz),
                                                     1.0)).xyz);
-vec3 sunDir2 = normalize(vec3(sunDir.x,sunDir.y,sunDir.z+0.3));
- sunDir = sunDir2;
+// 0     = +0.9765 +0.2154
+// 6000  = +0.0 +1.0
+// 12000 = -0.9765 +0.2154
+// 18000 = -0.0 -1.0
+// 24000 = +0.9765 +0.2154
+float time3 = map(sunDir.y,-1,+1,0,1);
+bool time8 = sunDir.y > 0;
+float time4 = map(sunDir.x,-1,+1,0,1);
+float time5 = mix(12000,0,time4);
+float time6 = mix(24000,12000,1-time4);
+float time7 = mix(time6,time5,time8);
+
+
+float worldTime = time7;
+
+const float sunPathRotation = 30.0;
+const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
+
+//minecraft's native calculateCelestialAngle() function, ported to GLSL.
+float ang = fract(worldTime / 24000.0 - 0.25);
+ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
+
+sunDir =  vec3(-sin(ang), cos(ang) * sunRotationData);
+
     near = PROJNEAR;
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
 

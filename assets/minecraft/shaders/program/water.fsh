@@ -95,43 +95,6 @@ float hash12(vec2 p)
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
 }
-vec3 rayTrace(vec3 dir,vec3 position,float noise, float fresnel){
-
-	float ssptbias = SSPTBIAS;
-
-    float quality = mix(10,SSR_STEPS,fresnel);
-    vec3 clipPosition = toClipSpace3(position);
-	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ? (-near -position.z) / dir.z : far*sqrt(3.);
-
-    vec3 direction = normalize(toClipSpace3(position+dir*rayLength)-clipPosition);  //convert to clip space
-    direction.xy = normalize(direction.xy);
-
-    //get at which length the ray intersects with the edge of the screen
-    vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
-    float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
-
-	vec3 stepv =direction * mult / quality;
-	vec3 spos = clipPosition *1.0 + stepv*noise;
-	spos += stepv*noise;
-
-
-    for(int i = 0; i < quality; i++){
-//        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
-
-		float sp= linZ(texelFetch(TranslucentDepthSampler,ivec2(spos.xy/oneTexel),0).x);
-
-		float currZ = linZ(spos.z);
-	    if( sp < currZ -(sp*0.1)) {
-			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
-			float dist = abs(sp-currZ)/currZ;
-
-			if (dist <= ssptbias) return vec3(spos.xy, invLinZ(sp))/vec3(1.0);
-		}
-			spos += stepv;	
-	}
-	return vec3(1.1);
-
-}
 
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
@@ -276,11 +239,12 @@ float Bayer2(vec2 a) {
 #define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
 
 float cdist(vec2 coord) {
-	return max(abs(coord.x - 0.5), abs(coord.y - 0.5)) * 1.85;
+	return max(abs(coord.s-0.5) * 1.95, abs(coord.t-0.5) * 2.0);
 }
 
 vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out float border, 
 			  float maxf, float stp, float ref, float inc) {
+
 	vec3 pos = vec3(0.0);
 	float dist = 0.0;
     int sr = 0;
@@ -304,8 +268,10 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 		dist = length(start - rfragpos);
 
         float err = length(viewPos - rfragpos);
-		if (err < pow(length(vector) * pow(length(tvector), 0.11), 1.1) * 1.2) {
-			sr++;
+		float lVector = length(vector);
+		if (lVector > 1.0) lVector = pow(lVector, 1.14);
+		if (err < lVector) {
+                sr++;
 			if (sr >= maxf) break;
 			tvector -= vector;
 			vector *= ref;
@@ -324,12 +290,16 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
 
     vec3 pos    = vec3(0.0);
 
+float maxf = 1.0; // 4.0 max refinement steps
+float stp  = 1.0; // 1.0 initial length of the reflected vector
+float ref  = 0.1; // 0.1 refinement multiplier
+float inc  = 2.0; // 2.0 iteration multiplier
 
 
 
     vec4 color = vec4(0.0);
 	float border = 0.0;
-     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, 4, 1.0, 0.1, 2.0).xyz;
+     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, maxf, stp, ref, inc).xyz;
 
 	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
 	
@@ -376,10 +346,8 @@ void main() {
 
 		float roughness = 0.1;
 
-		float emissive = 0.0;
 		float F0 = 0.02;
 
-		vec3 reflectedVector = reflect(normalize(fragpos3), normal);
 		float normalDotEye = dot(normal, normalize(fragpos3));
 		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0)*0.87+0.04;
 		fresnel = mix(F0,1.0,fresnel);
@@ -401,16 +369,7 @@ void main() {
 
 
 		vec4 reflection = vec4(sky_c.rgb,0.);
-    /*
-		vec3 rtPos = rayTrace(reflectedVector,viewPos.xyz,mask(gl_FragCoord.xy+(Time*100)) , fresnel);
-		if (rtPos.z <1.){
-            vec4 fragpositionPrev = gbufferProjectionInverse * vec4(rtPos*2.-1.,1.);
-            fragpositionPrev /= fragpositionPrev.w;
-            reflection.a = 1.0;
-            reflection.rgb = texture(TerrainCloudsSampler,rtPos.xy).rgb;
-		}
 
-    */
         normal += noise*0.02;
         reflection = vec4(SSR(viewPos.xyz, depth,normal, vec4(sky_c,1), noise ));	
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
