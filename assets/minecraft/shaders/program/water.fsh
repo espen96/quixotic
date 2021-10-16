@@ -167,8 +167,8 @@ float TextureCubic(sampler2D tex, vec2 pos) {
 }
 
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-     vec2 offsetB = vec2(0.0,oneTexel.y)*3;
-     vec2 offsetC = vec2(oneTexel.x,0.0)*3;
+     vec2 offsetB = vec2(0.0,oneTexel.y);
+     vec2 offsetC = vec2(oneTexel.x,0.0);
   
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;

@@ -5,7 +5,7 @@
         "dstrgb": "1-srcalpha"
     },
     "vertex": "main/rendertype_entity_colored",
-    "fragment": "main/rendertype_entity_colored",
+    "fragment": "main/rendertype_shadow",
     "attributes": [
         "Position",
         "Color",

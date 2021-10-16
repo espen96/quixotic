@@ -21,10 +21,10 @@ float pt = texelFetch(PreviousFrameSampler,ivec2(17,0),0).r;
 #define VXAA_TEMPORALEDGE_TIME_MIN 0.0000001
 #define VXAA_TEMPORALEDGE_TIME_MAX 1.15
 #define VXAA_SPATIAL_FLICKER_TIME 2.35
-#define VXAA_MORPHOLOGICAL_STRENGTH 0.7
+#define VXAA_MORPHOLOGICAL_STRENGTH 0.5
 #define VXAA_MORPHOLOGICAL_SHARPEN 0.1
 
-#define iTimeDelta abs(distance(pt,time))*10
+#define iTimeDelta abs(distance(pt,time))*20
 #define VXAA_W 0
 #define VXAA_E 1
 #define VXAA_N 2
@@ -192,7 +192,7 @@ void main() {
     vec2 uv = texCoord;
     
     // Sample scene and neighbourhood.
-    
+    /*
     vec4 current = clamp( vec4( texture( VXAA_TEXTURE_CURRENT, uv ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
     vec4 history = clamp( vec4( texture( VXAA_TEXTURE_PREV, uv ).rgb, 1.0 ), vec4( 0.0f ), vec4( 1.0f ) );
     current.a = VXAALuma( current.rgb ); history.a = VXAALuma( history.rgb );
@@ -221,7 +221,9 @@ void main() {
 
     // Filmic pass.    
     fragColor = VXAAFilmic( uv, current, history, currN, histN );
-    fragColor = current;
+
+    */
+    fragColor = vec4( texture( VXAA_TEXTURE_CURRENT, uv ).rgb, 1.0 );
 
 //}
 

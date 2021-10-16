@@ -56,17 +56,42 @@ float getLayeredNoise(vec3 seed)
            (0.125 * getNoise(seed * 0.2)) +
            (0.0625 * getNoise(seed * 0.4));
 }
+float cubeSmooth(float x) {
+    return (x * x) * (3.0 - 2.0 * x);
+}
+
+
+
+float TextureCubic(sampler2D tex, vec2 pos) {
+    ivec2 texSize = textureSize(tex, 0) * 5;
+    vec2 texelSize = (1.0/vec2(texSize));    
+    float p0q0 = texture(tex, pos).a;
+    float p1q0 = texture(tex, pos + vec2(texelSize.x, 0)).a;
+
+    float p0q1 = texture(tex, pos + vec2(0, texelSize.y)).a;
+    float p1q1 = texture(tex, pos + vec2(texelSize.x , texelSize.y)).a;
+
+    float a = cubeSmooth(fract(pos.x * texSize.x));
+
+    float pInterp_q0 = mix(p0q0, p1q0, a);
+    float pInterp_q1 = mix(p0q1, p1q1, a);
+
+    float b = cubeSmooth(fract(pos.y*texSize.y));
+
+    return mix(pInterp_q0, pInterp_q1, b);
+}
 
 void main() {
+    	float aspectRatio = ScreenSize.x/ScreenSize.y;
 
     if (gl_PrimitiveID >= 2) {
 
             gl_FragDepth = 0.0;
     }
 
-    fragColor = texture(Sampler0, vec2((gl_FragCoord.xy/256)) );    
+    fragColor = texture(Sampler0, vec2((gl_FragCoord.xy/ScreenSize)/ vec2(1,aspectRatio)) );    
+    /*
 //    fragColor.a =  0.1;
-/*
         int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
     if(index != -1) {

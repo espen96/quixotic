@@ -81,7 +81,7 @@ float test3  = floor(test2.r+test2.g+test2.b);
  
     if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+0,sssMin,sssMax)); // SSS
 
-    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+noise,lightMin,lightMax)); // Emissives
+    if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+(noise*0.5),lightMin,lightMax)); // Emissives
 
     if(alpha0 >= roughMin && alpha0 <= roughMax)   alpha0 = int(clamp(alpha0+noise,roughMin,roughMax)); // Roughness
 

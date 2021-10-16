@@ -84,7 +84,7 @@ float cubeSmooth(float x) {
 
 
 float TextureCubic(sampler2D tex, vec2 pos) {
-    ivec2 texSize = textureSize(tex, 0) * 5;
+    ivec2 texSize = textureSize(tex, 0) * 1;
     vec2 texelSize = (1.0/vec2(texSize));    
     float p0q0 = texture(tex, pos).a;
     float p1q0 = texture(tex, pos + vec2(texelSize.x, 0)).a;

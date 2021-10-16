@@ -12,7 +12,7 @@
       "translucent",
       "itemEntity",
       "particles",
-      {"name":"clouds", "width":256, "height":256},
+      "clouds",
       "weather"
     ],
     "passes":[

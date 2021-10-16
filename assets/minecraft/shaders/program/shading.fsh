@@ -193,7 +193,58 @@ vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
     }
 }
 
+float decodeFloat7_4(uint raw) {
+    uint sign = raw >> 11u;
+    uint exponent = (raw >> 7u) & 15u;
+    uint mantissa = 128u | (raw & 127u);
+    return (float(sign) * -2.0 + 1.0) * float(mantissa) * exp2(float(exponent) - 14.0);
+}
 
+float decodeFloat6_4(uint raw) {
+    uint sign = raw >> 10u;
+    uint exponent = (raw >> 6u) & 15u;
+    uint mantissa = 64u | (raw & 63u);
+    return (float(sign) * -2.0 + 1.0) * float(mantissa) * exp2(float(exponent) - 13.0);
+}
+
+vec3 decodeColor(vec4 raw) {
+    uvec4 scaled = uvec4(round(raw * 255.0));
+    uint encoded = (scaled.r << 24) | (scaled.g << 16) | (scaled.b << 8) | scaled.a;
+    
+    return vec3(
+        decodeFloat7_4(encoded >> 21),
+        decodeFloat7_4((encoded >> 10) & 2047u),
+        decodeFloat6_4(encoded & 1023u)
+    );
+}
+
+uint encodeFloat7_4(float val) {
+    uint sign = val >= 0.0 ? 0u : 1u;
+    uint exponent = uint(clamp(log2(abs(val)) + 7.0, 0.0, 15.0));
+    uint mantissa = uint(abs(val) * exp2(-float(exponent) + 14.0)) & 127u;
+    return (sign << 11u) | (exponent << 7u) | mantissa;
+}
+
+uint encodeFloat6_4(float val) {
+    uint sign = val >= 0.0 ? 0u : 1u;
+    uint exponent = uint(clamp(log2(abs(val)) + 7.0, 0.0, 15.0));
+    uint mantissa = uint(abs(val) * exp2(-float(exponent) + 13.0)) & 63u;
+    return (sign << 10u) | (exponent << 6u) | mantissa;
+}
+
+vec4 encodeColor(vec3 color) {
+    uint r = encodeFloat7_4(color.r);
+    uint g = encodeFloat7_4(color.g);
+    uint b = encodeFloat6_4(color.b);
+    
+    uint encoded = (r << 21) | (g << 10) | b;
+    return vec4(
+        encoded >> 24,
+        (encoded >> 16) & 255u,
+        (encoded >> 8) & 255u,
+        encoded & 255u
+    ) / 255.0;
+}
 
 
 float invLinZ (float lindepth){
@@ -231,7 +282,7 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 {
 	float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
 	float toneMappedLuma = luma / (1. + luma);
-	color *= toneMappedLuma / luma;
+	color *= clamp(toneMappedLuma / luma,0,10);
 	color = pow(color, vec3(1. / 2.2));
 	return color;
 }
@@ -246,7 +297,7 @@ vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	return texture(lut,vec2(x,y)).rgb;
+	return (texture(lut,vec2(x,y)).rgb);
 
 
 }
@@ -606,7 +657,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 
 
-    for(int i = 0; i < 3; i++) {
+    for(int i = 0; i < 16; i++) {
         pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
 
@@ -647,7 +698,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol) {
 	if (pos.z < 1.0 - 1e-5) {
 		color.a = texture(PreviousFrameSampler, pos.st).a;
 		if (color.a > 0.001) color.rgb = texture(PreviousFrameSampler, pos.st).rgb;
-        color.rgb *= border;
+
 		
 		color.a *= border;
 	}
@@ -835,9 +886,21 @@ float mask(vec2 p) {
 
     return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }                                        
+vec3 LinearTosRGB(in vec3 color)
+{
+    vec3 x = color * 12.92f;
+    vec3 y = 1.055f * pow(clamp(color,0.0,1.0), vec3(1.0f / 2.4f)) - 0.055f;
+
+    vec3 clr = color;
+    clr.r = color.r < 0.0031308f ? x.r : y.r;
+    clr.g = color.g < 0.0031308f ? x.g : y.g;
+    clr.b = color.b < 0.0031308f ? x.b : y.b;
+
+    return clr;
+}
 
 void main() {
-
+    vec4 outcol = vec4(0.0);
   	vec2 texCoord = texCoord; 
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
     float depth = texture(TranslucentDepthSampler, texCoord).r;
@@ -857,7 +920,14 @@ void main() {
     vec2 lmtrans5 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(oneTexel.x,0)).a));
     float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
     lmtrans5 *= 1-(depthe -depth);
+
+    int isEyeInWater = 0;
+    int isEyeInLava = 0;
+    if(fogcol.a > 0.078 && fogcol.a < 0.079 ) isEyeInWater = 1;
+    if(fogcol.r ==0.6 && fogcol.b == 0.0 ) isEyeInLava = 1;
+
 	if(overworld != 1.0 && end != 1.0){
+
 
     vec2 p_m = texCoord;
     vec2 p_d = p_m;
@@ -912,7 +982,7 @@ vec3 test = vec3( (OutTexel));
     
     OutTexel = toLinear(OutTexel);    
 
-    fragColor.rgb = OutTexel;	
+
     if (depth > 1.0) light = 0;
 
 
@@ -929,7 +999,7 @@ if(overworld == 1.0){
     vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
 
 
-    vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb;
+    vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*3.0;
 
     vec3 np3 = normVec(view);
 
@@ -947,18 +1017,19 @@ if(overworld == 1.0){
  		if (np3.y > 0.){
 			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
 
-            atmosphere += drawSun(dot(sunPosition3,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1);
+            atmosphere += drawSun(dot(sunPosition3,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1)*20;
             atmosphere += drawSun(dot(-sunPosition3,np3),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
             vec4 cloud = textureQuadratic(cloudsample, texCoord*CLOUDS_QUALITY);
             atmosphere = atmosphere*cloud.a+(cloud.rgb*1.1);
 		}
 
+  	atmosphere= (clamp(atmosphere*1.2,0,2));
+    outcol.rgb = reinhard(atmosphere) ;
 
-    fragColor.rgb = reinhard(atmosphere) ;
-//    fragColor.rgb = mat3(gbufferModelView) * sunPosition ;
 
-    return;
- } 
+
+    }
+    else{ 
 
 
     vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
@@ -980,7 +1051,7 @@ if(overworld == 1.0){
     if(lmx > 9.0)pbr = vec4(0.0);
 
 //    if (LinearizeDepth(depth) < far - FUDGE && length(sunPosition) > 0.99) {
-	fragColor.a = 1;
+
 
 
         
@@ -1031,11 +1102,10 @@ if(overworld == 1.0){
              ambientLight += ambientB    *mix(clamp( ambientCoefs.z,0.,1.), 0.166, sssa);
              ambientLight += ambientF    *mix((clamp(-ambientCoefs.z,0.,1.)), 0.166, sssa);
              ambientLight *= (1.0+rainStrength*0.2);
-      
+             ambientLight *= 2.0;
 
-            ambientLight = ambientLight * (pow(lmx,8.0)*1.5) + lmy*vec3(TORCH_R,TORCH_G,TORCH_B) ;
-            direct *= 2.0;
-    
+            ambientLight = clamp(ambientLight * (pow(lmx,8.0)*1.5) + lmy*vec3(TORCH_R,TORCH_G,TORCH_B),0,2.0) ;
+
 	
 
 
@@ -1111,18 +1181,21 @@ if(overworld == 1.0){
 
         
 		shading = mix(ambientLight,shading,1-rainStrength);	
-
+        if (light > 0.001)  shading.rgb = vec3(light*2.0);
 
     vec3 speculars  = (indirectSpecular);
 
     vec3 dlight =   ( OutTexel * clamp(shading,0.1,10))+speculars;
+    if (isEyeInWater == 1 || isWater == 1) dlight *= 0.1;
 
 
     float comp = 1.0 - near / far / far;
 	bool sky = depth > comp;
 	float ao = 1.0 *((1.0 - AOStrength) + jaao(texCoord, sky,normal3) * AOStrength);
-    fragColor.rgb =  lumaBasedReinhardToneMapping(dlight*ao);           		     
-    if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-shading*2)*light*2,1.0,10.0);
+    
+    outcol.rgb =  lumaBasedReinhardToneMapping(dlight*ao);           	
+    	     
+    if (light > 0.001)  outcol.rgb *= 1+(light);
 
 
 
@@ -1133,16 +1206,16 @@ if(overworld == 1.0){
     vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B)*fogcol.rgb;
     vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
     vec3 totEpsilon = dirtEpsilon*Dirt_Amount + waterEpsilon;
-    fragColor.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
+    outcol.rgb *= clamp(exp(-length(fragpos)*totEpsilon),0.2,1.0);
 
     }	
 
 
-	//	fragColor.rgb = clamp(vec3(shading),0.01,1);     
+	//	outcol.rgb = clamp(vec3(shading),0.01,1);     
 	//	fragColor.rgb = clamp(vec3(pbr),0.01,1);     
 
 
-//}
+}
 
 
 
@@ -1151,11 +1224,12 @@ if(overworld == 1.0){
 }
 	else{
 
-	 fragColor.rgb =  mix(reinhard_jodie(fragColor.rgb*( (((lmx+ 0.15)*fogcol.rgb)+((lmy*lmy*lmy)*vec3(TORCH_R,TORCH_G,TORCH_G))))),fogcol.rgb*0.5,pow(depth,2048));
-         if (light > 0.001)  fragColor.rgb *= clamp(vec3(2.0-1*2)*light*2,1.0,10.0);
+	 outcol.rgb =  mix(reinhard_jodie(OutTexel.rgb*( (((lmx+ 0.15)*fogcol.rgb)+((lmy*lmy*lmy)*vec3(TORCH_R,TORCH_G,TORCH_G))))),fogcol.rgb*0.5,pow(depth,2048));
+         if (light > 0.001)  outcol.rgb *= clamp(vec3(2.0-1*2)*light*2,1.0,10.0);
 	}
+    outcol= (clamp(outcol,0,2));
 
-
+    fragColor = (outcol.rgba);
 
 	vec4 numToPrint = vec4(worldTime);
 /*
