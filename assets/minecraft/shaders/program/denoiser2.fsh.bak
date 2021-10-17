@@ -226,9 +226,9 @@ void main() {
     fragColor = vec4( texture( VXAA_TEXTURE_CURRENT, uv ).rgb, 1.0 );
 
 //}
-/*
+
 if (gl_FragCoord.x < 18. && gl_FragCoord.y < 1.){
 
      fragColor = vec4(time);
-    }*/
+    }
 }

@@ -172,7 +172,7 @@ ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.2831853
 
 sunDir =  vec3(-sin(ang), cos(ang) * sunRotationData);
 
-float rainStrength = (1-rain.r)*0.5;
+float rainStrength = (1-rain.r)*0.75;
 vec3 sunDir2 = sunDir;
 sunPosition = sunDir2;
 vec3 upPosition = vec3(0,1,0);

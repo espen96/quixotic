@@ -107,7 +107,7 @@ float luma3(vec3 color) {
 
 
 void main() {
-//    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
+    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 
 if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
 
@@ -176,8 +176,6 @@ else if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
   fragColor.rgb =(daySky + moonSky);
 	fragColor.rgb = mix(fragColor.rgb*vec3(0.2,0.2,0.2)*1.0,fragColor.rgb,1-rainStrength);	
   
-
-
 }
 
 

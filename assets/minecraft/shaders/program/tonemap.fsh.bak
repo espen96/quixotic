@@ -207,7 +207,7 @@ void main() {
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
     
 
-
+    color = texture(DiffuseSampler, texCoord + vec2(0.0, oneTexel.y)).rgb;
 
 	BSLTonemap(color);
     float lumC = luma(color);

@@ -32,7 +32,6 @@ in vec4 rain;
 
 in mat4 wgbufferModelView;
 
-in vec2 texCoord;
 
  in mat4 gbufferModelViewInverse;
  in mat4 gbufferModelView;
@@ -61,7 +60,7 @@ out vec4 fragColor;
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);
 mat4 wgbufferModelViewInverse = inverse(wgbufferModelView);
 
-
+vec2 texCoord = gl_FragCoord.xy*oneTexel;
 #define AOStrength 1.0
 #define radius 1.0
 #define steps 6
@@ -99,6 +98,14 @@ mat4 wgbufferModelViewInverse = inverse(wgbufferModelView);
 #define NORMDEPTHTOLERANCE 1.0
 
 
+
+#define SSR_SAMPLES 5
+#define SSR_MAXREFINESAMPLES 1
+#define SSR_STEPINCREASE 0.1
+#define SSR_IGNORETHRESH 0.9
+
+#define NORMAL_SCATTER 0.006
+
 #define CLOUDS_QUALITY 0.5
 
 ////////////////////////////////
@@ -119,11 +126,9 @@ vec2 unpackUnorm2x4(float pack) {
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
-float luma(vec3 color){
-	return dot(color,vec3(0.299, 0.587, 0.114));
-}
 
-vec4 pbr (vec2 in1,vec2 in2, vec3 test ){
+
+vec4 pbr (vec2 in1,vec2 in2){
 
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
@@ -157,24 +162,6 @@ vec4 pbr (vec2 in1,vec2 in2, vec3 test ){
 //    if(rough < 0.001) rough = 0.1;
 
     pbr = vec4(emiss,sss,rough, metal);
-
-
-
-
-
-   if( pbr.b *255 < 17) {
-        float lum = luma(test);
-        vec3 diff = test-lum;
-        test = clamp(vec3(length(diff)),0.01,1);
-
-        if(test.r >0.3) test *= 0.3;
-
-        if(test.r < 0.05) test *= 5.0;
-        if(test.r < 0.05) test *= 2.0;
-        test = clamp(test*1.5-0.1,0,1);
-        pbr.b = test.r;
-    }
-
  //   if(expanded > 170) pbr *=0;
     return pbr;    
 }
@@ -184,62 +171,6 @@ vec4 pbr (vec2 in1,vec2 in2, vec3 test ){
 vec3 toLinear(vec3 sRGB){
 	return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
 }
-
-// this code is in the public domain
-vec4 textureQuadratic( in sampler2D sam, in vec2 p )
-{
-    vec2 texSize = (textureSize(sam,0).xy); 
-    
-
-    //Roger/iq style
-	p = p*texSize;
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	p = i + f*0.5;
-	p = p/texSize;
-    f = f*f*(3.0-2.0*f); // optional for extra sweet
-	vec2 w = 0.5/texSize;
-	return mix(mix(texture(sam,p+vec2(0,0)),
-                   texture(sam,p+vec2(w.x,0)),f.x),
-               mix(texture(sam,p+vec2(0,w.y)),
-                   texture(sam,p+vec2(w.x,w.y)),f.x), f.y);
-/*
-    // paniq style (https://www.shadertoy.com/view/wtXXDl)
-    vec2 f = fract(p*texSize);
-    vec2 c = (f*(f-1.0)+0.5) / texSize;
-    vec2 w0 = p - c;
-    vec2 w1 = p + c;
-    return (texture(sam, vec2(w0.x, w0.y))+
-    	    texture(sam, vec2(w0.x, w1.y))+
-    	    texture(sam, vec2(w1.x, w1.y))+
-    	    texture(sam, vec2(w1.x, w0.y)))/4.0;
-*/
-    
-}
-
-// avoid hardware interpolation
-vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
-    vec2 res = (textureSize(channel,0).xy);
-    vec2 q = fract(uv * res);
-    ivec2 t = ivec2(uv * res);
-    const ivec3 e = ivec3(-1, 0, 1);
-    vec4 s00 = texelFetch(channel, t + e.xx, 0);
-    vec4 s01 = texelFetch(channel, t + e.xy, 0);
-    vec4 s02 = texelFetch(channel, t + e.xz, 0);
-    vec4 s12 = texelFetch(channel, t + e.yz, 0);
-    vec4 s11 = texelFetch(channel, t + e.yy, 0);
-    vec4 s10 = texelFetch(channel, t + e.yx, 0);
-    vec4 s20 = texelFetch(channel, t + e.zx, 0);
-    vec4 s21 = texelFetch(channel, t + e.zy, 0);
-    vec4 s22 = texelFetch(channel, t + e.zz, 0);    
-    vec2 q0 = (q+1.0)/2.0;
-    vec2 q1 = q/2.0;	
-    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
-    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
-    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);    
-	return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
-}
-
 
 
 
@@ -327,7 +258,9 @@ float linZ2(float depth)
     return (2.0 * near * far) / (far + near - depth * (far - near));    
 }
 
-
+float luma(vec3 color){
+	return dot(color,vec3(0.299, 0.587, 0.114));
+}
 
 vec4 backProject(vec4 vec) {
     vec4 tmp = wgbufferModelViewInverse * vec;
@@ -355,48 +288,7 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 }
 
 
-#define DOWNSCALE 32.0
 
-vec4 interpolate_bilinear(vec2 p, vec4 q[16])
-{
-    vec4 r1 = (1.0-p.x)*q[5]+p.x*q[9];
-    vec4 r2 = (1.0-p.x)*q[6]+p.x*q[10];
-    return (1.0-p.y)*r1+p.y*r2;
-}
-
-vec4 interpolate_bicubic(vec2 p, vec4 q[16])
-{
-    vec4 a00 = q[5];
-	vec4 a01 = -.5*q[4]+.5*q[6];
-	vec4 a02 = q[4]-2.5*q[5]+2.0*q[6]-.5*q[7];
-	vec4 a03 = -.5*q[4]+1.5*q[5]-1.5*q[6]+.5*q[7];
-	vec4 a10 = -.5*q[1]+.5*q[9];
-	vec4 a11 = .25*q[0]-.25*q[2]-.25*q[8]+.25*q[10];
-	vec4 a12 = -.5*q[0]+1.25*q[1]-q[2]+.25*q[3]+.5*q[8]-1.25*q[9]+q[10]-.25*q[11];
-	vec4 a13 = .25*q[0]-.75*q[1]+.75*q[2]-.25*q[3]-.25*q[8]+.75*q[9]-.75*q[10]
-        +.25*q[11];
-	vec4 a20 = q[1]-2.5*q[5]+2.0*q[9]-.5*q[13];
-	vec4 a21 = -.5*q[0]+0.5*q[2]+1.25*q[4]-1.25*q[6]-q[8]+q[10]+.25*q[12]-.25*q[14];
-	vec4 a22 = q[0]-2.5*q[1]+2.0*q[2]-.5*q[3]-2.5*q[4]+6.25*q[5]-5.0*q[6]+1.25*q[7]
-        +2.0*q[8]-5.0*q[9]+4.0*q[10]-q[11]-.5*q[12]+1.25*q[13]-q[14]+.25*q[15];
-	vec4 a23 = -.5*q[0]+1.5*q[1]-1.5*q[2]+.5*q[3]+1.25*q[4]-3.75*q[5]+3.75*q[6]
-        - 1.25*q[7]-q[8]+3.0*q[9]-3.0*q[10]+q[11]+.25*q[12]-.75*q[13]+.75*q[14]-.25*q[15];
-	vec4 a30 = -.5*q[1]+1.5*q[5]-1.5*q[9]+.5*q[13];
-	vec4 a31 = .25*q[0]-0.25*q[2]-0.75*q[4]+.75*q[6]+.75*q[8]-.75*q[10]-.25*q[12]+.25*q[14];
-	vec4 a32 = -.5*q[0]+1.25*q[1]-q[2]+.25*q[3]+1.5*q[4]-3.75*q[5]+3.0*q[6]-.75*q[7]-1.5*q[8]
-        + 3.75*q[9]-3.0*q[10]+.75*q[11]+.5*q[12]-1.25*q[13]+q[14]-.25*q[15];
-	vec4 a33 = .25*q[0]-0.75*q[1]+0.75*q[2]-.25*q[3]-.75*q[4]+2.25*q[5]-2.25*q[6]+.75*q[7]
-        +.75*q[8]-2.25*q[9]+2.25*q[10]-.75*q[11]-.25*q[12]+.75*q[13]-.75*q[14] 
-        +.25*q[15];
-    float x2 = p.x*p.x;
-    float x3 = x2*p.x;
-    float y2 = p.y*p.y;
-    float y3 = y2*p.y;
-   	return (a00+a01*p.y+a02*y2+a03*y3)+
-		   (a10+a11*p.y+a12*y2+a13*y3)*p.x+
-		   (a20+a21*p.y+a22*y2+a23*y3)*x2+
-		   (a30+a31*p.y+a32*y2+a33*y3)*x3;
-}
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
@@ -405,24 +297,7 @@ vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	vec2 uv = vec2(x,y);
-  	vec2 lowres = ScreenSize.xy/0.75;
-  	vec2 pixel = 1.0/lowres;
-  	vec2 base_uv = floor(uv*lowres)/lowres;
-  	vec2 sub_uv = fract(uv*lowres);
-
-    vec4 q[16];
-    
-    for(int i = 0; i < 4; i++)
-    {
-        for(int j = 0; j < 4; j++)
-        {
-            q[i*4+j] = texture(lut,base_uv+vec2(pixel.x*float(i-1),pixel.y*float(j-1)));
-        }
-    }
-        vec4 bicubic = interpolate_bilinear(sub_uv,q);
-
-	return (bicubic.xyz);
+	return (texture(lut,vec2(x,y)).rgb);
 
 
 }
@@ -619,6 +494,62 @@ vec2 R2_samples(int n){
 }
 
 
+// this code is in the public domain
+vec4 textureQuadratic( in sampler2D sam, in vec2 p )
+{
+    vec2 texSize = (textureSize(sam,0).xy); 
+    
+
+    //Roger/iq style
+	p = p*texSize;
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	p = i + f*0.5;
+	p = p/texSize;
+    f = f*f*(3.0-2.0*f); // optional for extra sweet
+	vec2 w = 0.5/texSize;
+	return mix(mix(texture(sam,p+vec2(0,0)),
+                   texture(sam,p+vec2(w.x,0)),f.x),
+               mix(texture(sam,p+vec2(0,w.y)),
+                   texture(sam,p+vec2(w.x,w.y)),f.x), f.y);
+/*
+    // paniq style (https://www.shadertoy.com/view/wtXXDl)
+    vec2 f = fract(p*texSize);
+    vec2 c = (f*(f-1.0)+0.5) / texSize;
+    vec2 w0 = p - c;
+    vec2 w1 = p + c;
+    return (texture(sam, vec2(w0.x, w0.y))+
+    	    texture(sam, vec2(w0.x, w1.y))+
+    	    texture(sam, vec2(w1.x, w1.y))+
+    	    texture(sam, vec2(w1.x, w0.y)))/4.0;
+*/
+    
+}
+
+// avoid hardware interpolation
+vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
+    vec2 res = (textureSize(channel,0).xy);
+    vec2 q = fract(uv * res);
+    ivec2 t = ivec2(uv * res);
+    const ivec3 e = ivec3(-1, 0, 1);
+    vec4 s00 = texelFetch(channel, t + e.xx, 0);
+    vec4 s01 = texelFetch(channel, t + e.xy, 0);
+    vec4 s02 = texelFetch(channel, t + e.xz, 0);
+    vec4 s12 = texelFetch(channel, t + e.yz, 0);
+    vec4 s11 = texelFetch(channel, t + e.yy, 0);
+    vec4 s10 = texelFetch(channel, t + e.yx, 0);
+    vec4 s20 = texelFetch(channel, t + e.zx, 0);
+    vec4 s21 = texelFetch(channel, t + e.zy, 0);
+    vec4 s22 = texelFetch(channel, t + e.zz, 0);    
+    vec2 q0 = (q+1.0)/2.0;
+    vec2 q1 = q/2.0;	
+    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
+    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
+    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);    
+	return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
+}
+
+
 
 
 
@@ -726,7 +657,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 
 
-    for(int i = 0; i < 12; i++) {
+    for(int i = 0; i < 16; i++) {
         pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
 
@@ -973,7 +904,7 @@ void main() {
   	vec2 texCoord = texCoord; 
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    //if(depth >= 1) lmtrans = vec2(0.0); 
+    if(depth >= 1) lmtrans = vec2(0.0); 
     vec2 lmtrans2 = unpackUnorm2x4((texture(DiffuseSampler, texCoord-vec2(0,oneTexel.y)).a));
     float depthb = texture(TranslucentDepthSampler, texCoord-vec2(0,oneTexel.y)).r;
     lmtrans2 *= 1-(depthb -depth);
@@ -990,11 +921,11 @@ void main() {
     float depthe = texture(DiffuseDepthSampler, texCoord-vec2(oneTexel.x,0)).r;
     lmtrans5 *= 1-(depthe -depth);
 
-    bool isEyeInWater = (fogcol.a > 0.078 && fogcol.a < 0.079 );
-    bool isEyeInLava = (fogcol.r ==0.6 && fogcol.b == 0.0 );
- 
+    int isEyeInWater = 0;
+    int isEyeInLava = 0;
+    if(fogcol.a > 0.078 && fogcol.a < 0.079 ) isEyeInWater = 1;
+    if(fogcol.r ==0.6 && fogcol.b == 0.0 ) isEyeInLava = 1;
 
-/*
 	if(overworld != 1.0 && end != 1.0){
 
 
@@ -1018,19 +949,31 @@ void main() {
   	 texCoord = coord; 
 
 	}
-*/
+
 
 
     float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
+    vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)) );
     vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
 
-    vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)),OutTexel );
+
+
+vec3 test = vec3( (OutTexel));
 
 
 
+   if( pbr.b *255 < 17) {
+        float lum = luma(test);
+        vec3 diff = test-lum;
+        test = clamp(vec3(length(diff)),0.01,1);
 
+        if(test.r >0.3) test *= 0.3;
 
-
+        if(test.r < 0.05) test *= 5.0;
+        if(test.r < 0.05) test *= 2.0;
+        test = clamp(test*1.5-0.1,0,1);
+        pbr.b = test.r;
+    }
     float sssa = pbr.g;
     float ggxAmmount = pbr.b;
     float ggxAmmount2 = pbr.a;
@@ -1040,6 +983,9 @@ void main() {
     OutTexel = toLinear(OutTexel);    
 
 
+    if (depth > 1.0) light = 0;
+
+
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     float lmy = mix(lmtrans.y,(lmtrans2.y+lmtrans3.y+lmtrans4.y+lmtrans5.y)/4,res);
@@ -1047,17 +993,15 @@ void main() {
 
 if(overworld == 1.0){
 
-
-    vec3 screenPos2 = vec3(texCoord, depth);
-    vec3 clipPos = screenPos2 * 2.0 - 1.0;
-    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
-    vec3 viewPos = tmp.xyz / tmp.w;	
-	vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
+    vec4 screenPos = gl_FragCoord;
+         screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
+         screenPos.zw = vec2(1.0);
+    vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
 
 
     vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*3.0;
 
-    vec3 view = normVec(p3);
+    vec3 np3 = normVec(view);
 
     vec3 direct = suncol;
     vec3 ambient;
@@ -1070,11 +1014,12 @@ if(overworld == 1.0){
         vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
         //atmosphere.rgb += vec3(PRNG(int(gl_FragCoord.x) + int(gl_FragCoord.y) * int(OutSize.x))) / 128.0;
 
- 		if (view.y > 0.){
-			atmosphere += stars(view)*clamp(1-rainStrength,0,1);
-            atmosphere += drawSun(dot(sunPosition3,view),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1)*20;
-            atmosphere += drawSun(dot(-sunPosition3,view),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
-            vec4 cloud = texture(cloudsample, texCoord*CLOUDS_QUALITY);
+ 		if (np3.y > 0.){
+			atmosphere += stars(np3)*clamp(1-rainStrength,0,1);
+
+            atmosphere += drawSun(dot(sunPosition3,np3),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1)*20;
+            atmosphere += drawSun(dot(-sunPosition3,np3),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
+            vec4 cloud = textureQuadratic(cloudsample, texCoord*CLOUDS_QUALITY);
             atmosphere = atmosphere*cloud.a+(cloud.rgb*1.1);
 		}
 
@@ -1099,12 +1044,13 @@ if(overworld == 1.0){
         }
 
     vec3 lightmap = texture(temporals3Sampler,vec2(lmy,lmx)*(oneTexel*17)).xyz;
+    //if (light > 0.001)  lightmap.rgb = OutTexel* pow(clamp((light*10)-0.2,0.0,1.0)/0.65*0.65+0.35,10.0);
 
     if(postlight == 1)    OutTexel *= lightmap;
 
     if(lmx > 9.0)pbr = vec4(0.0);
 
-
+//    if (LinearizeDepth(depth) < far - FUDGE && length(sunPosition) > 0.99) {
 
 
 
@@ -1179,10 +1125,15 @@ if(overworld == 1.0){
 	shadeDirM  = clamp(skyIntensityNight,0,1)*dot(normal, sunPosition2);
     shadeDirM +=(clamp(skyIntensityNight,0,1)*mix(max(phaseg(dot(view, sunPosition2),sssa*0.4)*2, phaseg(dot(view, sunPosition2),sssa*0.1))*3, shadeDirS, 0.35))*float(isSSS);
 	 
+    vec3 fragpos2 = toScreenSpace(vec3(texCoord-vec2(0)*oneTexel*0.5,depth));
+    vec3 screenPos2 = vec3(texCoord, depth);
+    vec3 clipPos = screenPos2 * 2.0 - 1.0;
+    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
+    vec3 viewPos = tmp.xyz / tmp.w;	
 
 	vec3 f0 = vec3(0.04);
 	float roughness = 1-ggxAmmount;
-	vec3 speculars = vec3(0.0);
+	vec3 indirectSpecular = vec3(0.0);
 	const int nSpecularSamples = 3;
 
 
@@ -1193,6 +1144,7 @@ if(overworld == 1.0){
             f0 = vec3(0.8);  
             ggxAmmount = ggxAmmount2;
 
+			vec3 rayContrib = vec3(0.0);
 			vec3 reflection = vec3(0.0);    
             vec3 fragpos3 = (vec4(texCoord, ldepth, 1.0)).xyz;
             fragpos3 *= ldepth;
@@ -1204,7 +1156,7 @@ if(overworld == 1.0){
 
             vec4 color2 = vec4(OutTexel,1);
             reflection2 = mix(vec4(avgSky,1),reflection2,reflection2.a);
-            speculars += ((reflection2.rgb )*(fresnel*OutTexel));
+            indirectSpecular += ((reflection2.rgb )*(fresnel*OutTexel));
             OutTexel *= 0.1;
 
     }
@@ -1231,8 +1183,10 @@ if(overworld == 1.0){
 		shading = mix(ambientLight,shading,1-rainStrength);	
         if (light > 0.001)  shading.rgb = vec3(light*2.0);
 
+    vec3 speculars  = (indirectSpecular);
 
     vec3 dlight =   ( OutTexel * clamp(shading,0.1,10))+speculars;
+    if (isEyeInWater == 1 || isWater == 1) dlight *= 0.1;
 
 
     float comp = 1.0 - near / far / far;
@@ -1245,8 +1199,7 @@ if(overworld == 1.0){
 
 
 
-
-    if (isWater == 1 || isWater == 1){
+    if (isWater == 1){
 
 
 
@@ -1259,6 +1212,7 @@ if(overworld == 1.0){
 
 
     // 	outcol.rgb = clamp(vec3(shading),0.01,1);     
+	//	fragColor.rgb = clamp(vec3(pbr),0.01,1);     
 
 
 }

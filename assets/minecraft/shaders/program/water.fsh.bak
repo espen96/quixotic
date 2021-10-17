@@ -97,6 +97,7 @@ float hash12(vec2 p)
 }
 
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
@@ -104,6 +105,8 @@ vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
 	return texture(lut,vec2(x,y)).rgb;
+
+
 }
 
 float R2_dither(){
@@ -256,7 +259,7 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 
 
-    for(int i = 0; i < 16; i++) {
+    for(int i = 0; i < 12; i++) {
         pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
 		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
 
@@ -301,10 +304,10 @@ float inc  = 2.0; // 2.0 iteration multiplier
 	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
 	
 	if (pos.z < 1.0 - 1e-5) {
-		color.a = clamp(luminance(texture(TerrainCloudsSampler, pos.st).rgb)*100,0,1);
-		if (color.a > 0.0) {color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
+		color.a = texture(TerrainCloudsSampler, pos.st).a;
+		if (color.a > 0.001) {color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
 		color.rgb += texture(TranslucentSampler, pos.st).rgb*0.45;}
-
+        color.rgb *= border;
 		
 		color.a *= border;
 	}
