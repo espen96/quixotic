@@ -21,12 +21,6 @@ uniform float FOV;
  out vec3 upPosition;
 
 
-
-
-
-
-out mat4 gbP;
-
 out vec2 texCoord;
 out vec2 oneTexel;
 out vec3 sunDir;
@@ -174,22 +168,6 @@ void main() {
 const float pi = 3.141592653589793238462643383279502884197169;
 
 
-    float FOVrad = 70 / 360.0 * 3.1415926535;
-float    cosFOVrad = cos(FOVrad);
-float    tanFOVrad = tan(FOVrad);
-
-
-
-    gbP = mat4(1.0 / (2.0 * tanFOVrad * aspectRatio), 0.0,               0.0, 0.0,
-               0.0,                             1.0 / (2.0 * tanFOVrad), 0.0, 0.0,
-               0.5,                             0.5,                     1.0, 0.0,
-               0.0,                             0.0,                     0.0, 1.0);
-
-/*    gbPI = mat4(2.0 * tanFOVrad * aspectRatio, 0.0,             0.0, 0.0,
-                0.0,                           2.0 * tanFOVrad, 0.0, 0.0,
-                0.0,                           0.0,             0.0, 0.0,
-                -tanFOVrad * aspectRatio,     -tanFOVrad,       1.0, 1.0);
-*/
 
 ////////////////////////////////////////////////
 
