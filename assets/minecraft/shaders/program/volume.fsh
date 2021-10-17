@@ -184,7 +184,7 @@ ambientUp = ambientUp*10;
 	vec3 skyCol0 = ambientLight*8.*2./150./3.*eyeBrightnessSmooth.y/vec3(240.)*Ambient_Mult/3.1415;
 	vec3 sunColor = lightCol.rgb*8./5./3.;
 	sunColor *= 1-((1-rain.x)*0.5);
-	skyCol0 *= 1-((1-rain.x)*0.2);
+	skyCol0 *= 1-((1-rain.x)*0.5);
 
 		vec3 rC = vec3(fog_coefficientRayleighR*1e-6, fog_coefficientRayleighG*1e-5, fog_coefficientRayleighB*1e-5);
 	//	vec3 mC = vec3(fog_coefficientMieR*1e-6, fog_coefficientMieG*1e-6, fog_coefficientMieB*1e-6);
@@ -254,11 +254,9 @@ void main() {
   float lum = luma(fogcol.rgb);
   vec3 diff = fogcol.rgb-lum;
   vec3 test  = clamp(vec3(0.0) + diff*(-lum*1.0 + 2),0,1);
- int isEyeInWater = 0;
- int isEyeInLava = 0;
- if(fogcol.a > 0.078 && fogcol.a < 0.079 ) isEyeInWater = 1;
- if(fogcol.r ==0.6 && fogcol.b == 0.0 ) isEyeInLava = 1;
-
+    bool isEyeInWater = (fogcol.a > 0.078 && fogcol.a < 0.079 );
+    bool isEyeInLava = (fogcol.r ==0.6 && fogcol.b == 0.0 );
+ 
 
 
     depth = texture(TranslucentDepthSampler, texCoord).r;
@@ -307,7 +305,7 @@ void main() {
     float df = length(fragpos) ;
 
 
-   if (isEyeInWater == 1 && overworld == 1){
+   if (isEyeInWater && overworld == 1){
 
 
        
@@ -328,7 +326,7 @@ void main() {
     }
 
 
-   else if (isEyeInWater == 0 ){
+   else if (isEyeInWater ){
       mat2x3 vl = getVolumetricRays(R2_dither(),fragpos,avgSky,sunElevation);
      fragColor.rgb *= vl[1];
      fragColor.rgb += vl[0];
@@ -347,7 +345,7 @@ void main() {
 
 
   
-   if (isEyeInLava == 1 ){	 
+   if (isEyeInLava){	 
 
     fragColor.rgb *= exp(-length(fragpos)*vec3(0.2,0.7,4.0)*4.);
     fragColor.rgb += vec3(4.0,0.5,0.1)*0.5;
@@ -356,6 +354,6 @@ void main() {
 
     fragColor.rgb *= exp(-length(fragpos)*vec3(1.0)*0.25);
    }
-//  fragColor = vec4(vec3(lmx),1);
+
 
 }
