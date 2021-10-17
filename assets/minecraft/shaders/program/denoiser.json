@@ -12,7 +12,6 @@
     { "name": "CurrentFrameDataSampler" },
     { "name": "CurrentFrameDepthSampler" },
     { "name": "PreviousFrameSampler" },
-    { "name": "PreviousFrameDataSampler" },
     { "name": "PreviousFrameDepthSampler" }
   ],
   "uniforms": [
