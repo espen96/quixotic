@@ -34,7 +34,7 @@ void main() {
 
 //    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color);
-    lightMapColor = texelFetch(Sampler2, UV2 / 16, 0);
+    lightMapColor = minecraft_sample_lightmap2(Sampler2, UV2);
     overlayColor = texelFetch(Sampler1, UV1, 0);
     texCoord0 = UV0;
     lm = clamp((float(UV2.y)/255)-(float(UV2.x)/255),0,1);

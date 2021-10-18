@@ -62,6 +62,7 @@ vec4 minecraft_sample_lightmap2(sampler2D lightMap, ivec2 uv) {
     vec4 lm = texture(lightMap, clamp(uv / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
     vec4 sl = texture(lightMap, sky);
          sl *= sl;
+
     vec4 bl = texture(lightMap, block);
 
 //    bl.rgb *= blockLight;
@@ -74,13 +75,6 @@ vec4 minecraft_sample_lightmap2(sampler2D lightMap, ivec2 uv) {
     vec4 ambient = vec4(bl+sl);
      ambient.rgb = mix(ambient.rgb*ambient.rgb,ambient.rgb,0.5);
 
-//     ambient.rgb = reinhard(ambient.rgb)*lm.rgb;
-//     ambient.rgb = mix(lm.rgb,ambient.rgb,0.75);
 
-
-//    if(luma3(ambient.rgb)>=0.99) ambient.rgb = vec3(1.0,0,0);
-//      if(luma3(blockLight.rgb)>=0.9) ambient.rgb = vec3(1.2);
-
-//	return texture(lightMap, clamp(uv / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
 	return vec4(clamp(ambient.rgb,0.0,1.0),1.0);
 }

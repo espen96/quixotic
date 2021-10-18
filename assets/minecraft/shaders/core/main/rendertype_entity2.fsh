@@ -30,25 +30,38 @@ void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 
+
   if (color.a*255 <= 17.0) {
     discard;
   }
-  if(luma4(color.rgb) == 0 && color.a < 0.9) {
-    color.rgb = vec3(color.a)* vertexColor.rgb * ColorModulator.rgb;
-    if (color.a*255 <= 50.0) {
-    discard;
-  }
-  }
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
+
     color *= lightMapColor;
 
     color.rgb +=rnd/255;   
+    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+    float res = mod(mod2, 2.0f);
     color.rgb = clamp(color.rgb,0.01,1);
+
+      float lm = lmx;
+  if (res == 0.0f)    {
+    lm = lmy;
+
+  }
+    #define sssMin 22
+    #define sssMax 47
+    #define lightMin 48
+    #define lightMax 72
+    #define roughMin 73
+    #define roughMax 157
+    #define metalMin 158
+    #define metalMax 251
+
+
 
 
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = vec4(color.rgb,1);
+    fragColor = color;
 
-//    fragColor.a = packUnorm2x4( 0.0,clamp(lm+(Bayer256(gl_FragCoord.xy)/16),0,0.9));
 
 }

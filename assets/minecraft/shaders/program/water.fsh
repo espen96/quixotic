@@ -301,8 +301,9 @@ float inc  = 2.0; // 2.0 iteration multiplier
 	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
 	
 	if (pos.z < 1.0 - 1e-5) {
-		color.a = clamp(luminance(texture(TerrainCloudsSampler, pos.st).rgb)*100,0,1);
-		if (color.a > 0.0) {color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
+		color.a = texture(TerrainCloudsSampler, pos.st).a;
+		if (color.a > 0.0) {
+        color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
 		color.rgb += texture(TranslucentSampler, pos.st).rgb*0.45;}
 
 		

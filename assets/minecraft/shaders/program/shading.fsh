@@ -894,7 +894,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
 
 
-    vec3 stepv = direction *10.0;
+    vec3 stepv = direction *15.0;
 
 	vec3 spos = clipPosition+stepv;
 
@@ -1092,8 +1092,9 @@ if(overworld == 1.0){
 
     float postlight = 1;
 
-        if(lmx == 1) {
+        if(lmx > 0.95) {
             lmx *= 0.75;
+            lmy = 0.1;
             postlight = 0.0;
             
         }
@@ -1166,7 +1167,7 @@ if(overworld == 1.0){
     bool isSSS = sssa > 0.0;
 
 
-	vec3 shading;
+	vec3 shading= vec3(0.0);
 	float shadeDir = 0;
 	float shadeDirS = 0;
 	float shadeDirM = 0;
@@ -1257,7 +1258,7 @@ if(overworld == 1.0){
 
     }	
 
-
+    outcol.a = 1.0;
     // 	outcol.rgb = clamp(vec3(shading),0.01,1);     
 
 
