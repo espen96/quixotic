@@ -38,11 +38,10 @@ void main() {
   discardControlGLPos(gl_FragCoord.xy, glpos);
                   
 
-  float alpha = textureLod(Sampler0, texCoord0,0).a; 
+  vec4 color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
+  float alpha = color.a;
   vec4 albedo = textureLod(Sampler0, texCoord0,0) ;
-  vec4 color = texture(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
-  if(alpha <0.15)color = textureLod(Sampler0, texCoord0,0) * vertexColor * ColorModulator;
-  color.a = alpha;
+
   float lightm = 0;
 
 

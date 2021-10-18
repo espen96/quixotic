@@ -1,5 +1,5 @@
 #version 150
-
+const float sunPathRotation = -35.0;
 in vec4 Position;
 
 uniform mat4 ProjMat;
@@ -17,6 +17,7 @@ out float near;
 out vec4 skycol;
 out vec4 rain;
 out vec3 avgSky;
+out vec3 sc;
 out float aspectRatio;
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
@@ -147,8 +148,8 @@ float time7 = mix(time6,time5,time8);
 
 
 float worldTime = time7;
+sc = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb;
 
-const float sunPathRotation = 30.0;
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
 //minecraft's native calculateCelestialAngle() function, ported to GLSL.

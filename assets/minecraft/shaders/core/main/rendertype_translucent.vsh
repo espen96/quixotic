@@ -26,7 +26,8 @@ out vec4 normal;
 out vec4 glpos;
 out vec3 noise;
 out vec3 color2;
-
+out float lmx;
+out float lmy;
 #define atlasTileDim 1024.0 // Atlas dimensions in texture tiles
 #define tileSizePixels 16.0 // Texture tile size in pixels
 
@@ -146,11 +147,12 @@ void main() {
     */
     vec3 posxz = sin(Position-0.145); 
 
-
+    lmx = clamp((float(UV2.y)/255),0,1);
+    lmy = clamp((float(UV2.x)/255),0,1);
     
     float wavea = 0.0;
     if(wtest*255 == 200)  wavea = (waterH(posxz)*clamp((float(UV2.y)/255),0.1,1));
-    vec4 viewPos = ModelViewMat * vec4(Position+ vec3( 0, wavea,0 ) + ChunkOffset, 1.0)+vec4(calculateJitter()*1.5, 0, 0);
+    vec4 viewPos = ModelViewMat * vec4(Position+ vec3( 0, wavea,0 ) + ChunkOffset, 1.0);
     gl_Position = ProjMat * viewPos;
 noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);

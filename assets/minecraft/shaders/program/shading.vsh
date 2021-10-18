@@ -1,4 +1,5 @@
 #version 150
+const float sunPathRotation = -35.0;
 
 in vec4 Position;
 
@@ -19,6 +20,7 @@ uniform float FOV;
  out vec3 ambientDown;
  out vec3 avgSky;
  out vec3 upPosition;
+ out vec3 suncol;
 
 
 out vec2 texCoord;
@@ -56,7 +58,19 @@ uniform float Time;
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
+const float pi = 3.141592653589793238462643383279502884197169;
 
+float facos(float inX) {
+
+	const float C0 = 1.56467;
+	const float C1 = -0.155972;
+
+    float x = abs(inX);
+    float res = C1 * x + C0;
+    res *= sqrt(1.0f - x);
+
+    return (inX >= 0) ? res : pi - res;
+}
 vec3 rodSample(vec2 Xi)
 {
 	float r = sqrt(1.0f - Xi.x*Xi.y);
@@ -110,6 +124,7 @@ float decodeFloat24(vec3 raw) {
 void main() {
 
 
+     suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*3.0;
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 
@@ -165,7 +180,6 @@ void main() {
 //    gbufferProjectionInverse = inverse(ProjMat);
     aspectRatio = InSize.x / InSize.y;
 
-const float pi = 3.141592653589793238462643383279502884197169;
 
 
 
@@ -186,7 +200,7 @@ float time7 = mix(time6,time5,time8);
 
 float worldTime = time7;
 
-const float sunPathRotation = 30.0;
+
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
 //minecraft's native calculateCelestialAngle() function, ported to GLSL.
@@ -218,8 +232,8 @@ float upPosZ = upPosition.z/normUpVec;
 
 float sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
-float angSky= -(( pi * 0.5128205128205128 - acos(sunElevation*0.95+0.05))/1.5);
-float angSkyNight= -(( pi * 0.5128205128205128 -acos(-sunElevation*0.95+0.05))/1.5);
+float angSky= -(( pi * 0.5128205128205128 - facos(sunElevation*0.95+0.05))/1.5);
+float angSkyNight= -(( pi * 0.5128205128205128 -facos(-sunElevation*0.95+0.05))/1.5);
 
 float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
  skyIntensity=max(0.,1.0-exp(angSky))*(1.0-rainStrength*0.4)*pow(fading,5.0);

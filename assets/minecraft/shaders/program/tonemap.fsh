@@ -18,7 +18,7 @@ in vec2 texCoord;
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
-    #define CROSSTALK 0.25 // Desaturates bright colors and preserves saturation in darker areas (inverted if negative). Helps avoiding almsost fluorescent colors 
+    #define CROSSTALK 0.15 // Desaturates bright colors and preserves saturation in darker areas (inverted if negative). Helps avoiding almsost fluorescent colors 
     #define SATURATION 0.25 // Negative values desaturates colors, Positive values saturates color, 0 is no change
     
     #define ndeSat 7.0
@@ -205,11 +205,14 @@ void main() {
     VL_abs = clamp((1.0-VL_abs)*1.0*0.75*(1.0-purkinje),0.0,1.0)*clamp(1.0-pow(cdist(texCoord.xy),15.0),0.0,1.0);
 	color = (mix(color*1.5,col,VL_abs)+fin*lightScat);
 	getNightDesaturation(color.rgb,clamp((lmx+lmy),0.0,5));	
-    
-
-
-
-	BSLTonemap(color);
+    /*
+    vec3 color_pick = vec3(162,203,221)/255;
+    vec2 xyEst = XYZ2xy(sRGBtoXYZ*color_pick);
+    vec3 xyzEst = xy2XYZ(xyEst,100.0);
+    mat3 M = cbCAT(xyzEst, xyz_D65);
+    color = M*color;
+    */
+    	BSLTonemap(color);
     float lumC = luma(color);
 	vec3 diff = color-lumC;
 	color = color + diff*(-lumC*CROSSTALK + SATURATION);

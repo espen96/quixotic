@@ -49,7 +49,7 @@ in vec3 avgSky;
 
 
 
-#define Dirt_Amount 0.01  //How much dirt there is in water
+#define Dirt_Amount 0.015  //How much dirt there is in water
 
 #define Dirt_Scatter_R 0.6  //How much dirt diffuses red
 #define Dirt_Scatter_G 0.6  //How much dirt diffuses green
@@ -128,13 +128,24 @@ vec2 unpackUnorm2x4(float pack) {
 
 ///////////////////////////////////
 
+float facos(float inX) {
+
+	const float C0 = 1.56467;
+	const float C1 = -0.155972;
+
+    float x = abs(inX);
+    float res = C1 * x + C0;
+    res *= sqrt(1.0f - x);
+
+    return (inX >= 0) ? res : pi - res;
+}
 
 float R2_dither(){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 0.43015971 * Time);
 }
 float phaseRayleigh(float cosTheta) {
-	const vec2 mul_add = vec2(0.1, 0.28) /acos(-1.0);
+	 vec2 mul_add = vec2(0.1, 0.28) /facos(-1.0);
 	return cosTheta * mul_add.x + mul_add.y; // optimized version from [Elek09], divided by 4 pi for energy conservation
 }
 float phaseg(float x, float g){
@@ -202,7 +213,7 @@ ambientUp = ambientUp*10;
 		float d = (pow(expFactor, float(i+dither)/float(VL_SAMPLES))/expFactor - 1.0/expFactor)/(1-1.0/expFactor);
 		float dd = pow(expFactor, float(i+dither)/float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES)/(expFactor-1.0);
 		progressW = gbufferModelViewInverse[3].xyz+0 + d*dVWorld;
-    float density = cloudVol(progressW)*1.5*ATMOSPHERIC_DENSITY*mu*400.;
+    	float density = cloudVol(progressW)*1.5*ATMOSPHERIC_DENSITY*mu*600.;
 		//Just air
 		vec2 airCoef = exp2(-max(progressW.y-SEA_LEVEL,0.0)/vec2(8.0e3, 1.2e3)*vec2(6.,7.0))*6.0;
 

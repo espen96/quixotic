@@ -127,17 +127,7 @@ vec3 worldToView(vec3 worldPos) {
 }
 
 
-vec3 getDepthPoint(vec2 coord, float depth) {
-    vec4 pos;
-    pos.xy = coord;
-    pos.z = depth;
-    pos.w = 1.0;
-    pos.xyz = pos.xyz * 2.0 - 1.0; //convert from the 0-1 range to the -1 to +1 range
-    pos = gbufferProjectionInverse * pos;
-    pos.xyz /= pos.w;
-    
-    return pos.xyz;
-}
+
 float cubeSmooth(float x) {
     return (x * x) * (3.0 - 2.0 * x);
 }
@@ -162,7 +152,17 @@ float TextureCubic(sampler2D tex, vec2 pos) {
 
     return mix(pInterp_q0, pInterp_q1, b);
 }
-
+vec3 getDepthPoint(vec2 coord, float depth) {
+    vec4 pos;
+    pos.xy = coord;
+    pos.z = depth;
+    pos.w = 1.0;
+    pos.xyz = pos.xyz * 2.0 - 1.0; //convert from the 0-1 range to the -1 to +1 range
+    pos = gbufferProjectionInverse * pos;
+    pos.xyz /= pos.w;
+    
+    return pos.xyz;
+}
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
      vec2 offsetB = vec2(0.0,oneTexel.y);
      vec2 offsetC = vec2(oneTexel.x,0.0);
@@ -316,7 +316,8 @@ void main() {
 
 
     vec3 reflection = vec3(1.0);
-    
+    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+    float res = mod(mod2, 2.0f);
 
     vec4 color = texture(TranslucentSampler, texCoord);
 
@@ -361,7 +362,7 @@ void main() {
 
         vec3 suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*0.5;
 
-        vec3 sky_c = (mix(skyLut(view2,sunDir.xyz,view2.y,temporals3Sampler),suncol,0.5))  ;
+        vec3 sky_c = (mix(skyLut(view2,sunDir.xyz,view2.y,temporals3Sampler),suncol,0.5))*luminance(color2.rgb)  ;
 
 
 
@@ -379,7 +380,7 @@ void main() {
     //    color.rgb = normal;
 
     }        
-   
-   
+   //color = vec4(vec3(luminance(color2.rgb)),1);
+
     fragColor= vec4(color.rgba);
 }

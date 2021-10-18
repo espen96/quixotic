@@ -18,7 +18,8 @@ in vec3 color2;
 in vec2 texCoord0;
 in vec4 normal;
 in vec4 glpos;
-
+in float lmx;
+in float lmy;
 out vec4 fragColor;
 
 float decodeFloat7_4(uint raw) {
@@ -74,13 +75,19 @@ vec4 encodeColor(vec3 color) {
     ) / 255.0;
 }
 
+
 void main() {
+    
+  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+  float res = mod(mod2, 2.0f);
     discardControlGLPos(gl_FragCoord.xy, glpos);
-    gl_FragDepth = gl_FragCoord.z;
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     color.rgb = clamp(color.rgb,0.01,1);
-    color.rgb += vec3(glpos.xyz)*0.05;
+
   //color.rgb = (noise)*100;
+
+
+
     fragColor = color;
 //    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);
 

@@ -11,6 +11,7 @@ uniform float Time;
 in vec2 texCoord;
 in vec2 oneTexel;
 in vec3 avgSky;
+in vec3 sc;
 
 in vec4 fogcol;
 in float near;
@@ -207,7 +208,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color,float dither,vec3 sunColor,vec3 mo
 		float cosY = normalize(dV_view).y;
 
 
-			color.rgb = mix(color.rgb*vec3(0.5,0.5,1.0),color.rgb,1-rainStrength);	
+		color.rgb = mix(color.rgb*vec3(0.5,0.5,1.0),color.rgb,1-rainStrength);	
 		return mix(vec4(color,clamp(total_extinction*(1.0+1/250.)-1/250.,0.0,1.0)),vec4(0.0,0.0,0.0,1.0),1-smoothstep(0.02,0.7,cosY));
 
 }
@@ -266,19 +267,11 @@ vec2 sphereToCarte(vec3 dir) {
 }
 void main() {
 
-	float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-	float res = mod(mod2, 2.0f);
 
-
-  {
+  
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
     float noise = mask(gl_FragCoord.xy+(Time*100));
-	vec2 halfResTC = vec2(floor(gl_FragCoord.xy)/CLOUDS_QUALITY+0.5);
 
-    float aspectRatio = ScreenSize.x/ScreenSize.y;
-        vec4 screenPos = gl_FragCoord;
-        screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
-        screenPos.zw = vec2(1.0);
 
 
 	 
@@ -288,26 +281,14 @@ void main() {
 
 
 
-    vec3 sc = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb;
-  	vec3 suncol = sc;
 
-    vec2 scaledCoord = 2.0 * (halfResTC*oneTexel - vec2(0.5));
-	bool doClouds = false;
-	for (int i = 0; i < floor(1.0/CLOUDS_QUALITY)+1.0; i++){
-		for (int j = 0; j < floor(1.0/CLOUDS_QUALITY)+1.0; j++){
-			if (texelFetch(DiffuseDepthSampler,ivec2(halfResTC) + ivec2(i, j), 0).x >= 1.0)
-				doClouds = true;
-		}
-	}
-	if (doClouds){
+
+    vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
+
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-	vec4 cloud = renderClouds(fragpos,avgSky,noise,suncol,suncol,avgSky).rgba;
+	vec4 cloud = renderClouds(fragpos,avgSky,noise,sc,sc,avgSky).rgba;
 
 	fragColor = cloud;
-	}
-	else
-		fragColor = vec4(0.0,0.0,0.0,1.0);
 
-}
 
 }

@@ -1,5 +1,5 @@
 #version 150
-
+const float sunPathRotation = -35.0;
 in vec4 Position;
 
 uniform mat4 ProjMat;
@@ -41,7 +41,17 @@ out float moonIntensity;
 vec2 getControl(int index, vec2 screenSize) {
     return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
 }
+float facos(float inX) {
 
+	const float C0 = 1.56467;
+	const float C1 = -0.155972;
+
+    float x = abs(inX);
+    float res = C1 * x + C0;
+    res *= sqrt(1.0f - x);
+
+    return (inX >= 0) ? res : PI - res;
+}
 float map(float value, float min1, float max1, float min2, float max2) {
   return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
@@ -126,7 +136,7 @@ float time7 = mix(time6,time5,time8);
 
 float worldTime = time7;
 float modWT = worldTime;
-const float sunPathRotation = 30.0;
+
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
 //minecraft's native calculateCelestialAngle() function, ported to GLSL.
@@ -155,10 +165,10 @@ float upPosZ = upPosition.z/normUpVec;
 float sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
 
-float angSky= -(( PI * 0.5128205128205128 - acos(sunElevation*0.95+0.05))/1.5);
-float angSkyNight= -(( PI * 0.5128205128205128 -acos(-sunElevation*0.95+0.05))/1.5);
-float angMoon= -(( PI * 0.5128205128205128 - acos(-sunElevation*1.065-0.065))/1.5);
-float angSun= -(( PI * 0.5128205128205128 - acos(sunElevation*1.065-0.065))/1.5);
+float angSky= -(( PI * 0.5128205128205128 - facos(sunElevation*0.95+0.05))/1.5);
+float angSkyNight= -(( PI * 0.5128205128205128 -facos(-sunElevation*0.95+0.05))/1.5);
+float angMoon= -(( PI * 0.5128205128205128 - facos(-sunElevation*1.065-0.065))/1.5);
+float angSun= -(( PI * 0.5128205128205128 - facos(sunElevation*1.065-0.065))/1.5);
 
 float fading = clamp(sunElevation+0.095,0.0,0.08)/0.08;
 skyIntensity=max(0.,1.0-exp(angSky))*(1.0-rainStrength*0.4)*pow(fading,5.0);

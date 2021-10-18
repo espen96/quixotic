@@ -7,7 +7,6 @@
       "denoised1",
       "denoised",
       "previousFrame",
-      "previousData",
       "shading",
       "translucent",
       "itemEntity",
@@ -75,11 +74,6 @@
             "id":"clouds"
           }
         ]
-      },
-      {
-        "name":"blit",
-        "intarget":"minecraft:main",
-        "outtarget":"previousData"
       },
       {
         "name":"shading",
@@ -246,46 +240,17 @@
             "name":"PreviousFrameSampler",
             "id":"previousFrame"
           },
-          {
-            "name":"PreviousFrameDataSampler",
-            "id":"previousData"
-          },
+
           {
             "name":"PreviousFrameDepthSampler",
             "id":"previousFrame:depth"
           }
         ]
       },
-      {
-        "name":"denoiser2",
-        "intarget":"denoised1",
-        "outtarget":"denoised",
-        "auxtargets":[
-          {
-            "name":"CurrentFrameDataSampler",
-            "id":"minecraft:main"
-          },
-          {
-            "name":"CurrentFrameDepthSampler",
-            "id":"swap3:depth"
-          },
-          {
-            "name":"PreviousFrameSampler",
-            "id":"previousFrame"
-          },
-          {
-            "name":"PreviousFrameDataSampler",
-            "id":"previousData"
-          },
-          {
-            "name":"PreviousFrameDepthSampler",
-            "id":"previousFrame:depth"
-          }
-        ]
-      },
+
       {
         "name":"copy_with_depth",
-        "intarget":"denoised",
+        "intarget":"denoised1",
         "outtarget":"previousFrame",
         "auxtargets":[
           {
@@ -300,7 +265,7 @@
       },
       {
         "name":"blur1",
-        "intarget":"denoised",
+        "intarget":"denoised1",
         "outtarget":"swap2",
         "auxtargets":[
           {
@@ -360,7 +325,7 @@
       },
       {
         "name":"tonemap",
-        "intarget":"denoised",
+        "intarget":"denoised1",
         "outtarget":"swap2",
         "auxtargets":[
           {
