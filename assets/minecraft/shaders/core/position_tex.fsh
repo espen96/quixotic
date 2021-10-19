@@ -23,6 +23,7 @@ out vec4 fragColor;
 #define MAGICSUNSIZE 3.0
 
 void main() {
+    gl_FragDepth = gl_FragCoord.z;
     vec4 color = vec4(0.0);
     bool gui =isGUI( ModelViewMat);
     int index = inControl(gl_FragCoord.xy, ScreenSize.x);
@@ -56,6 +57,7 @@ void main() {
 
     // calculate screen space UV of the sun since it was transformed to cover the entire screen in vsh so texCoord0 no longer works
     else if(isSun > 0.75) {
+  
         discard;
         vec3 p1 = c1 / cscale.x;
         vec3 p2 = c2 / cscale.y;
@@ -72,9 +74,11 @@ void main() {
         // only draw one sun lol
         if (lookingat > 0.0 && all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)))) {
             color = texture(Sampler0, uv) * ColorModulator;
-        color.a = 0.0;            
+        color.a = 0.0;  
+                
         } 
     } else {
+            
         if(gl_FragCoord.z >0.9) discard;
         color = texture(Sampler0, texCoord0) * ColorModulator;
     }

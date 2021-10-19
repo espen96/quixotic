@@ -829,39 +829,225 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 }
 
 
-float rayTraceShadow(vec3 dir,vec3 position,float dither){
+float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 
-    const float quality = 16.0;
+    const int quality = 16;
+    const float stride = 4.5;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
 	//prevents the ray from going behind the camera
-	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ? (-near -position.z) / dir.z : far*sqrt(3.);
+	float rayLength = (position.z + dir.z * far*1.732 > -near) ? (-near - position.z) / dir.z : far*1.732;
     //vec3 direction = ((position+dir*rayLength))-clipPosition;  //convert to clip space
     vec3 direction = toClipSpace3(position+dir*rayLength)-clipPosition;
     direction.xyz = direction.xyz/max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y);	//fixed step size
 
 
 
-
-    vec3 stepv = direction *10.0;
-
+	vec3 stepv = direction * stride;
 	vec3 spos = clipPosition+stepv;
-
+	float minZ = clipPosition.z;
+	float maxZ = spos.z+stepv.z*0.5;
 
 	for (int i = 0; i < int(quality); i++) {
 		spos += stepv*dither;
+        if (1.0 < minZ || maxZ < 0.0) break;
 
 		float sp = texture2D(DiffuseDepthSampler,spos.xy).x;
+        //if (sp >0.999) return 1.0;
         if( sp < spos.z) {
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
-			if (dist < 0.05 ) return exp2(position.z/4.);
+			if (dist < 0.01 ) return clamp(linZ(sp)*10-1,0,1);
 
 	}
 
 	}
     return 1.0;
 }
+vec3 RT(vec3 dir,vec3 position,float noise, vec3 N,float transparent, vec2 lightmap, bool emissive, bool hand){
+
+
+
+	float ssptbias = 0.2;
+	float stepSize = 99;
+//	int maxSteps =   clamp(int(  (clamp((moment.x),0,1)*99)),6,99);
+#if STEPS != Unlimited
+	int maxSteps = STEPS;
+#endif
+//	if (emissive) return vec3(1.1);
+	if (hand) return vec3(1.1);
+
+
+
+	bool istranparent = transparent > 0.0;
+    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
+	
+	float rayLength = ((position.z + dir.z * sqrt(3.0)*far) > -sqrt(3.0)*near) ? (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*far;
+
+	vec3 end = toClipSpace3(position+dir*rayLength);
+	vec3 direction = end-clipPosition;  //convert to clip space
+
+	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
+
+	//get at which length the ray intersects with the edge of the screen
+	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+	vec3 stepv = direction/len;
+#if STEPS == Unlimited
+	int iterations = int(min(len, mult*len)-2);
+#else	
+	int iterations = min(int(min(len, mult*len)-2), maxSteps);
+#endif
+	
+	//Do one iteration for closest texel (good contact shadows)
+	vec3 spos = clipPosition + stepv/stepSize*6.0;
+
+;
+
+		float sp = linZ(texture2D(DiffuseDepthSampler,spos.xy).x);
+	float currZ = linZ(spos.z);
+
+	
+	if( sp < currZ) {
+		float dist = abs(sp-currZ)/currZ;
+		
+		if (dist <= 0.035) return vec3(spos.xy, invLinZ(sp));
+
+		
+	}
+
+
+		
+	spos += stepv*noise;
+
+    for(int i = 0; i < iterations; i++){
+        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
+		// decode depth buffer
+		float sp = linZ(texture2D(DiffuseDepthSampler,spos.xy).x);
+			
+		float currZ = linZ(spos.z);
+	//	if( sp < currZ && abs(sp-ld(spos.z))/ld(spos.z) < 0.1) {
+		if( sp < currZ ) {
+			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return vec3(1.1);
+			float dist = abs(sp-currZ)/currZ;
+
+			if (dist <= ssptbias) return vec3(spos.xy, invLinZ(sp));
+
+		}
+		
+
+			spos += stepv;	
+		
+
+	}
+
+
+
+
+	return vec3(1.1);
+
+	
+}vec3 cosineHemisphereSample(vec2 a)
+{
+    float phi = a.y * 2.0 * 3.14159265359;
+    float cosTheta = 1.0 - a.x;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+vec3 TangentToWorld(vec3 N, vec3 H)
+{
+    vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 T = normalize(cross(UpVector, N));
+    vec3 B = cross(N, T);
+
+    return vec3((T * H.x) + (B * H.y) + (N * H.z));
+}
+vec3 rtGI(vec3 normal,vec3 normal2,vec4 noise,vec3 fragpos, float translucent, vec3 ambient, vec3 torch, vec3 albedo,vec2 lightmap){
+
+
+
+	int nrays = 4 ;
+
+	vec3 intRadiance = vec3(0.0);
+	
+
+
+	float occlusion = 0.0;
+
+
+	for (int i = 0; i < nrays; i++){ 
+
+		int seed = (int(Time*100)%40000)*nrays+i;
+		vec2 ij = fract(R2_samples(seed) + noise.rg);
+		vec3 rayDir = normalize(cosineHemisphereSample(ij));
+
+		rayDir = TangentToWorld(normal,rayDir);
+		rayDir = mat3(gbufferModelView)*rayDir;
+        if (dot(rayDir, normal2) < 0.0) rayDir = -rayDir;
+		//rayDir = reflect(normalize(fragpos), normal);
+
+
+
+		vec3 rayHit = RT(rayDir, fragpos, fract(seed/1.6180339887 + noise.b), mat3(gbufferModelView)*normal,0,lightmap,false,false);
+
+
+
+		vec3 previousPosition   = rayHit;	
+
+		if (rayHit.z < 1.0){
+ 
+			if (previousPosition.x > 0.0 && previousPosition.y > 0.0 && previousPosition.x < 1.0 && previousPosition.x < 1.0){
+
+			intRadiance += ((texture(PreviousFrameSampler,previousPosition.xy).rgb ) ) + ambient ;
+
+
+				float lum = luma(intRadiance);
+				vec3 diff = intRadiance-lum;
+				intRadiance = (intRadiance + diff*(0.5));
+
+
+				}
+						
+			else{
+
+			
+				intRadiance += ambient;
+			
+				}
+					
+				occlusion += 1.0;
+		}		
+		else {
+						float bounceAmount =float(rayDir.y > 0.0) + clamp(-rayDir.y*0.1+0.1, 0.0,1.0);
+			vec3 sky_c =  ((skyLut(rayDir,sunPosition3.xyz,rayDir.y,temporals3Sampler))*bounceAmount)*lightmap.x ;
+           
+
+
+			intRadiance += sky_c;
+
+		}
+		
+
+		
+	}
+	
+
+
+
+	intRadiance.rgb =  (intRadiance  /nrays + (1.0-(occlusion*0.5)/nrays)*(torch));	
+
+
+
+
+	return vec3(intRadiance).rgb*(1.0-(occlusion)/nrays);
+
+
+
+
+}
+
+
 // simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
 // see also https://www.shadertoy.com/view/MdtGD7
 
@@ -929,8 +1115,8 @@ float OrenNayar(vec3 normal, vec3 viewvec, vec3 lvec, float roughness) {    //qu
     return max(on, 0.0);
 }
 void main() {
-    //float noise = mask(gl_FragCoord.xy+(Time*100));
-    float noise = R2_dither();
+    float noise = mask(gl_FragCoord.xy+(Time*100));
+    //float noise = R2_dither();
     vec4 outcol = vec4(0.0);
     vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
     float depth = texture(TranslucentDepthSampler, texCoord).r;
@@ -1019,7 +1205,7 @@ if(overworld == 1.0){
 
     vec3 direct = suncol;
     vec3 ambient;
-    //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
+    float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
 		
 
 	bool sky = depth >= 1.0;
@@ -1030,9 +1216,9 @@ if(overworld == 1.0){
         vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
 
  		if (view.y > 0.){
-			atmosphere += (stars(view)*2.0)*clamp(1-rainStrength,0,1);
-            atmosphere += drawSun(dot(sunPosition3,view),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1)*20;
-            atmosphere += drawSun(dot(-sunPosition3,view),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
+			atmosphere += (stars(view)*2.0)*clamp(1-(rainStrength*lmx),0,1);
+            atmosphere += drawSun(dot(sunPosition3,view),0, suncol.rgb/150.,vec3(0.0))*clamp(1-(rainStrength*lmx),0,1)*20;
+            atmosphere += drawSun(dot(-sunPosition3,view),0, suncol.rgb,vec3(0.0))*clamp(1-(rainStrength*lmx),0,1);
             vec4 cloud = texture(cloudsample, texCoord*CLOUDS_QUALITY);
             atmosphere = atmosphere*cloud.a+(cloud.rgb);
 		}
@@ -1072,7 +1258,7 @@ if(overworld == 1.0){
         float depth3 = depthd;
         float depth4 = depthb;
         float depth5 = depthe;
-        const float normalstrength = 0.1;    
+        float normalstrength = 0.0 * (1.0-clamp(linZ(depth)*10,0,1));    
         const float normaldistance = 2.5;    
         const float normalpow = 4.0;    
 
@@ -1165,24 +1351,25 @@ if(overworld == 1.0){
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
         
-        float screenShadow = rayTraceShadow(sunVec,viewPos,noise);
+        float screenShadow = rayTraceShadow(sunVec,viewPos,noise,0);
         screenShadow = (screenShadow+lmy)*lmx;
         shadeDir *= screenShadow;
         
         //shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
     	    float ao = 1.0 *((1.0 - AOStrength) + jaao(texCoord,normal3,noise) * AOStrength);
-  
+      //ambientLight.rgb = rtGI(normal,normal3, vec4(noise), viewPos,0, ambientLight,vec3(1.0)*lmy, OutTexel.rgb,vec2(lmx,lmy));  
 		shading = (direct*shadeDir)+ambientLight;
         shading += (sunSpec*direct)*shadeDir;      
 
         shading += lightmap*0.1;
   
         
-		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-rainStrength);	
-        if(postlight == 1)ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-rainStrength);
+		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-(rainStrength*lmx));	
+        if(postlight == 1)ambientLight = mix(vec3(0.1,0.1,0.5),vec3(1.0),1-(rainStrength*lmx));
 
-        
-		shading = mix(ambientLight,shading,1-rainStrength);	
+ 
+
+		shading = mix(ambientLight,shading,1-(rainStrength*lmx));	
         if (light > 0.001)  shading.rgb = vec3(light*2.0);
         shading = max(vec3(0.1),shading);
 
@@ -1210,7 +1397,7 @@ if(overworld == 1.0){
     }	
 
     outcol.a = 1.0;
- //   outcol.rgb = clamp(vec3(dlight),0.01,1);     
+    //outcol.rgb = clamp(vec3(normal),0.01,1);  
 
 
 }
