@@ -83,7 +83,7 @@ void main() {
     else if (isSky > 0.5) {
 
 
-        /*
+        
         vec4 screenPos = gl_FragCoord;
         screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
         screenPos.zw = vec2(1.0);
@@ -92,9 +92,9 @@ void main() {
         ndusq = ndusq * ndusq;
         fragColor = linear_fog(ColorModulator, pow(1.0 - ndusq, 8.0), 0.0, 1.0, FogColor);
 
-//   fragColor.rgb = renderSky(ColorModulator.rgb,ColorModulator.rgb,FogColor.rgb,view.y);
+   fragColor.rgb = renderSky(ColorModulator.rgb,ColorModulator.rgb,FogColor.rgb,view.y);
 
-*/
+
     }/*
     else {
         fragColor = linear_fog(ColorModulator, vertexDistance, FogStart, FogEnd, FogColor);
