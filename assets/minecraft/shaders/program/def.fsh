@@ -32,7 +32,7 @@ out vec4 fragColor;
 #define TORCH_B 0.2
 
 #define SKY_BRIGHTNESS_DAY 0.4
-#define SKY_BRIGHTNESS_NIGHT 0.1
+#define SKY_BRIGHTNESS_NIGHT 2.0
 #define fsign(a)  (clamp((a)*1e35,0.,1.)*2.-1.)
 
 

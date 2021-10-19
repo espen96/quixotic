@@ -831,7 +831,7 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 
 float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
-    const float quality = 15.0;
+    const float quality = 16.0;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
 	//prevents the ray from going behind the camera
 	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ? (-near -position.z) / dir.z : far*sqrt(3.);
@@ -842,7 +842,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither){
 
 
 
-    vec3 stepv = direction *15.0;
+    vec3 stepv = direction *10.0;
 
 	vec3 spos = clipPosition+stepv;
 
@@ -1030,7 +1030,7 @@ if(overworld == 1.0){
         vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
 
  		if (view.y > 0.){
-			atmosphere += stars(view)*clamp(1-rainStrength,0,1);
+			atmosphere += (stars(view)*2.0)*clamp(1-rainStrength,0,1);
             atmosphere += drawSun(dot(sunPosition3,view),0, suncol.rgb/150.,vec3(0.0))*clamp(1-rainStrength,0,1)*20;
             atmosphere += drawSun(dot(-sunPosition3,view),0, suncol.rgb,vec3(0.0))*clamp(1-rainStrength,0,1);
             vec4 cloud = texture(cloudsample, texCoord*CLOUDS_QUALITY);
@@ -1130,13 +1130,13 @@ if(overworld == 1.0){
     vec3 sunPosition2 = mix(sunPosition3,-sunPosition3,clamp(skyIntensityNight*3,0,1));
     vec3 sunVec = mix(sunVec,-sunVec,clamp(skyIntensityNight*3,0,1));
  
-	//float shadeDir  = clamp(dot(normal, sunPosition2),0,1);
-    float shadeDir = OrenNayar( normal, p3, sunPosition2, 1-ggxAmmount);
-    shadeDir+= (mix(max(phaseg(dot(view, sunPosition2),0.45)*1.5, phaseg(dot(view, sunPosition2),0.1))*3, shadeDir, 0.35))*float(sssa)*lmx;
-    shadeDir = clamp(shadeDir,0,1);
+	float shadeDir  = max(0.0,dot(normal, sunPosition2));
+    //float shadeDir = OrenNayar( normal, p3, sunPosition2, 1-ggxAmmount);
+    shadeDir+= max(0.0,(max(phaseg(dot(view, sunPosition2),0.45)*1.5, phaseg(dot(view, sunPosition2),0.1))*3)*float(sssa)*lmx);
+
     vec3 f0 = vec3(0.04);
 	float roughness = 1-ggxAmmount;
-	vec3 speculars = vec3(0.0);
+	vec3 reflections = vec3(0.0);
 
 
 
@@ -1157,7 +1157,7 @@ if(overworld == 1.0){
 
             vec4 color2 = vec4(OutTexel,1);
             reflection2 = mix(vec4(avgSky,1),reflection2,reflection2.a);
-            speculars += ((reflection2.rgb )*(fresnel*OutTexel));
+            reflections += ((reflection2.rgb )*(fresnel*OutTexel));
             OutTexel *= 0.1;
 
     }
@@ -1165,13 +1165,14 @@ if(overworld == 1.0){
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
         
-        float screenShadow = (rayTraceShadow(sunVec,viewPos,noise)*clamp((lmx-0.0)*1,0,1));
-        screenShadow = mix(screenShadow,((screenShadow+lmy),0,1),clamp((lmy),0,1));
+        float screenShadow = rayTraceShadow(sunVec,viewPos,noise);
+        screenShadow = (screenShadow+lmy)*lmx;
         shadeDir *= screenShadow;
         
-        shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
-      
-		shading = ambientLight + (direct*shadeDir);
+        //shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
+    	    float ao = 1.0 *((1.0 - AOStrength) + jaao(texCoord,normal3,noise) * AOStrength);
+  
+		shading = (direct*shadeDir)+ambientLight;
         shading += (sunSpec*direct)*shadeDir;      
 
         shading += lightmap*0.1;
@@ -1183,13 +1184,12 @@ if(overworld == 1.0){
         
 		shading = mix(ambientLight,shading,1-rainStrength);	
         if (light > 0.001)  shading.rgb = vec3(light*2.0);
+        shading = max(vec3(0.1),shading);
+
+    vec3 dlight =   ( OutTexel * shading)+reflections;
 
 
-    vec3 dlight =   ( OutTexel * clamp(shading,0.1,10))+speculars;
 
-
-
-	float ao = 1.0 *((1.0 - AOStrength) + jaao(texCoord,normal3,noise) * AOStrength);
     
     outcol.rgb =  lumaBasedReinhardToneMapping(dlight*ao);           	
     	     
@@ -1210,7 +1210,7 @@ if(overworld == 1.0){
     }	
 
     outcol.a = 1.0;
-    // 	outcol.rgb = clamp(vec3(shadeDir),0.01,1);     
+ //   outcol.rgb = clamp(vec3(dlight),0.01,1);     
 
 
 }

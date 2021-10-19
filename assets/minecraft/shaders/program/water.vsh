@@ -87,7 +87,7 @@ float time7 = mix(time6,time5,time8);
 
 float worldTime = time7;
 
-const float sunPathRotation = 30.0;
+const float sunPathRotation = -35.0;
 const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
 //minecraft's native calculateCelestialAngle() function, ported to GLSL.
