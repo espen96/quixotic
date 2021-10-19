@@ -844,12 +844,10 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 
 	vec3 stepv = direction * stride;
 	vec3 spos = clipPosition+stepv;
-	float minZ = clipPosition.z;
-	float maxZ = spos.z+stepv.z*0.5;
+
 
 	for (int i = 0; i < int(quality); i++) {
 		spos += stepv*dither;
-        if (1.0 < minZ || maxZ < 0.0) break;
 
 		float sp = texture2D(DiffuseDepthSampler,spos.xy).x;
         //if (sp >0.999) return 1.0;
@@ -857,7 +855,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
-			if (dist < 0.01 ) return clamp(linZ(sp)*10-1,0,1);
+			if (dist < 0.05 ) return exp2(position.z/4.);
 
 	}
 
