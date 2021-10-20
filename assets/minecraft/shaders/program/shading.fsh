@@ -830,32 +830,45 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 
 
 float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
-
+	float stepSize = 50;
     const int quality = 16;
-    const float stride = 4.5;
+    const float stride = 10;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
 	//prevents the ray from going behind the camera
-	float rayLength = (position.z + dir.z * far*1.732 > -near) ? (-near - position.z) / dir.z : far*1.732;
-    //vec3 direction = ((position+dir*rayLength))-clipPosition;  //convert to clip space
-    vec3 direction = toClipSpace3(position+dir*rayLength)-clipPosition;
-    direction.xyz = direction.xyz/max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y);	//fixed step size
+	float rayLength = ((position.z + dir.z * sqrt(3.0)*far) > -sqrt(3.0)*near) ? (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*far;
+
+	vec3 end = toClipSpace3(position+dir*rayLength);
+	vec3 direction = end-clipPosition;  //convert to clip space
+
+	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
+
+	//get at which length the ray intersects with the edge of the screen
+	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+	vec3 stepv = direction/len;
+
+	int iterations = int(min(len, mult*len)-2);
+
+	
+	vec3 spos = clipPosition + stepv/stepSize*6.0;
 
 
 
-	vec3 stepv = direction * stride;
-	vec3 spos = clipPosition+stepv;
+
+		
 
 
-	for (int i = 0; i < int(quality); i++) {
+	for (int i = 0; i < int(iterations); i++) {
 		spos += stepv*dither;
-
-		float sp = texture2D(DiffuseDepthSampler,spos.xy).x;
+        if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
+		float sp = texture2D(TranslucentDepthSampler,spos.xy).x;
         //if (sp >0.999) return 1.0;
         if( sp < spos.z) {
+			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return (1.0);
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
-			if (dist < 0.05 ) return exp2(position.z/4.);
+			if (dist < 0.05 ) return 0.0;
 
 	}
 
@@ -1350,7 +1363,7 @@ if(overworld == 1.0){
 
         
         float screenShadow = rayTraceShadow(sunVec,viewPos,noise,0);
-        screenShadow = (screenShadow+lmy)*lmx;
+        screenShadow = clamp(((screenShadow+lmy)*clamp((pow(lmx,32))*100,0.1,1.0)),0.1,1.0)*lmx;
         shadeDir *= screenShadow;
         
         //shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
@@ -1395,7 +1408,7 @@ if(overworld == 1.0){
     }	
 
     outcol.a = 1.0;
-    //outcol.rgb = clamp(vec3(normal),0.01,1);  
+   // outcol.rgb = clamp(vec3(screenShadow),0.01,1);  
 
 
 }
