@@ -1269,7 +1269,7 @@ if(overworld == 1.0){
         float depth3 = depthd;
         float depth4 = depthb;
         float depth5 = depthe;
-        float normalstrength = 0.0 * (1.0-clamp(linZ(depth)*10,0,1));    
+        float normalstrength = 0.1;    
         const float normaldistance = 2.5;    
         const float normalpow = 4.0;    
 
