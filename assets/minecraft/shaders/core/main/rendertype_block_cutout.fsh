@@ -67,6 +67,9 @@ void main() {
 //color.rgb = test;
 vec3 test2 = floor(test.rgb*255);
 float test3  = floor(test2.r+test2.g+test2.b);
+//if(vertexColor.g >0.1)alpha0 =30; 
+if (diff.r < 0.1 && diff.b < 0.05 && lum< 0.8) alpha0 = int(floor(map((albedo.g*0.5)*255,0,255,sssMin,sssMax)));
+
  //if(test3 <= 305 && test3 >= 295 && test2.r >= 110 && test2.b <= 90)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
  //if(test3 <= 255 && test3 >= 250 && test2.r >= 105 && test2.b <= 90)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
   }
@@ -74,12 +77,11 @@ float test3  = floor(test2.r+test2.g+test2.b);
   /*
  if (alpha0 ==255) {
                    alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax-16)));
- if (diff.r < 0.1) alpha0 = int(floor(map(procedual1,0,255,sssMin,sssMin+3)));
  }
 */
   float noise = luma4(rnd)*255;  
  
-    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+0,sssMin,sssMax)); // SSS
+    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0,sssMin,sssMax)); // SSS
 
     if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+0,lightMin,lightMax)); // Emissives
 

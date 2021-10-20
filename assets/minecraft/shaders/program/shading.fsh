@@ -830,19 +830,16 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 
 
 float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
-	float stepSize = 50;
-    const int quality = 16;
-    const float stride = 10;
+	float stepSize = 45+(45*translucent);
+
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
-	//prevents the ray from going behind the camera
 	float rayLength = ((position.z + dir.z * sqrt(3.0)*far) > -sqrt(3.0)*near) ? (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*far;
 
 	vec3 end = toClipSpace3(position+dir*rayLength);
-	vec3 direction = end-clipPosition;  //convert to clip space
+	vec3 direction = end-clipPosition; 
 
 	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
 
-	//get at which length the ray intersects with the edge of the screen
 	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
 	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
 	vec3 stepv = direction/len;
@@ -850,7 +847,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 	int iterations = int(min(len, mult*len)-2);
 
 	
-	vec3 spos = clipPosition + stepv/stepSize*6.0;
+	vec3 spos = clipPosition + stepv/stepSize;
 
 
 
@@ -862,7 +859,8 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 		spos += stepv*dither;
         if (clamp(clipPosition.xy,0,1) != clipPosition.xy) break;
 		float sp = texture2D(TranslucentDepthSampler,spos.xy).x;
-        //if (sp >0.999) return 1.0;
+
+        //if (sp >=1.0) return 0.0;
         if( sp < spos.z) {
 			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return (1.0);
 
@@ -875,19 +873,16 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 	}
     return 1.0;
 }
+/*
 vec3 RT(vec3 dir,vec3 position,float noise, vec3 N,float transparent, vec2 lightmap, bool emissive, bool hand){
 
 
 
 	float ssptbias = 0.2;
 	float stepSize = 99;
-//	int maxSteps =   clamp(int(  (clamp((moment.x),0,1)*99)),6,99);
 #if STEPS != Unlimited
 	int maxSteps = STEPS;
 #endif
-//	if (emissive) return vec3(1.1);
-	if (hand) return vec3(1.1);
-
 
 
 	bool istranparent = transparent > 0.0;
@@ -924,11 +919,8 @@ vec3 RT(vec3 dir,vec3 position,float noise, vec3 N,float transparent, vec2 light
 		
 		if (dist <= 0.035) return vec3(spos.xy, invLinZ(sp));
 
-		
 	}
 
-
-		
 	spos += stepv*noise;
 
     for(int i = 0; i < iterations; i++){
@@ -943,17 +935,9 @@ vec3 RT(vec3 dir,vec3 position,float noise, vec3 N,float transparent, vec2 light
 			float dist = abs(sp-currZ)/currZ;
 
 			if (dist <= ssptbias) return vec3(spos.xy, invLinZ(sp));
-
 		}
-		
-
 			spos += stepv;	
-		
-
 	}
-
-
-
 
 	return vec3(1.1);
 
@@ -975,18 +959,10 @@ vec3 TangentToWorld(vec3 N, vec3 H)
     return vec3((T * H.x) + (B * H.y) + (N * H.z));
 }
 vec3 rtGI(vec3 normal,vec3 normal2,vec4 noise,vec3 fragpos, float translucent, vec3 ambient, vec3 torch, vec3 albedo,vec2 lightmap){
-
-
-
 	int nrays = 4 ;
 
 	vec3 intRadiance = vec3(0.0);
-	
-
-
 	float occlusion = 0.0;
-
-
 	for (int i = 0; i < nrays; i++){ 
 
 		int seed = (int(Time*100)%40000)*nrays+i;
@@ -996,14 +972,7 @@ vec3 rtGI(vec3 normal,vec3 normal2,vec4 noise,vec3 fragpos, float translucent, v
 		rayDir = TangentToWorld(normal,rayDir);
 		rayDir = mat3(gbufferModelView)*rayDir;
         if (dot(rayDir, normal2) < 0.0) rayDir = -rayDir;
-		//rayDir = reflect(normalize(fragpos), normal);
-
-
-
 		vec3 rayHit = RT(rayDir, fragpos, fract(seed/1.6180339887 + noise.b), mat3(gbufferModelView)*normal,0,lightmap,false,false);
-
-
-
 		vec3 previousPosition   = rayHit;	
 
 		if (rayHit.z < 1.0){
@@ -1016,48 +985,26 @@ vec3 rtGI(vec3 normal,vec3 normal2,vec4 noise,vec3 fragpos, float translucent, v
 				float lum = luma(intRadiance);
 				vec3 diff = intRadiance-lum;
 				intRadiance = (intRadiance + diff*(0.5));
-
-
 				}
 						
 			else{
-
-			
 				intRadiance += ambient;
-			
 				}
-					
 				occlusion += 1.0;
 		}		
 		else {
 						float bounceAmount =float(rayDir.y > 0.0) + clamp(-rayDir.y*0.1+0.1, 0.0,1.0);
 			vec3 sky_c =  ((skyLut(rayDir,sunPosition3.xyz,rayDir.y,temporals3Sampler))*bounceAmount)*lightmap.x ;
-           
-
-
+    
 			intRadiance += sky_c;
-
 		}
-		
-
-		
 	}
-	
-
-
-
 	intRadiance.rgb =  (intRadiance  /nrays + (1.0-(occlusion*0.5)/nrays)*(torch));	
-
-
-
 
 	return vec3(intRadiance).rgb*(1.0-(occlusion)/nrays);
 
-
-
-
 }
-
+*/
 
 // simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
 // see also https://www.shadertoy.com/view/MdtGD7
@@ -1328,8 +1275,11 @@ if(overworld == 1.0){
     vec3 sunVec = mix(sunVec,-sunVec,clamp(skyIntensityNight*3,0,1));
  
 	float shadeDir  = max(0.0,dot(normal, sunPosition2));
+    float screenShadow = rayTraceShadow(sunVec,viewPos,noise,sssa);
+    screenShadow = clamp(((screenShadow+lmy)*clamp((pow(lmx,32))*100,0.1,1.0)),0.1,1.0)*lmx;
+    shadeDir *= screenShadow;
     //float shadeDir = OrenNayar( normal, p3, sunPosition2, 1-ggxAmmount);
-    shadeDir+= max(0.0,(max(phaseg(dot(view, sunPosition2),0.45)*1.5, phaseg(dot(view, sunPosition2),0.1))*3)*float(sssa)*lmx);
+    shadeDir+= max(0.0,(max(phaseg(dot(view, sunPosition2),0.45)*1.5 + (max(0.0,screenShadow*2-1)*0.5), phaseg(dot(view, sunPosition2),0.1))*3+ (max(0.0,screenShadow*2-1)*0.5))*float(sssa)*lmx);
 
     vec3 f0 = vec3(0.04);
 	float roughness = 1-ggxAmmount;
@@ -1362,9 +1312,7 @@ if(overworld == 1.0){
         float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
 
         
-        float screenShadow = rayTraceShadow(sunVec,viewPos,noise,0);
-        screenShadow = clamp(((screenShadow+lmy)*clamp((pow(lmx,32))*100,0.1,1.0)),0.1,1.0)*lmx;
-        shadeDir *= screenShadow;
+
         
         //shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
     	    float ao = 1.0 *((1.0 - AOStrength) + jaao(texCoord,normal3,noise) * AOStrength);
@@ -1407,8 +1355,8 @@ if(overworld == 1.0){
 
     }	
 
-    outcol.a = 1.0;
-   // outcol.rgb = clamp(vec3(screenShadow),0.01,1);  
+
+   // outcol.rgb = clamp(vec3(pbr.g),0.01,1);  
 
 
 }
@@ -1425,7 +1373,7 @@ if(overworld == 1.0){
 	}
     outcol= (clamp(outcol,0,2));
 
-    fragColor = (outcol.rgba);
+    fragColor = vec4(outcol.rgb,1);
 
 
 /*

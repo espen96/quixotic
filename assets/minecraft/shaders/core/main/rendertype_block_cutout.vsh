@@ -32,25 +32,12 @@ noperspective out vec3 test;
 out vec4 glpos;
 
 #define WAVY_PLANTS
-#define WAVY_STRENGTH 0.2 
-#define WAVY_SPEED 1000.25 
+#define WAVY_STRENGTH 0.3 
+#define WAVY_SPEED 12.0 
 const float PI48 = 150.796447372*WAVY_SPEED;
     float animation = GameTime;
 float pi2wt = PI48*animation;
 
-vec2 calcWave(in vec3 pos) {
-
-    float magnitude = abs(sin(dot(vec4(animation, pos),vec4(1.0,0.005,0.005,0.005)))*0.5+0.72);
-	vec2 ret = (sin(pi2wt*vec2(0.0063,0.0015)*4. - pos.xz + pos.y*0.05)+0.1)*magnitude;
-
-    return ret;
-}
-
-vec3 calcMovePlants(in vec3 pos) {
-    vec2 move1 = calcWave(pos );
-	float move1y = -length(move1);
-   return vec3(move1.x,move1y,move1.y)*5.*WAVY_STRENGTH;
-}
 
 const vec2 COPRIMES = vec2(2, 3);
 
@@ -70,18 +57,34 @@ vec2 halton(int index) {
 vec2 calculateJitter() {
     return (halton(int(mod((GameTime*3.0) * 24000.0, 128))) - 0.5) / 1024.0;
 }
+vec3 wavingLeaves(vec3 viewPos){
+  float t = pi2wt;
+
+  float magnitude = sin((t * 2.0) + viewPos.x + viewPos.z) * 0.02 + 0.02;
+
+  float d0 = sin(t * 0.367867992224) * 3.0 - 2.0;
+  float d1 = sin(t * 0.295262467443) * 3.0 - 2.0;
+  float d2 = sin(t * 0.233749453392) * 3.0 - 2.0;
+  float d3 = sin(t * 0.316055598953) * 3.0 - 2.0;
+
+	vec3 wind = vec3(0.0);
+
+  wind.x += sin((t * 1.80499344071) + (viewPos.x + d0) * 0.5 + (viewPos.z + d1) * 0.5 + viewPos.y) * magnitude*0.25;
+	wind.z += sin((t * 1.49332750285) + (viewPos.y + d2) * 0.5 + (viewPos.x + d3) * 0.5 + viewPos.y) * magnitude*2.0;
+	wind.y += sin((t * 0.48798950513) + (viewPos.z + d2) * 0.5 + (viewPos.x + d3) * 0.5 + viewPos.y) * magnitude * 0.5;
+
+  return wind;
+}
 
 void main() {
     vec3 position = Position + ChunkOffset;
     float animation = GameTime * 4000.0;
     test = textureLod(Sampler0, UV0,100).rgb ;
-    float xs = 0.0;
-    float ys = 0.0;
-    float zs = 0.0;
+    vec3 wave = vec3(0.0);
+
     if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a*255 >= 17.0) {
-            xs = calcMovePlants(position).x;
-            ys = calcMovePlants(position).y;
-            zs = calcMovePlants(position).z;
+            wave = wavingLeaves(Position).xyz;
+
         }
 
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
@@ -99,9 +102,8 @@ void main() {
     lm2 = minecraft_sample_lightmap2(Sampler2, UV2);
     normal = normalize(ModelViewMat * vec4(Normal, 0.0));
 
-    xs *= lmx;
-    zs *= lmx;
-    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, ys / 32.0, zs / 32.0, 0.0)+vec4(calculateJitter()*0, 0, 0));
+
+    gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave*lmx, 0.0)+vec4(calculateJitter()*0, 0, 0));
     glpos = gl_Position;
 
 }
