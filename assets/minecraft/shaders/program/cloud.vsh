@@ -180,14 +180,8 @@ vec3 upVec=vec3(upPosX,upPosY,upPosZ);
  sunElevation = sunPosX*upPosX+sunPosY*upPosY+sunPosZ*upPosZ;
 
 
-	avgSky = vec3(0.0);
-    const int maxIT = 15;
-	for (int i = 0; i < maxIT; i++) {
-			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
-			vec3 pos = normalize(rodSample(ij));
-			vec3 samplee = 2.2*skyLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
-			avgSky += samplee/2.2;
-	}
+	avgSky = texelFetch(temporals3Sampler,ivec2(7,37),0).rgb;
+
 
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
 	gl_Position.xy = (gl_Position.xy*0.5+0.5)*clamp(CLOUDS_QUALITY+0.01,0.0,1.0)*2.0-1.0;

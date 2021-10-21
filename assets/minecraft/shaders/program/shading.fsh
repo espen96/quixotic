@@ -95,7 +95,7 @@ mat4 wgbufferModelViewInverse = inverse(wgbufferModelView);
 #define FOG_TOD_MULTIPLIER 1.0 //Influence of time of day on fog amount
 #define FOG_RAIN_MULTIPLIER 1.0 //Influence of rain on fog amount
 
-#define SSAO_SAMPLES 6
+#define SSAO_SAMPLES 4
 
 #define NORMDEPTHTOLERANCE 1.0
 
@@ -585,9 +585,15 @@ vec2 R2_samples(int n){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha * n);
 }
+#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
+#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
 
 
+#define  projMAD2(m, v) (diagonal3(m) * (v) + vec3(0,0,m[3].b))
 
+vec3 toClipSpace3(vec3 viewSpacePosition) {
+    return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
+}
 
 
 float square(float x){
@@ -658,8 +664,7 @@ vec3 worldToView(vec3 worldPos) {
     return pos.xyz;
 }
 
-#define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
-#define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
+
 vec3 toScreenSpace(vec3 p) {
 	vec4 iProjDiag = vec4(gbufferProjectionInverse[0].x, gbufferProjectionInverse[1].y, gbufferProjectionInverse[2].zw);
     vec3 p3 = p * 2. - 1.;
@@ -679,65 +684,106 @@ float cdist(vec2 coord) {
 	return max(abs(coord.x - 0.5), abs(coord.y - 0.5)) * 1.85;
 }
 
-vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out float border, 
-			  float maxf, float stp, float ref, float inc) {
-	vec3 pos = vec3(0.0);
-	float dist = 0.0;
-    int sr = 0;
+vec3 rayTrace(vec3 dir,vec3 position,float dither, float fresnel){
 
 
-	vec3 start = viewPos;
+	
 
-    vec3 vector = stp * reflect(normalize(viewPos), normalize(normal));
-    viewPos += vector;
-	vec3 tvector = vector;
+	
 
 
+	
+	float stepSize = 15;
+	int maxSteps = 30;	
+	int maxLength = 30;	
+	
+	
 
-    for(int i = 0; i < 12; i++) {
-        pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
-		if (pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05) break;
 
-		vec3 rfragpos = vec3(pos.xy, texture(DiffuseDepthSampler,pos.xy).r);
-        rfragpos = nvec3(gbufferProjectionInverse * nvec4(rfragpos * 2.0 - 1.0));
-		dist = length(start - rfragpos);
+    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
+	
 
-        float err = length(viewPos - rfragpos);
-		if (err < pow(length(vector) * pow(length(tvector), 0.11), 1.1) * 1.2) {
-			sr++;
-			if (sr >= maxf) break;
-			tvector -= vector;
-			vector *= ref;
+	float rayLength = ((position.z + dir.z * sqrt(3.0)*maxLength) > -sqrt(3.0)*near) ?  (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*maxLength;
+
+	vec3 end = toClipSpace3(position+dir*rayLength);
+	vec3 direction = end-clipPosition;  //convert to clip space
+	
+	
+	float len = max(abs(direction.x)/oneTexel.x,abs(direction.y)/oneTexel.y)/stepSize;
+	
+	
+	//get at which length the ray intersects with the edge of the screen
+	vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+
+
+	vec3 stepv = direction/len;
+
+	
+	int iterations = min(int(min(len, mult*len)-2), maxSteps);	
+
+	//Do one iteration for closest texel (good contact shadows)
+	vec3 spos = clipPosition + stepv/stepSize*4.0;
+	
+		float sp = linZ(texture2D(DiffuseDepthSampler,spos.xy).x);
+	float currZ = linZ(spos.z);
+
+
+	
+
+	spos += stepv*dither;	
+	
+ for(int i = 0; i < iterations; i++){
+		float sp = linZ(texture2D(DiffuseDepthSampler,spos.xy).x);
+		float currZ = linZ(spos.z);
+		if( sp < currZ) {
+			float dist = abs(sp-currZ)/currZ;
+			if (dist <= 0.036 ) return vec3(spos.xy, invLinZ(sp));
 		}
-        vector *= inc;
-        tvector += vector;
-		viewPos = start + tvector * (dither * 0.05 + 0.975);
-    }
-
-	border = cdist(pos.st);
-
-
-	return vec4(pos, dist);
+			spos += stepv;
+	}
+	
+    return vec3(1.1);
 }
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noise) {
+
+vec4 SSR(vec3 fragpos, float fragdepth, vec3 normal, vec4 skycol, float noise,float roughness) {
 
     vec3 pos    = vec3(0.0);
 
+float maxf = 4.0; // 4.0 max refinement steps
+float stp  = 1.0; // 1.0 initial length of the reflected vector
+float ref  = 0.1; // 0.1 refinement multiplier
+float inc  = 2.0; // 2.0 iteration multiplier
 
 
 
     vec4 color = vec4(0.0);
 	float border = 0.0;
-     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm,  noise, border, 4, 1.0, 0.1, 2.0).xyz;
+    	vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal )  );
+		float f0 = 0.02;
 
-	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
+
+
+		float emissive = 0.0;
+		float F0 = f0;
+
+		float normalDotEye = dot(normal, normalize(fragpos));
+		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0);
+		fresnel = mix(F0,1.0,fresnel);
+
+
+     //pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, maxf, stp, ref, inc).xyz;
+     pos = rayTrace(reflectedVector,fragpos,noise, 0);
+
+	border = clamp(13.333 * (1.0 - border), 0.0, fresnel);
 	
 	if (pos.z < 1.0 - 1e-5) {
 		color.a = texture(PreviousFrameSampler, pos.st).a;
-		if (color.a > 0.001) color.rgb = texture(PreviousFrameSampler, pos.st).rgb;
+		
+        color.rgb = texture(PreviousFrameSampler, pos.st).rgb*5.0;
 
 		
-		color.a *= border;
+		//color.a *= border;
 	}
 
     return color;
@@ -822,15 +868,11 @@ vec3 toScreenSpace(vec2 p) {
 	}
 
 
-#define  projMAD2(m, v) (diagonal3(m) * (v) + vec3(0,0,m[3].b))
-
-vec3 toClipSpace3(vec3 viewSpacePosition) {
-    return projMAD2(gbufferProjection, viewSpacePosition) / -viewSpacePosition.z * 0.5 + 0.5;
-}
 
 
 float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
-	float stepSize = 45+(45*translucent);
+	float stepSize = 50;
+	int maxSteps = 11;
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
 	float rayLength = ((position.z + dir.z * sqrt(3.0)*far) > -sqrt(3.0)*near) ? (-sqrt(3.0)*near -position.z) / dir.z : sqrt(3.0)*far;
@@ -844,7 +886,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 	float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
 	vec3 stepv = direction/len;
 
-	int iterations = int(min(len, mult*len)-2);
+	int iterations = min(int(min(len, mult*len)-2), maxSteps);
 
 	
 	vec3 spos = clipPosition + stepv/stepSize;
@@ -862,7 +904,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 
         //if (sp >=1.0) return 0.0;
         if( sp < spos.z) {
-			if (spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0) return (1.0);
+			
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
 
@@ -1054,24 +1096,7 @@ vec3 LinearTosRGB(in vec3 color)
 
     return clr;
 }
-float OrenNayar(vec3 normal, vec3 viewvec, vec3 lvec, float roughness) {    //qualitative model
 
-    vec3 h  = normalize(viewvec + lvec);
-
-    float nDotL     = clamp(dot(normal, lvec),0,1);
-
-    float nDotV     = clamp(dot(normal, viewvec),0,1);
-
-    float t     = max(nDotL, nDotV);
-    float g     = max(dot(viewvec-normal*nDotV, lvec-normal*nDotL), 0.0);
-    float c     = g*(1/t) - g*t;
-    float a     = 0.285 * (1/(roughness + 0.57)) + 0.5;
-    float b     = 0.45 * roughness * (1/(roughness + 0.09));
-
-    float on    = max(nDotL, 0.0) * (b * c + a);
-
-    return max(on, 0.0);
-}
 void main() {
     float noise = mask(gl_FragCoord.xy+(Time*100));
     //float noise = R2_dither();
@@ -1278,7 +1303,6 @@ if(overworld == 1.0){
     float screenShadow = rayTraceShadow(sunVec,viewPos,noise,sssa);
     screenShadow = clamp(((screenShadow+lmy)*clamp((pow(lmx,32))*100,0.1,1.0)),0.1,1.0)*lmx;
     shadeDir *= screenShadow;
-    //float shadeDir = OrenNayar( normal, p3, sunPosition2, 1-ggxAmmount);
     shadeDir+= max(0.0,(max(phaseg(dot(view, sunPosition2),0.45)*1.5 + (max(0.0,screenShadow*2-1)*0.5), phaseg(dot(view, sunPosition2),0.1))*3+ (max(0.0,screenShadow*2-1)*0.5))*float(sssa)*lmx);
 
     vec3 f0 = vec3(0.04);
@@ -1289,23 +1313,26 @@ if(overworld == 1.0){
 
             
     if(ggxAmmount2 > 0.001){ 
+
+
             f0 = vec3(0.8);  
             ggxAmmount = ggxAmmount2;
             float ldepth = linZ2(depth);
-
+            vec3 normal2 =  normal3+(noise*(1-ggxAmmount));
 			vec3 reflection = vec3(0.0);    
             vec3 fragpos3 = (vec4(texCoord, ldepth, 1.0)).xyz;
             fragpos3 *= ldepth;
+            vec3 avgSky = mix(lightmap*0.5,ambientLight,lmx);
+            vec4 reflection2 = vec4(SSR(viewPos.xyz, depth,normal2, vec4(avgSky,1),noise,ggxAmmount));	
 
-            vec4 reflection2 = vec4(SSR(viewPos.xyz, depth,normal3, vec4(avgSky,1),noise));	
-
-            float fresnel = pow(clamp(1.0 + dot(normal3, normalize(fragpos3.xyz)), 0.0, 1.0), 5.0);
+            float fresnel = pow(clamp(1.0 + dot(normal2, normalize(fragpos3.xyz)), 0.0, 1.0), 5.0);
 
 
             vec4 color2 = vec4(OutTexel,1);
             reflection2 = mix(vec4(avgSky,1),reflection2,reflection2.a);
             reflections += ((reflection2.rgb )*(fresnel*OutTexel));
-            OutTexel *= 0.1;
+            OutTexel *= 0.075;
+            reflections = max(vec3(0.0),reflections);
 
     }
         
@@ -1320,7 +1347,7 @@ if(overworld == 1.0){
 		shading = (direct*shadeDir)+ambientLight;
         shading += (sunSpec*direct)*shadeDir;      
 
-        shading += lightmap*0.1;
+        //shading += lightmap*0.1;
   
         
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-(rainStrength*lmx));	
@@ -1356,7 +1383,7 @@ if(overworld == 1.0){
     }	
 
 
-   // outcol.rgb = clamp(vec3(pbr.g),0.01,1);  
+    //outcol.rgb = clamp(vec3(reflections),0.01,1);  
 
 
 }

@@ -211,14 +211,9 @@ fogAmount = 1.6*BASE_FOG_AMOUNT*(fogAmount0+max(FOG_RAIN_MULTIPLIER*1/70.*rainSt
             0.33*FOG_TOD_MULTIPLIER*1/50.*clamp(modWT-13000.,0.,1000.0)/1000.*(1.0-clamp(modWT-23000.,0.,1000.0)/1000.)));
 
 
-	avgSky = vec3(0.0);
-    const int maxIT = 5;
-	for (int i = 0; i < maxIT; i++) {
-			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
-			vec3 pos = normalize(rodSample(ij));
-			vec3 samplee = 2.2*skyLut(pos.xyz,sunDir,pos.y,temporals3Sampler)/maxIT;
-			avgSky += samplee/2.2;
-	}
+
+
+	avgSky = texelFetch(temporals3Sampler,ivec2(7,37),0).rgb;
 ///////////////////////////
 
 

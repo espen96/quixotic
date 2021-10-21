@@ -1,5 +1,6 @@
 {
     "targets":[
+      "pre",
       "swap1",
       "swap2",
       "swap3",
@@ -33,8 +34,8 @@
             "id":"translucent:depth"
           },
           {
-            "name":"shading",
-            "id":"shading"
+            "name":"pre",
+            "id":"pre"
           },
           {
             "name":"noisetex",
@@ -42,8 +43,21 @@
           }
         ]
       },
-
-
+      {
+        "name":"copy_with_depth",
+        "intarget":"swap1",
+        "outtarget":"pre",
+        "auxtargets":[
+          {
+            "name":"DepthSampler",
+            "id":"swap3:depth"
+          },
+          {
+            "name":"MainSampler",
+            "id":"minecraft:main"
+          }
+        ]
+      },
       {
         "name":"cloud",
         "intarget":"minecraft:main",

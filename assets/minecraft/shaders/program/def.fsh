@@ -17,6 +17,20 @@ in float sunIntensity;
 in float moonIntensity;
 
 
+ in vec3 ambientUp;
+ in vec3 ambientLeft;
+ in vec3 ambientRight;
+ in vec3 ambientB;
+ in vec3 ambientF;
+ in vec3 ambientDown;
+ in vec3 lightSourceColor;
+ in vec3 sunColor;
+ in vec3 sunColorCloud;
+ in vec3 moonColor;
+ in vec3 moonColorCloud;
+ in vec3 zenithColor;
+ in vec3 avgSky;
+
 
  in vec3 ds;
  in vec3 ms;
@@ -107,15 +121,16 @@ float luma3(vec3 color) {
 
 
 void main() {
-    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
+//vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
+vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown)/6.*(1.0+rainStrength*0.2);
 
 if (gl_FragCoord.x < 17. && gl_FragCoord.y < 17.){
 
 
 
-vec3 avgAmbient = ds+ms;
+  vec3 avgAmbient = ds+ms;
 	 avgAmbient = mix(avgAmbient*vec3(0.2,0.2,0.5)*2.0,avgAmbient,1-rainStrength);	
-      float lumC = luma3(avgAmbient.rgb);
+  float lumC = luma3(avgAmbient.rgb);
 	vec3 diff = avgAmbient.rgb-lumC;
 	avgAmbient = avgAmbient.rgb + diff*(-lumC*0.5 + 0.5);
   float skyLut = floor(gl_FragCoord.y)/15.;
@@ -131,14 +146,28 @@ vec3 avgAmbient = ds+ms;
   fragColor = vec4(reinhard_jodie(ambient*10.0),1.0);
 
 }
+//Save light values
+if (gl_FragCoord.x < 1. && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientUp,1.0);
+if (gl_FragCoord.x > 1. && gl_FragCoord.x < 2.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientDown,1.0);
+if (gl_FragCoord.x > 2. && gl_FragCoord.x < 3.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientLeft,1.0);
+if (gl_FragCoord.x > 3. && gl_FragCoord.x < 4.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientRight,1.0);
+if (gl_FragCoord.x > 4. && gl_FragCoord.x < 5.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientB,1.0);
+if (gl_FragCoord.x > 5. && gl_FragCoord.x < 6.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(ambientF,1.0);
+if (gl_FragCoord.x > 6. && gl_FragCoord.x < 7.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(lightSourceColor,1.0);
+if (gl_FragCoord.x > 7. && gl_FragCoord.x < 8.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(avgAmbient,1.0);
+if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(lightCol.rgb,1.0);
 
-else if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 ){
-    float lumC = luma3(lightCol.rgb);
-	vec3 diff = lightCol.rgb-lumC;
-	vec3 lightCol = lightCol.rgb + diff*(-lumC*0.5 + 0.5);
-  fragColor.rgb =  lightCol.rgb;
-
-}
+if (gl_FragCoord.x > 11. && gl_FragCoord.x < 12.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+fragColor = vec4(avgSky,1.0);
 
 
 

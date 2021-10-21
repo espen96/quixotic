@@ -124,7 +124,7 @@ float decodeFloat24(vec3 raw) {
 void main() {
 
 
-     suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*3.0;
+     suncol = texelFetch(temporals3Sampler,ivec2(8,37),0).rgb*2.5;
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 
@@ -241,31 +241,15 @@ float fading2 = clamp(-sunElevation+0.095,0.0,0.08)/0.08;
  skyIntensityNight=max(0.,1.0-exp(angSkyNight))*(1.0-rainStrength*0.4)*pow(fading2,5.0);
 ///////////////////////////
 
-	ambientUp = vec3(0.0);
-	ambientDown = vec3(0.0);
-	ambientLeft = vec3(0.0);
-	ambientRight = vec3(0.0);
-	ambientB = vec3(0.0);
-	ambientF = vec3(0.0);
-	avgSky = vec3(0.0);
-	int maxIT = 20;
-	for (int i = 0; i < maxIT; i++) {
-			vec2 ij = R2_samples((int(Time)%1000)*maxIT+i);
-			vec3 pos = normalize(rodSample(ij));
 
+	ambientUp = texelFetch(temporals3Sampler,ivec2(0,37),0).rgb;
+	ambientDown = texelFetch(temporals3Sampler,ivec2(1,37),0).rgb;
+	ambientLeft = texelFetch(temporals3Sampler,ivec2(2,37),0).rgb;
+	ambientRight = texelFetch(temporals3Sampler,ivec2(3,37),0).rgb;
+	ambientB = texelFetch(temporals3Sampler,ivec2(4,37),0).rgb;
+	ambientF = texelFetch(temporals3Sampler,ivec2(5,37),0).rgb;
+	avgSky = texelFetch(temporals3Sampler,ivec2(11,37),0).rgb;
 
-			vec3 samplee = 2.2*skyLut(pos.xyz,sunPosition3,pos.y,temporals3Sampler)/maxIT;
-			avgSky += samplee/2.2;
-            
-			ambientUp += samplee*(pos.y+abs(pos.x)/7.+abs(pos.z)/7.);
-			ambientLeft += samplee*(clamp(-pos.x,0.0,1.0)+clamp(pos.y/7.,0.0,1.0)+abs(pos.z)/7.);
-			ambientRight += samplee*(clamp(pos.x,0.0,1.0)+clamp(pos.y/7.,0.0,1.0)+abs(pos.z)/7.);
-			ambientB += samplee*(clamp(pos.z,0.0,1.0)+abs(pos.x)/7.+clamp(pos.y/7.,0.0,1.0));
-			ambientF += samplee*(clamp(-pos.z,0.0,1.0)+abs(pos.x)/7.+clamp(pos.y/7.,0.0,1.0));
-			ambientDown += samplee*(clamp(pos.y/6.,0.0,1.0)+abs(pos.x)/7.+abs(pos.z)/7.);
-
-
-	}
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
 
 

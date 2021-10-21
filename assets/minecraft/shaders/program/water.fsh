@@ -88,7 +88,7 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 
 #define SSPTBIAS 0.5
 
-#define SSR_STEPS 20 //[10 15 20 25 30 35 40 50 100 200 400]
+#define SSR_STEPS 15 //[10 15 20 25 30 35 40 50 100 200 400]
 float hash12(vec2 p)
 {
 	vec3 p3  = fract(vec3(p.xyx) * .1031);
@@ -96,16 +96,44 @@ float hash12(vec2 p)
     return fract((p3.x + p3.y) * p3.z);
 }
 
+#define DOWNSCALE 32.0
+
+vec4 interpolate_bilinear(vec2 p, vec4 q[16])
+{
+    vec4 r1 = (1.0-p.x)*q[5]+p.x*q[9];
+    vec4 r2 = (1.0-p.x)*q[6]+p.x*q[10];
+    return (1.0-p.y)*r1+p.y*r2;
+}
+
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
 
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	return texture(lut,vec2(x,y)).rgb;
-}
+	vec2 uv = vec2(x,y);
+  	vec2 lowres = ScreenSize.xy/0.75;
+  	vec2 pixel = 1.0/lowres;
+  	vec2 base_uv = floor(uv*lowres)/lowres;
+  	vec2 sub_uv = fract(uv*lowres);
 
+    vec4 q[16];
+    
+    for(int i = 0; i < 4; i++)
+    {
+        for(int j = 0; j < 4; j++)
+        {
+            q[i*4+j] = texture(lut,base_uv+vec2(pixel.x*float(i-1),pixel.y*float(j-1)));
+        }
+    }
+        vec4 bicubic = interpolate_bilinear(sub_uv,q);
+
+	return (bicubic.xyz);
+
+
+}
 float R2_dither(){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 1.0/1.6180339887 * Time);
@@ -164,8 +192,8 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     return pos.xyz;
 }
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-     vec2 offsetB = vec2(0.0,oneTexel.y*0.75);
-     vec2 offsetC = vec2(oneTexel.x*0.75,0.0);
+     vec2 offsetB = vec2(0.0,oneTexel.y)*5.0;
+     vec2 offsetC = vec2(oneTexel.x,0.0)*5.0;
   
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;
@@ -283,6 +311,48 @@ vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out f
 
 	return vec4(pos, dist);
 }
+vec3 rayTrace(vec3 dir,vec3 position,float dither, float fresnel){
+
+    float quality = mix(10,SSR_STEPS,fresnel);
+    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
+	float rayLength = ((position.z + dir.z * far*sqrt(3.)) > -near) ?
+       (-near -position.z) / dir.z : far*sqrt(3.);
+    vec3 direction = normalize(toClipSpace3(position+dir*rayLength)-clipPosition);  //convert to clip space
+    direction.xy = normalize(direction.xy);
+
+    //get at which length the ray intersects with the edge of the screen
+    vec3 maxLengths = (step(0.,direction)-clipPosition) / direction;
+    float mult = min(min(maxLengths.x,maxLengths.y),maxLengths.z);
+
+
+    vec3 stepv = direction * mult / quality;
+
+
+
+
+	vec3 spos = clipPosition + stepv*dither;
+	float minZ = clipPosition.z;
+	float maxZ = spos.z+stepv.z*0.5;
+	//raymarch on a quarter res depth buffer for improved cache coherency
+
+
+    for (int i = 0; i < int(quality+1); i++) {
+
+		float sp = texture2D(DiffuseDepthSampler,spos.xy).x;
+
+            if(sp <= max(maxZ,minZ) && sp >= min(maxZ,minZ)){
+							return vec3(spos.xy,sp);
+
+	        }
+        spos += stepv;
+		//small bias
+		minZ = maxZ-0.00004/ld(spos.z);
+		maxZ += stepv.z;
+    }
+
+    return vec3(1.1);
+}
+
 vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noise) {
 
     vec3 pos    = vec3(0.0);
@@ -296,18 +366,36 @@ float inc  = 2.0; // 2.0 iteration multiplier
 
     vec4 color = vec4(0.0);
 	float border = 0.0;
-     pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, maxf, stp, ref, inc).xyz;
+    	vec3 reflectedVector = reflect(normalize(fragpos), surfacenorm);
+		float f0 = 0.02;
 
-	border = clamp(13.333 * (1.0 - border), 0.0, 1.0);
+		float roughness = 0.02;
+
+		float emissive = 0.0;
+		float F0 = f0;
+
+		float normalDotEye = dot(surfacenorm, normalize(fragpos));
+		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0);
+		fresnel = mix(F0,1.0,fresnel);
+
+			fresnel = fresnel*0.87+0.04;	//faking additionnal roughness to the water
+			roughness = 0.1;
+		
+
+     //pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, maxf, stp, ref, inc).xyz;
+     pos = rayTrace(reflectedVector,fragpos,noise, 0);
+
+	border = clamp(13.333 * (1.0 - border), 0.0, fresnel);
 	
 	if (pos.z < 1.0 - 1e-5) {
 		color.a = texture(TerrainCloudsSampler, pos.st).a;
 		if (color.a > 0.0) {
         color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
-		color.rgb += texture(TranslucentSampler, pos.st).rgb*0.45;}
+		color.rgb += texture(TranslucentSampler, pos.st).rgb*0.45;
+        }
 
 		
-		color.a *= border;
+		//color.a *= border;
 	}
 
     return color;
@@ -330,8 +418,8 @@ void main() {
 
 
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-
-    vec3 normal = constructNormal(depth, texCoord,  TranslucentDepthSampler);
+       float noise = mask(gl_FragCoord.xy+(Time*100));
+    vec3 normal = constructNormal(depth, texCoord,  TranslucentDepthSampler)+(noise*0.01);
 
 
 ////////////////////
@@ -350,7 +438,7 @@ void main() {
 		float normalDotEye = dot(normal, normalize(fragpos3));
 		float fresnel = pow(clamp(1.0 + normalDotEye,0.0,1.0), 5.0)*0.87+0.04;
 		fresnel = mix(F0,1.0,fresnel);
-        float noise = mask(gl_FragCoord.xy+(Time*100));
+ 
 		
 
         vec4 screenPos = gl_FragCoord;
@@ -377,7 +465,7 @@ void main() {
         float alpha0 = color2.a;
 	    color.a = -color2.a*fresnel+color2.a+fresnel;
 		color.rgb =clamp((color2.rgb*6.5)/color.a*alpha0*(1.0-fresnel)*0.1+(reflected*10)/color.a*0.1,0.0,1.0);
-    //    color.rgb = normal;
+        //color.rgb = reflection.rgb;
 
     }        
    //color = vec4(vec3(luminance(color2.rgb)),1);

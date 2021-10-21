@@ -93,7 +93,7 @@ void main() {
         fragColor = linear_fog(ColorModulator, pow(1.0 - ndusq, 8.0), 0.0, 1.0, FogColor);
 
    fragColor.rgb = renderSky(ColorModulator.rgb,ColorModulator.rgb,FogColor.rgb,view.y);
-
+    
 
     }/*
     else {
