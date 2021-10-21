@@ -14,7 +14,7 @@ in vec2 texCoord;
 
 
 
-    #define EXPOSURE 1.40 
+    #define EXPOSURE 1.30 
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
@@ -38,7 +38,23 @@ float luma(vec3 color){
 }
 
 
+vec4 textureGood( sampler2D sam, vec2 uv )
+{
+    vec2 res = textureSize( sam,0 );
 
+    vec2 st = uv*res - 0.5;
+
+    vec2 iuv = floor( st );
+    vec2 fuv = fract( st );
+
+    vec4 a = textureLod( sam, (iuv+vec2(0.5,0.5))/res ,0);
+    vec4 b = textureLod( sam, (iuv+vec2(1.5,0.5))/res ,0);
+    vec4 c = textureLod( sam, (iuv+vec2(0.5,1.5))/res ,0);
+    vec4 d = textureLod( sam, (iuv+vec2(1.5,1.5))/res ,0);
+
+    return mix( mix( a, b, fuv.x),
+                mix( c, d, fuv.x), fuv.y );
+}
 
 void getNightDesaturation(inout vec3 color, float lmx) {
 	float lum = dot(color,vec3(0.15,0.3,0.55));
@@ -171,7 +187,7 @@ void main() {
     float depth = texture(DiffuseDepthSampler, texCoord).r;
 
     bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
-    vec3 color = texture(DiffuseSampler, texCoord + vec2(0.0, oneTexel.y)).rgb;
+    vec3 color = texture(DiffuseSampler, texCoord).rgb;
 
 
 
@@ -195,7 +211,7 @@ void main() {
     col += texture( blursampler, uv + vec2( -i*2., 0     ) / ScreenSize ).rgb / 12.0;
     col += texture( blursampler, uv + vec2( 0    , -i*2. ) / ScreenSize ).rgb / 12.0;
     col *= col;
-    vec3 fin = max(vec3(0.0), col - 0.03);
+    vec3 fin = col;
     
 
 	float lightScat = clamp(5.0*0.05*pow(1,0.2),0.0,1.0)*vignette;

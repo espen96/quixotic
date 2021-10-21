@@ -36,7 +36,7 @@ void main() {
   }
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
-    color *= lightMapColor;
+  //  color *= lightMapColor;
 
     color.rgb +=rnd/255;   
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;

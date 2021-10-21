@@ -33,7 +33,7 @@ flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
 in vec3 avgSky;
 
-#define VL_SAMPLES 4 
+#define VL_SAMPLES 12 
 #define Ambient_Mult 1.0 
 #define SEA_LEVEL 70 //The volumetric light uses an altitude-based fog density, this is where fog density is the highest, adjust this value according to your world.
 #define ATMOSPHERIC_DENSITY 1.0
@@ -43,9 +43,9 @@ in vec3 avgSky;
 #define fog_coefficientRayleighG 1.35
 #define fog_coefficientRayleighB 3.31
 
-#define fog_coefficientMieR 2.0
-#define fog_coefficientMieG 5.0
-#define fog_coefficientMieB 10.0
+#define fog_coefficientMieR 3.0
+#define fog_coefficientMieG 3.0
+#define fog_coefficientMieB 3.0
 
 
 
@@ -157,8 +157,17 @@ float cloudVol(in vec3 pos){
 	float cloud = unifCov*60.*fogAmount;
   return cloud;
 }
-
-
+vec3 reinhard(vec3 v)
+{
+    return v / (1.0f + v);
+}
+vec3 reinhard_jodie(vec3 v)
+{
+    float l = luma(v);
+    vec3 tv = v / (1.0f + v);
+    tv = mix(v / (1.0f + l), tv, tv);
+    return 	tv;
+}
 mat2x3 getVolumetricRays(float dither,vec3 fragpos, vec3 ambientUp, float fogv) {
 
 
@@ -192,16 +201,17 @@ ambientUp = ambientUp*10;
 
 	vec3 ambientLight = avgSky;
 
-	vec3 skyCol0 = ambientLight*8.*2./150./3.*eyeBrightnessSmooth.y/vec3(240.)*Ambient_Mult/3.1415;
-	vec3 sunColor = lightCol.rgb*8./5./3.;
+	vec3 skyCol0 = ambientLight*8.*2./2.0/3.*eyeBrightnessSmooth.y/vec3(240.)*Ambient_Mult/3.1415;
+	vec3 sunColor = lightCol.rgb*8./5.5/3.;
 	sunColor *= 1-((1-rain.x)*0.5);
 	skyCol0 *= 1-((1-rain.x)*0.5);
 
 		vec3 rC = vec3(fog_coefficientRayleighR*1e-6, fog_coefficientRayleighG*1e-5, fog_coefficientRayleighB*1e-5);
-	//	vec3 mC = vec3(fog_coefficientMieR*1e-6, fog_coefficientMieG*1e-6, fog_coefficientMieB*1e-6);
-    vec4 skycol = skycol *3.0; 
+		//vec3 mC = vec3(fog_coefficientMieR*1e-6, fog_coefficientMieG*1e-6, fog_coefficientMieB*1e-6);
+    	vec4 skycol = skycol *3.0; 
 		vec3 mC = vec3(skycol.r*1e-6, skycol.g*1e-6,skycol.b*1e-6);
 
+    float depth = texture(DiffuseDepthSampler, texCoord).r;
 
 
 
@@ -223,10 +233,14 @@ ambientUp = ambientUp*10;
 		vec3 vL0 = sunColor*(rayL*rL+m*mie)*0.75 + skyCol0*(rL+m);
 		vL += vL0 * dd * dL *  absorbance;
 		absorbance *= exp(-(rL+m)*dL*dd);
+
+
 	}
-    float lumC = luma(vL);
-	vec3 diff = vL-lumC;
-//	vL = vL + diff*(-lumC*2.0 + 0.6);
+	
+	vL +=  mix(vec3(0.0),(sunColor*0.3)+(skyCol0*0.2),clamp(pow(depth,256)-0.89,0,1))*0.1;				
+  	float lumC = luma(vL.rgb);
+	vec3 diff = vL.rgb-lumC;
+	 vL = vL.rgb + diff*(-lumC*0.6 + 0.1);
 
 	return mat2x3(vL,absorbance);
 }

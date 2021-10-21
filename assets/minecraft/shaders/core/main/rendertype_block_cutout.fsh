@@ -1,5 +1,5 @@
 #version 150
-
+#extension GL_EXT_gpu_shader4_1 : enable
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
 #moj_import <mappings.glsl>
@@ -28,6 +28,17 @@ in float lmx;
 in float lmy;
 out vec4 fragColor;
 
+vec4 smoothfilter(in sampler2D tex, in vec2 uv)
+{
+	vec2 textureResolution = (textureSize(tex,0).xy);
+	uv = uv*textureResolution + 0.5;
+	vec2 iuv = floor( uv );
+	vec2 fuv = fract( uv );
+	uv = iuv + fuv*fuv*fuv*(fuv*(fuv*6.0-15.0)+10.0);
+	uv = (uv - 0.5)/textureResolution;
+	return texture2D( tex, uv);
+}
+
 
 void main() {
 
@@ -38,8 +49,17 @@ void main() {
                   
 
   vec4 albedo = textureLod(Sampler0, texCoord0,0);
+  float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
+
+  if(mipmapLevel > 1) albedo.rgb = test.rgb;
+
+
   if(albedo.a >0.5) albedo = texture(Sampler0, texCoord0);
+
+//  float avgBlockLum = luma4(test*vertexColor.rgb * ColorModulator.rgb);
   vec4 color = albedo * vertexColor * ColorModulator;
+//  color.rgb = clamp(color.rgb*clamp(pow(avgBlockLum,-0.33)*0.85,-0.2,1.2),0.0,1.0);
+
   float alpha = color.a;
   float lightm = 0;
 
@@ -68,7 +88,7 @@ void main() {
 vec3 test2 = floor(test.rgb*255);
 float test3  = floor(test2.r+test2.g+test2.b);
 //if(vertexColor.g >0.1)alpha0 =30; 
-if (diff.r < 0.1 && diff.b < 0.05 && lum< 0.8) alpha0 = int(floor(map((albedo.g*0.5)*255,0,255,sssMin,sssMax)));
+if (diff.r < 0.1 && diff.b < 0.05 ) alpha0 = int(floor(map((albedo.g*0.1)*255,0,255,sssMin,sssMax)));
 
  //if(test3 <= 305 && test3 >= 295 && test2.r >= 110 && test2.b <= 90)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
  //if(test3 <= 255 && test3 >= 250 && test2.r >= 105 && test2.b <= 90)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
@@ -81,7 +101,7 @@ if (diff.r < 0.1 && diff.b < 0.05 && lum< 0.8) alpha0 = int(floor(map((albedo.g*
 */
   float noise = luma4(rnd)*255;  
  
-    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0,sssMin,sssMax)); // SSS
+    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = int(clamp(alpha0+noise*0.1,sssMin,sssMax)); // SSS
 
     if(alpha0 >=  lightMin && alpha0 <= lightMax)   alpha0 = int(clamp(alpha0+0,lightMin,lightMax)); // Emissives
 

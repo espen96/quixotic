@@ -79,7 +79,7 @@ vec3 wavingLeaves(vec3 viewPos){
 void main() {
     vec3 position = Position + ChunkOffset;
     float animation = GameTime * 4000.0;
-    test = textureLod(Sampler0, UV0,100).rgb ;
+    test = texture(Sampler0, UV0).rgb;
     vec3 wave = vec3(0.0);
 
     if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a*255 >= 17.0) {

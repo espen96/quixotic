@@ -82,6 +82,31 @@ float cubeSmooth(float x) {
     return (x * x) * (3.0 - 2.0 * x);
 }
 
+vec4 textureGood( sampler2D sam, vec2 uv )
+{
+    vec2 res = textureSize( sam,0 )*0.25;
+
+    vec2 st = uv*res - 0.5;
+
+    vec2 iuv = floor( st );
+    vec2 fuv = fract( st );
+
+    vec4 a = textureLod( sam, (iuv+vec2(0.5,0.5))/res ,0);
+    vec4 b = textureLod( sam, (iuv+vec2(1.5,0.5))/res ,0);
+    vec4 c = textureLod( sam, (iuv+vec2(0.5,1.5))/res ,0);
+    vec4 d = textureLod( sam, (iuv+vec2(1.5,1.5))/res ,0);
+
+    return mix( mix( a, b, fuv.x),
+                mix( c, d, fuv.x), fuv.y );
+}
+vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
+	float mCosT = clamp(cosT,0.0,1.);
+	float cosY = dot(sunVec,sVector);
+	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
+	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
+
+	return textureGood(lut,vec2(x,y)).rgb;
+}
 
 
 float TextureCubic(sampler2D tex, vec2 pos) {
@@ -107,7 +132,7 @@ float TextureCubic(sampler2D tex, vec2 pos) {
 float cloudCov(in vec3 pos,vec3 samplePos){
 	float mult = max(pos.y-2000.0,0.0)/2000.0;
 	float mult2 = max(-pos.y+2000.0,0.0)/500.0;
-	float coverage = clamp(texture(noisetex,(samplePos.xz/12500.)).x-0.2,0.0,1.0)/(0.8);
+	float coverage = clamp(textureGood(noisetex,(samplePos.xz/12500.)).x-0.2,0.0,1.0)/(0.8);
 	float cloud = coverage*coverage*1.0 - mult*mult*mult*3.0 - mult2*mult2;
 	return max(cloud, 0.0);
 }
@@ -270,7 +295,7 @@ void main() {
 
   
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-    float noise = mask(gl_FragCoord.xy+(Time*100));
+    float noise = clamp(mask(gl_FragCoord.xy+(Time*100)),0,1);
 
 
 

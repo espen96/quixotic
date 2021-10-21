@@ -364,36 +364,43 @@ vec4 interpolate_bilinear(vec2 p, vec4 q[16])
     vec4 r2 = (1.0-p.x)*q[6]+p.x*q[10];
     return (1.0-p.y)*r1+p.y*r2;
 }
+vec4 smoothfilter(in sampler2D tex, in vec2 uv)
+{
+	vec2 textureResolution = (textureSize(tex,0).xy);
+	uv = uv*textureResolution + 0.5;
+	vec2 iuv = floor( uv );
+	vec2 fuv = fract( uv );
+	uv = iuv + fuv*fuv*fuv*(fuv*(fuv*6.0-15.0)+10.0);
+	uv = (uv - 0.5)/textureResolution;
+	return texture2D( tex, uv);
+}
 
+vec4 textureGood( sampler2D sam, vec2 uv )
+{
+    vec2 res = textureSize( sam,0 );
+
+    vec2 st = uv*res - 0.5;
+
+    vec2 iuv = floor( st );
+    vec2 fuv = fract( st );
+
+    vec4 a = textureLod( sam, (iuv+vec2(0.5,0.5))/res ,0);
+    vec4 b = textureLod( sam, (iuv+vec2(1.5,0.5))/res ,0);
+    vec4 c = textureLod( sam, (iuv+vec2(0.5,1.5))/res ,0);
+    vec4 d = textureLod( sam, (iuv+vec2(1.5,1.5))/res ,0);
+
+    return mix( mix( a, b, fuv.x),
+                mix( c, d, fuv.x), fuv.y );
+}
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
-	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
-
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	vec2 uv = vec2(x,y);
-  	vec2 lowres = ScreenSize.xy/0.75;
-  	vec2 pixel = 1.0/lowres;
-  	vec2 base_uv = floor(uv*lowres)/lowres;
-  	vec2 sub_uv = fract(uv*lowres);
-
-    vec4 q[16];
-    
-    for(int i = 0; i < 4; i++)
-    {
-        for(int j = 0; j < 4; j++)
-        {
-            q[i*4+j] = texture(lut,base_uv+vec2(pixel.x*float(i-1),pixel.y*float(j-1)));
-        }
-    }
-        vec4 bicubic = interpolate_bilinear(sub_uv,q);
-
-	return (bicubic.xyz);
-
-
+	return textureGood(lut,vec2(x,y)).rgb;
 }
+
 
 vec3 drawSun(float cosY, float sunInt,vec3 nsunlight,vec3 inColor){
 	return inColor+nsunlight/0.0008821203*pow(smoothstep(cos(0.0093084168595*3.2),cos(0.0093084168595*1.8),cosY),3.)*0.62;
@@ -903,7 +910,7 @@ float rayTraceShadow(vec3 dir,vec3 position,float dither,float translucent){
 		float sp = texture2D(TranslucentDepthSampler,spos.xy).x;
 
         //if (sp >=1.0) return 0.0;
-        if( sp < spos.z) {
+        if( sp < spos.z+0.000001) {
 			
 
 			float dist = abs(linZ(sp)-linZ(spos.z))/linZ(spos.z);
@@ -1151,6 +1158,7 @@ void main() {
 
 
     vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
+    vec3 OutTexel2 = OutTexel;
 
     vec4 pbr = pbr( lmtrans,  unpackUnorm2x4((texture(DiffuseSampler, texCoord+vec2(oneTexel.y)).a)),OutTexel );
 
@@ -1196,7 +1204,7 @@ if(overworld == 1.0){
      if (sky){
 
 
-        vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))  ;
+        vec3 atmosphere = ((skyLut(view,sunPosition3.xyz,view.y,temporals3Sampler)))*0.9;
 
  		if (view.y > 0.){
 			atmosphere += (stars(view)*2.0)*clamp(1-(rainStrength*lmx),0,1);
@@ -1241,7 +1249,7 @@ if(overworld == 1.0){
         float depth3 = depthd;
         float depth4 = depthb;
         float depth5 = depthe;
-        float normalstrength = 0.1;    
+        float normalstrength = (1-luma(OutTexel2.rgb))*0.1;    
         const float normaldistance = 2.5;    
         const float normalpow = 4.0;    
 
@@ -1347,7 +1355,7 @@ if(overworld == 1.0){
 		shading = (direct*shadeDir)+ambientLight;
         shading += (sunSpec*direct)*shadeDir;      
 
-        //shading += lightmap*0.1;
+        shading += lightmap*0.1;
   
         
 		ambientLight = mix(ambientLight*vec3(0.2,0.2,0.5)*2.0,ambientLight,1-(rainStrength*lmx));	
@@ -1383,7 +1391,7 @@ if(overworld == 1.0){
     }	
 
 
-    //outcol.rgb = clamp(vec3(reflections),0.01,1);  
+    //outcol.rgb = clamp(vec3(shadeDir),0.01,1);  
 
 
 }

@@ -37,8 +37,9 @@ float BlurSize = 24.0;
     col += texture( DiffuseSampler, uv + vec2( i, -i ) / res ).rgb / 8.0;
     col += texture( DiffuseSampler, uv + vec2( -i, i ) / res ).rgb / 8.0;
     col += texture( DiffuseSampler, uv + vec2( -i, -i ) / res ).rgb / 8.0;
+    vec3 fin = max(vec3(0.0), col - 0.035);
 
 
 
-	fragColor= vec4((col), 1.0);
+	fragColor= vec4((fin), 1.0);
 }

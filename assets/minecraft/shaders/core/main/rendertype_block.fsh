@@ -3,6 +3,7 @@
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
 #moj_import <mappings.glsl>
+#extension GL_EXT_gpu_shader4_1 : enable
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
@@ -38,10 +39,12 @@ void main() {
   discardControlGLPos(gl_FragCoord.xy, glpos);
                   
   vec4 albedo = textureLod(Sampler0, texCoord0,0);
+  float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
+  albedo = texture(Sampler0, texCoord0);
+  if(mipmapLevel > 1) albedo.rgb = test.rgb;
   if(albedo.a >0.5) albedo = texture(Sampler0, texCoord0);
   vec4 color = albedo * vertexColor * ColorModulator;
   float alpha = color.a;
-  float lightm = 0;
 
 
 //  color.rgb = (color.rgb*lm2.rgb);

@@ -79,17 +79,31 @@ vec2 R2_samples(int n){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha * n);
 }
+vec4 textureGood( sampler2D sam, vec2 uv )
+{
+    vec2 res = textureSize( sam,0 );
+
+    vec2 st = uv*res - 0.5;
+
+    vec2 iuv = floor( st );
+    vec2 fuv = fract( st );
+
+    vec4 a = textureLod( sam, (iuv+vec2(0.5,0.5))/res ,0);
+    vec4 b = textureLod( sam, (iuv+vec2(1.5,0.5))/res ,0);
+    vec4 c = textureLod( sam, (iuv+vec2(0.5,1.5))/res ,0);
+    vec4 d = textureLod( sam, (iuv+vec2(1.5,1.5))/res ,0);
+
+    return mix( mix( a, b, fuv.x),
+                mix( c, d, fuv.x), fuv.y );
+}
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
-	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
     vec2 oneTexel = 1.0 / OutSize;
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	return texture(lut,vec2(x,y)).rgb;
-
-
+	return textureGood(lut,vec2(x,y)).rgb;
 }
 void main() {
 
@@ -143,7 +157,9 @@ const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(
 float ang = fract(worldTime / 24000.0 - 0.25);
 ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
 
-sunDir =  vec3(-sin(ang), cos(ang) * sunRotationData);
+vec3 sunDirTemp =  vec3(-sin(ang), cos(ang) * sunRotationData);
+sunDir = normalize(vec3(sunDirTemp.x,sunDir.y,sunDirTemp.z));
+
 vec3 sunDir2 = sunDir;
 
 vec3 sunPosition = sunDir2;
@@ -210,6 +226,7 @@ lightCol=vec4((sunlightR*3.*sunAmount*sunIntensity+0.16/5.-0.16/5.*lightSign)*(1
 
 
 			vec3 samplee = 2.2*skyLut(pos.xyz,sunDir2,pos.y,pre)/maxIT;
+            //samplee *= 2.0;
 			avgSky += samplee/2.2;
             
 			ambientUp += samplee*(pos.y+abs(pos.x)/7.+abs(pos.z)/7.);

@@ -96,44 +96,32 @@ float hash12(vec2 p)
     return fract((p3.x + p3.y) * p3.z);
 }
 
-#define DOWNSCALE 32.0
-
-vec4 interpolate_bilinear(vec2 p, vec4 q[16])
+vec4 textureGood( sampler2D sam, vec2 uv )
 {
-    vec4 r1 = (1.0-p.x)*q[5]+p.x*q[9];
-    vec4 r2 = (1.0-p.x)*q[6]+p.x*q[10];
-    return (1.0-p.y)*r1+p.y*r2;
+    vec2 res = textureSize( sam,0 );
+
+    vec2 st = uv*res - 0.5;
+
+    vec2 iuv = floor( st );
+    vec2 fuv = fract( st );
+
+    vec4 a = textureLod( sam, (iuv+vec2(0.5,0.5))/res ,0);
+    vec4 b = textureLod( sam, (iuv+vec2(1.5,0.5))/res ,0);
+    vec4 c = textureLod( sam, (iuv+vec2(0.5,1.5))/res ,0);
+    vec4 d = textureLod( sam, (iuv+vec2(1.5,1.5))/res ,0);
+
+    return mix( mix( a, b, fuv.x),
+                mix( c, d, fuv.x), fuv.y );
 }
-
 vec3 skyLut(vec3 sVector, vec3 sunVec,float cosT,sampler2D lut) {
-	const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
-
 	float mCosT = clamp(cosT,0.0,1.);
 	float cosY = dot(sunVec,sVector);
 	float x = ((cosY*cosY)*(cosY*0.5*256.)+0.5*256.+18.+0.5)*oneTexel.x;
 	float y = (mCosT*256.+1.0+0.5)*oneTexel.y;
 
-	vec2 uv = vec2(x,y);
-  	vec2 lowres = ScreenSize.xy/0.75;
-  	vec2 pixel = 1.0/lowres;
-  	vec2 base_uv = floor(uv*lowres)/lowres;
-  	vec2 sub_uv = fract(uv*lowres);
-
-    vec4 q[16];
-    
-    for(int i = 0; i < 4; i++)
-    {
-        for(int j = 0; j < 4; j++)
-        {
-            q[i*4+j] = texture(lut,base_uv+vec2(pixel.x*float(i-1),pixel.y*float(j-1)));
-        }
-    }
-        vec4 bicubic = interpolate_bilinear(sub_uv,q);
-
-	return (bicubic.xyz);
-
-
+	return textureGood(lut,vec2(x,y)).rgb;
 }
+
 float R2_dither(){
 	vec2 alpha = vec2(0.75487765, 0.56984026);
 	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 1.0/1.6180339887 * Time);
@@ -191,9 +179,9 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     
     return pos.xyz;
 }
-vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
-     vec2 offsetB = vec2(0.0,oneTexel.y)*5.0;
-     vec2 offsetC = vec2(oneTexel.x,0.0)*5.0;
+vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex,vec2 noise) {
+     vec2 offsetB = vec2(0.0,oneTexel.y)+noise;
+     vec2 offsetC = vec2(oneTexel.x,0.0)+noise;
   
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;
@@ -418,8 +406,8 @@ void main() {
 
 
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-       float noise = mask(gl_FragCoord.xy+(Time*100));
-    vec3 normal = constructNormal(depth, texCoord,  TranslucentDepthSampler)+(noise*0.01);
+    float noise = mask(gl_FragCoord.xy+(Time*100));
+    vec3 normal = constructNormal(depth, texCoord,  TranslucentDepthSampler,vec2(noise*0.15)*oneTexel);
 
 
 ////////////////////

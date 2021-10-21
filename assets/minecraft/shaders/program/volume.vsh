@@ -14,7 +14,10 @@ out vec3 sunDir;
 flat out vec4 fogcol;
 flat out vec4 skycol;
 out vec4 rain;
+out mat4 gbufferModelViewInverse2;
 out mat4 gbufferModelViewInverse;
+out mat4 gbufferProjectionInverse;
+
 
 out vec3 avgSky;
 out vec3 ambientUp;
@@ -143,8 +146,9 @@ void main() {
                                                     decodeFloat(texture(DiffuseSampler, start + inc).xyz), 
                                                     decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz),
                                                     1.0)).xyz);
-    
+    gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
+    gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);
 
 
 ////////////////////////////////////////////////
@@ -170,7 +174,9 @@ const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(
 float ang = fract(worldTime / 24000.0 - 0.25);
 ang = (ang + (cos(ang * 3.14159265358979) * -0.5 + 0.5 - ang) / 3.0) * 6.28318530717959; //0-2pi, rolls over from 2pi to 0 at noon.
 
-sunDir =  vec3(-sin(ang), cos(ang) * sunRotationData);
+vec3 sunDirTemp =  vec3(-sin(ang), cos(ang) * sunRotationData);
+sunDir = normalize(vec3(sunDirTemp.x,sunDir.y,sunDirTemp.z));
+
 
 float rainStrength = (1-rain.r)*0.75;
 vec3 sunDir2 = sunDir;

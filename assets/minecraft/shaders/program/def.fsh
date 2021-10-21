@@ -163,8 +163,12 @@ if (gl_FragCoord.x > 6. && gl_FragCoord.x < 7.  && gl_FragCoord.y > 19.+18. && g
 fragColor = vec4(lightSourceColor,1.0);
 if (gl_FragCoord.x > 7. && gl_FragCoord.x < 8.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
 fragColor = vec4(avgAmbient,1.0);
-if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
-fragColor = vec4(lightCol.rgb,1.0);
+if (gl_FragCoord.x > 8. && gl_FragCoord.x < 9.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 ){
+  float lumC = luma3(lightCol.rgb);
+	vec3 diff = lightCol.rgb-lumC;
+	vec3 lightCol = lightCol.rgb + diff*(-lumC*0.2 + 0.7);
+  fragColor.rgb =  lightCol.rgb;
+}
 
 if (gl_FragCoord.x > 11. && gl_FragCoord.x < 12.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
 fragColor = vec4(avgSky,1.0);
@@ -203,6 +207,7 @@ else if (gl_FragCoord.x > 18. && gl_FragCoord.y > 1.){
 		moonSky = pow(L0Moon,1.0-rainStrength*0.75)*skyIntensityNight*vec3(0.08,0.12,0.18)*vec3(0.4)*SKY_BRIGHTNESS_NIGHT;
 	}
   fragColor.rgb =(daySky + moonSky);
+
 	fragColor.rgb = mix(fragColor.rgb*vec3(0.2,0.2,0.2)*1.0,fragColor.rgb,1-rainStrength);	
   
 }

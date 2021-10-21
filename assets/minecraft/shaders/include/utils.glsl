@@ -273,3 +273,35 @@ float map(float value, float min1, float max1, float min2, float max2) {
 }
 
 
+// simple x-y decorrelated noise seems enough
+#define stepnoise0(p, size) rnd( floor(p/size)*size ) 
+#define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
+
+//   joeedh's original noise (cleaned-up)
+vec2 stepnoise(vec2 p, float size) { 
+    p = floor((p+10.)/size)*size;          // is p+10. useful ?   
+    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;    
+    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
+    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );      
+    return p;    
+}
+
+// --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
+
+#define SEED1 1.705
+#define DMUL  8.12235325       // are exact DMUL and -.5 important ?
+
+float mask(vec2 p) { 
+
+    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+
+    //return f;  // If you want to skeep the tone mapping
+    f *= 1.03; //  to avoid zero-stipple in plain white ?
+
+    // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
+    // returned value in [0,37.2] , but < 0.57 with P=50% 
+
+    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}                                        
+

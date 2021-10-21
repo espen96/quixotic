@@ -24,8 +24,8 @@ in float lmy;
 
 void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
- //   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
-    vec4 color = texture(Sampler0, texCoord0) * 1 * ColorModulator;
+    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+  //  vec4 color = texture(Sampler0, texCoord0) * 1 * ColorModulator;
 
   if (color.a*255 <= 17.0) {
     discard;
