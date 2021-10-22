@@ -1,5 +1,5 @@
 #version 150
-
+#extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D DiffuseSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
@@ -76,6 +76,24 @@ out vec4 fragColor;
 #define NORMDEPTHTOLERANCE 1.0
 
 #define CLOUDS_QUALITY 0.5
+float sqr(float x) {
+    return x*x;
+}
+float pow3(float x) {
+    return sqr(x)*x;
+}
+float pow4(float x) {
+    return sqr(x)*sqr(x);
+}
+float pow5(float x) {
+    return pow4(x)*x;
+}
+float pow6(float x) {
+    return pow5(x)*x;
+}
+float pow8(float x) {
+    return pow4(x)*pow4(x);
+}
 
 ////////////////////////////////
     #define sssMin 22
@@ -134,7 +152,6 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test) {
     if(expanded >= metalMin && expanded <= metalMax)
         alphatest.a = maps; // Metals
     float metal = map(alphatest.a * 255, metalMin, metalMax, 0, 1);
-//    if(rough < 0.001) rough = 0.1;
 
     pbr = vec4(emiss, sss, rough, metal);
 
@@ -245,7 +262,6 @@ vec4 textureGood(sampler2D sam, vec2 uv) {
 
     vec2 iuv = floor(st);
     vec2 fuv = fract(st);
-
     vec4 a = textureLod(sam, (iuv + vec2(0.5, 0.5)) / res, 0);
     vec4 b = textureLod(sam, (iuv + vec2(1.5, 0.5)) / res, 0);
     vec4 c = textureLod(sam, (iuv + vec2(0.5, 1.5)) / res, 0);
@@ -263,7 +279,7 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 }
 
 vec3 drawSun(float cosY, float sunInt, vec3 nsunlight, vec3 inColor) {
-    return inColor + nsunlight / 0.0008821203 * pow(smoothstep(cos(0.0093084168595 * 3.2), cos(0.0093084168595 * 1.8), cosY), 3.) * 0.62;
+    return inColor + nsunlight / 0.0008821203 * pow3(smoothstep(cos(0.0093084168595 * 3.2), cos(0.0093084168595 * 1.8), cosY)) * 0.62;
 }
 
 // Return random noise in the range [0.0, 1.0], as a function of x.
@@ -280,20 +296,12 @@ float NoisyStarField(in vec2 vSamplePos, float fThreshhold) {
     return StarVal;
 }
 
-// Stabilize NoisyStarField() by only sampling at integer values.
 float StableStarField(in vec2 vSamplePos, float fThreshhold) {
-    // Linear interpolation between four samples.
-    // Note: This approach has some visual artifacts.
-    // There must be a better way to "anti alias" the star field.
-    float fractX = fract(vSamplePos.x);
-    float fractY = fract(vSamplePos.y);
+
     vec2 floorSample = floor(vSamplePos);
     float v1 = NoisyStarField(floorSample, fThreshhold);
-    float v2 = NoisyStarField(floorSample + vec2(0.0, 1.0), fThreshhold);
-    float v3 = NoisyStarField(floorSample + vec2(1.0, 0.0), fThreshhold);
-    float v4 = NoisyStarField(floorSample + vec2(1.0, 1.0), fThreshhold);
 
-    float StarVal = v1 * (1.0 - fractX) * (1.0 - fractY) + v2 * (1.0 - fractX) * fractY + v3 * fractX * (1.0 - fractY) + v4 * fractX * fractY;
+    float StarVal = v1 * 30.0 * skyIntensityNight;
     return StarVal;
 }
 
@@ -446,7 +454,7 @@ vec2 GGX_FV(float dotLH, float roughness) {
 
 	// F
     float F_a, F_b;
-    float dotLH5 = pow(1.0f - dotLH, 5);
+    float dotLH5 = pow5(1.0f - dotLH);
     F_a = 1.0f;
     F_b = dotLH5;
 
@@ -551,21 +559,14 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 normal, float noise) {
 
     vec3 pos = vec3(0.0);
 
-    float maxf = 4.0; // 4.0 max refinement steps
-    float stp = 1.0; // 1.0 initial length of the reflected vector
-    float ref = 0.1; // 0.1 refinement multiplier
-    float inc = 2.0; // 2.0 iteration multiplier
-
     vec4 color = vec4(0.0);
     float border = 0.0;
     vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
     float f0 = 0.02;
-
-    float emissive = 0.0;
     float F0 = f0;
 
     float normalDotEye = dot(normal, normalize(fragpos));
-    float fresnel = pow(clamp(1.0 + normalDotEye, 0.0, 1.0), 5.0);
+    float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
     fresnel = mix(F0, 1.0, fresnel);
 
     pos = rayTrace(reflectedVector, fragpos, noise);
@@ -609,10 +610,14 @@ int bitfieldReverse(int a) {
     a = ((a & 0x0000FFFF) << 16) | ((a & 0xFFFF0000) >> 16);
     return a;
 }
+#define tau 6.2831853071795864769252867665590
 
-	#define hammersley(i, N) vec2( float(i) / float(N), float( bitfieldReverse(i) ) * 2.3283064365386963e-10 )
-	#define tau 6.2831853071795864769252867665590
-	#define circlemap(p) (vec2(cos((p).y*tau), sin((p).y*tau)) * p.x)
+vec2 hammersley(int i, int N) {
+    return vec2(float(i) / float(N), float(bitfieldReverse(i)) * 2.3283064365386963e-10);
+}
+vec2 circlemap(vec2 p) {
+    return (vec2(cos((p).y * tau), sin((p).y * tau)) * p.x);
+}
 float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
 
 		// By Jodie. With some modifications
@@ -732,9 +737,9 @@ void main() {
     vec4 outcol = vec4(0.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
 
-    vec3 OutTexel = (texture(DiffuseSampler, texCoord).rgb);
-    vec3 OutTexel2 = OutTexel;
-    OutTexel = toLinear(OutTexel);
+    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
+    vec3 OutTexel2 = OutTexel3.rgb;
+    vec3 OutTexel = toLinear(OutTexel3.rgb);
 
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
@@ -749,7 +754,7 @@ void main() {
 
     if(sky && overworld == 1.0) {
 
-        vec3 atmosphere = ((skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler))) * 0.9;
+        vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler);
 
         if(view.y > 0.) {
             atmosphere += (stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1);
@@ -766,23 +771,26 @@ void main() {
 
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
         float res = mod(mod2, 2.0f);
+        ivec2 texoffsets[4] = ivec2[] (ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
+        vec4 depthgather = textureGatherOffsets(TranslucentDepthSampler, texCoord, texoffsets, 0);
+        vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
 
-        vec2 lmtrans = unpackUnorm2x4((texture(DiffuseSampler, texCoord).a));
+        vec2 lmtrans = unpackUnorm2x4(OutTexel3.a);
 
-        vec2 lmtrans2 = unpackUnorm2x4((texture(DiffuseSampler, texCoord - vec2(0, oneTexel.y)).a));
-        float depthb = texture(TranslucentDepthSampler, texCoord - vec2(0, oneTexel.y)).r;
+        vec2 lmtrans2 = unpackUnorm2x4(lmgather.z);
+        float depthb = depthgather.z;
         lmtrans2 *= 1 - (depthb - depth);
 
-        vec2 lmtrans3 = unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(0, oneTexel.y)).a));
-        float depthc = texture(TranslucentDepthSampler, texCoord + vec2(0, oneTexel.y)).r;
+        vec2 lmtrans3 = unpackUnorm2x4(lmgather.x);
+        float depthc = depthgather.x;
         lmtrans3 *= 1 - (depthc - depth);
 
-        vec2 lmtrans4 = unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.x, 0)).a));
-        float depthd = texture(TranslucentDepthSampler, texCoord + vec2(oneTexel.x, 0)).r;
+        vec2 lmtrans4 = unpackUnorm2x4(lmgather.y);
+        float depthd = depthgather.y;
         lmtrans4 *= 1 - (depthd - depth);
 
-        vec2 lmtrans5 = unpackUnorm2x4((texture(DiffuseSampler, texCoord - vec2(oneTexel.x, 0)).a));
-        float depthe = texture(TranslucentDepthSampler, texCoord - vec2(oneTexel.x, 0)).r;
+        vec2 lmtrans5 = unpackUnorm2x4(lmgather.w);
+        float depthe = depthgather.w;
         lmtrans5 *= 1 - (depthe - depth);
 
         float lmy = mix(lmtrans.y, (lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, res);
@@ -810,27 +818,27 @@ void main() {
             float depth3 = depthd;
             float depth4 = depthb;
             float depth5 = depthe;
-            float normalstrength = (1 - luma(OutTexel2.rgb)) * 0.2;
-            const float normaldistance = 3.0;
-            const float normalpow = 4.0;
+            float normalstrength = (1 - luma(OutTexel2.rgb)) * 0.5;
+            ivec2 texoffsets[4] = ivec2[] (ivec2(0, 3), ivec2(3, 0), -ivec2(0, 3), -ivec2(3, 0));
+            vec4 normoffset = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 1);
 
             vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-            fragpos.rgb += pow(luma(texture(DiffuseSampler, texCoord).rgb), normalpow) * normalstrength;
+            fragpos.rgb += pow4(OutTexel2.g) * normalstrength;
 
             vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
-            p2.rgb += pow(luma(texture(DiffuseSampler, texCoord + normaldistance * vec2(0.0, oneTexel.y)).rgb), normalpow) * normalstrength;
+            p2.rgb += pow4(normoffset.x) * normalstrength;
             p2 = p2 - fragpos;
 
             vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
-            p3.rgb += pow(luma(texture(DiffuseSampler, texCoord + normaldistance * vec2(oneTexel.x, 0.0)).rgb), normalpow) * normalstrength;
+            p3.rgb += pow4(normoffset.y) * normalstrength;
 
             p3 = p3 - fragpos;
             vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
-            p4.rgb += pow(luma(texture(DiffuseSampler, texCoord - normaldistance * vec2(0.0, oneTexel.y)).rgb), normalpow) * normalstrength;
+            p4.rgb += pow4(normoffset.z) * normalstrength;
 
             p4 = p4 - fragpos;
             vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
-            p5.rgb += pow(luma(texture(DiffuseSampler, texCoord - normaldistance * vec2(oneTexel.x, 0.0)).rgb), normalpow) * normalstrength;
+            p5.rgb += pow4(normoffset.w) * normalstrength;
 
             p5 = p5 - fragpos;
             vec3 normal = normalize(cross(p2, p3)) + normalize(cross(-p4, p3)) + normalize(cross(p2, -p5)) + normalize(cross(-p4, -p5));
@@ -883,7 +891,7 @@ void main() {
                 vec3 avgSky = mix(lightmap * 0.5, ambientLight, lmx);
                 vec4 reflection2 = vec4(SSR(viewPos.xyz, depth, normal2, noise));
 
-                float fresnel = pow(clamp(1.0 + dot(normal2, normalize(fragpos3.xyz)), 0.0, 1.0), 5.0);
+                float fresnel = pow5(clamp(1.0 + dot(normal2, normalize(fragpos3.xyz)), 0.0, 1.0));
 
                 reflection2 = mix(vec4(avgSky, 1), reflection2, reflection2.a);
                 reflections += ((reflection2.rgb) * (fresnel * OutTexel));
@@ -916,7 +924,7 @@ void main() {
 
             outcol.rgb *= 1.0 + max(0.0, light);
 
-            //outcol.rgb = clamp(vec3(ao), 0.01, 1);
+            //outcol.rgb = clamp(vec3(lmx), 0.01, 1);
 
         } else {
             if(end != 1.0) {

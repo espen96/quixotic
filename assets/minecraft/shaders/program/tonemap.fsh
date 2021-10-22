@@ -155,9 +155,7 @@ void main() {
     float lmy = mix(lmtrans.y, lmtrans3.y, res);
     float lmx = mix(lmtrans3.y, lmtrans.y, res);
 
-    float depth = texture(DiffuseDepthSampler, texCoord).r;
 
-    bool inctrl = inControl(texCoord * OutSize, OutSize.x) > -1;
     vec3 color = texture(DiffuseSampler, texCoord).rgb;
 
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy / 2. + .25;
@@ -166,8 +164,6 @@ void main() {
 
     float i = SAMPLE_OFFSET;
     i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x;
-
-    vec3 img = texture(DiffuseSampler, uv * 2. - .5).rgb;
 
     vec3 col = texture(blursampler, uv + vec2(i, i) / ScreenSize).rgb / 6.0;
 

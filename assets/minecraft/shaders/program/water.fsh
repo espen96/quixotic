@@ -25,6 +25,24 @@ float luminance(vec3 rgb) {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
     return ((1.0 - redness) * dot(rgb, vec3(0.2126, 0.7152, 0.0722)) + redness * 1.4) * 4.0;
 }
+float sqr(float x) {
+    return x*x;
+}
+float pow3(float x) {
+    return sqr(x)*x;
+}
+float pow4(float x) {
+    return sqr(x)*sqr(x);
+}
+float pow5(float x) {
+    return pow4(x)*x;
+}
+float pow6(float x) {
+    return pow5(x)*x;
+}
+float pow8(float x) {
+    return pow4(x)*pow4(x);
+}
 
 ////////////////////////////
 
@@ -246,7 +264,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
     float F0 = f0;
 
     float normalDotEye = dot(surfacenorm, normalize(fragpos));
-    float fresnel = pow(clamp(1.0 + normalDotEye, 0.0, 1.0), 5.0);
+    float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
     fresnel = mix(F0, 1.0, fresnel);
 
     fresnel = fresnel * 0.87 + 0.04;	//faking additionnal roughness to the water
@@ -290,7 +308,7 @@ void main() {
         float F0 = 0.02;
 
         float normalDotEye = dot(normal, normalize(fragpos3));
-        float fresnel = pow(clamp(1.0 + normalDotEye, 0.0, 1.0), 5.0) * 0.87 + 0.04;
+        float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0)) * 0.87 + 0.04;
         fresnel = mix(F0, 1.0, fresnel);
 
         vec4 screenPos = gl_FragCoord;

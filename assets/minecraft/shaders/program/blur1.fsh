@@ -1,10 +1,7 @@
 #version 150
-
 uniform sampler2D DiffuseSampler;
 uniform vec2 ScreenSize;
 out vec4 fragColor;
-
-in vec2 texCoord;
 
 #define SAMPLE_OFFSET 5.
 #define INTENSITY 1.

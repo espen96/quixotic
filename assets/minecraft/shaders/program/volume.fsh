@@ -163,7 +163,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
 
     vec3 skyCol0 = ambientLight * 8. * 1.0 / 2.0 / 3. * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
-    vec3 sunColor = lightCol.rgb * 8. / 6 / 3.;
+    vec3 sunColor = lightCol.rgb * 8. / 5 / 3.;
     sunColor *= 1 - ((1 - rain.x) * 0.5);
 	//skyCol0 *= 1-((1-rain.x)*0.5);
 

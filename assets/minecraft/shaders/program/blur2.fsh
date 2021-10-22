@@ -8,7 +8,6 @@ out vec4 fragColor;
 #define INTENSITY 1.
 
 void main() {
-
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy * 2. - .5;
     vec2 res = ScreenSize.xy;
 

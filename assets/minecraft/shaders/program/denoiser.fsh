@@ -110,6 +110,7 @@ void main() {
     currN[VXAA_S].a = VXAALuma(currN[VXAA_S].rgb);
 
     vec4 histN[4];
+    
     histN[VXAA_W] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(-offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
     histN[VXAA_E] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
     histN[VXAA_N] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize), vec4(0.0f), vec4(1.0f));
