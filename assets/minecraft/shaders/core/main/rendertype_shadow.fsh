@@ -24,34 +24,30 @@ in float lmx;
 in float lmy;
 in vec4 glpos;
 
-
 void main() {
-    vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-    discardControlGLPos(gl_FragCoord.xy, glpos);
-    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+  vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
+  discardControlGLPos(gl_FragCoord.xy, glpos);
+  vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 
-
-  if (color.a*255 <= 17.0) {
+  if(color.a * 255 <= 17.0) {
     discard;
   }
-    color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
+  color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
 //    color *= lightMapColor;
 
-    color.rgb +=rnd/255;   
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res = mod(mod2, 2.0f);
-    color.rgb = clamp(color.rgb,0.01,1);
+  color.rgb += rnd / 255;
+  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+  float res = mod(mod2, 2.0f);
+  color.rgb = clamp(color.rgb, 0.01, 1);
 
-      float lm = lmx;
-  if (res == 0.0f)    {
+  float lm = lmx;
+  if(res == 0.0f) {
     lm = lmy;
 
   }
 
-
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = color;
-
+  fragColor = color;
 
 }

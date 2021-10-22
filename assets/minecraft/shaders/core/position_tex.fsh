@@ -25,39 +25,35 @@ out vec4 fragColor;
 void main() {
     gl_FragDepth = gl_FragCoord.z;
     vec4 color = vec4(0.0);
-    bool gui =isGUI( ModelViewMat);
+    bool gui = isGUI(ModelViewMat);
     int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
     if(index != -1) {
         // store the sun position in eye space indices [0,2]
-        if (isSun > 0.75 && index >= 0 && index <= 2) {
-            
+        if(isSun > 0.75 && index >= 0 && index <= 2) {
+
             vec4 sunDir = ModelViewMat * vec4(normalize(c1 / cscale.x + c3 / cscale.z), 0.0);
-       
+
             color = vec4(encodeFloat(sunDir[index]), 1.0);
 
-            
-        }
-         
-        else if (isSun < 0.25) {
+        } else if(isSun < 0.25) {
             color = texture(Sampler0, texCoord0) * ColorModulator;
         }
 
-        if (isSun > 0.75 && index == 30) {
-                    color = vec4(ColorModulator.a,0,0,1);
-                
+        if(isSun > 0.75 && index == 30) {
+            color = vec4(ColorModulator.a, 0, 0, 1);
+
         }
-        if (isSun > 0.75 && index == 31 && ColorModulator.a == 0.1) {
-                    color = vec4(1);
-            
-                
+        if(isSun > 0.75 && index == 31 && ColorModulator.a == 0.1) {
+            color = vec4(1);
+
         }
 
     }
 
     // calculate screen space UV of the sun since it was transformed to cover the entire screen in vsh so texCoord0 no longer works
     else if(isSun > 0.75) {
-  
+
         discard;
         vec3 p1 = c1 / cscale.x;
         vec3 p2 = c2 / cscale.y;
@@ -72,23 +68,22 @@ void main() {
         uv = uv / PRECISIONSCALE * MAGICSUNSIZE + vec2(0.5);
 
         // only draw one sun lol
-        if (lookingat > 0.0 && all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)))) {
+        if(lookingat > 0.0 && all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)))) {
             color = texture(Sampler0, uv) * ColorModulator;
-        color.a = 0.0;  
-                
-        } 
+            color.a = 0.0;
+
+        }
     } else {
-            
-        if(gl_FragCoord.z >0.9) discard;
+
+        if(gl_FragCoord.z > 0.9)
+            discard;
         color = texture(Sampler0, texCoord0) * ColorModulator;
     }
 
-    if (color.a == 0.0) {
+    if(color.a == 0.0) {
         discard;
-    }        
- 
+    }
+
     fragColor = color;
-
-
 
 }

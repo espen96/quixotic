@@ -11,13 +11,13 @@ uniform vec2 ScreenSize;
 out vec4 fragColor;
 
 void main() {
-    if (isHorizon > 0.5) {
+    if(isHorizon > 0.5) {
         discard;
         discardControl(gl_FragCoord.xy, ScreenSize.x);
     }
-    
+
     vec4 color = vertexColor;
-    if (color.a == 0.0) {
+    if(color.a == 0.0) {
         discard;
     }
     fragColor = color * ColorModulator;

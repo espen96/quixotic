@@ -15,8 +15,6 @@ uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
 uniform float GameTime;
 
-
-
 out float vertexDistance;
 out vec4 vertexColor;
 out vec2 texCoord0;
@@ -31,20 +29,10 @@ out vec4 c1;
 out vec4 c2;
 out vec4 c3;
 
-vec4 vertexPositions[4] = vec4[](
-    vec4(-1, 1, 0, 1),    
-    vec4(-1, -1, 0, 1),    
-    vec4(1, -1, 0, 1),    
-    vec4(1, 1, 0, 1)    
-);
+vec4 vertexPositions[4] = vec4[] (vec4(-1, 1, 0, 1), vec4(-1, -1, 0, 1), vec4(1, -1, 0, 1), vec4(1, 1, 0, 1));
 
 mat4 fastInverseProjMat(mat4 projMat) {
-    return mat4(
-        1.0 / projMat[0][0], 0, 0, 0,
-        0, 1.0 / projMat[1][1], 0, 0,
-        0, 0, 0, 1.0 / projMat[3][2],
-        0, 0, -1, projMat[2][2] / projMat[3][2]
-    );
+    return mat4(1.0 / projMat[0][0], 0, 0, 0, 0, 1.0 / projMat[1][1], 0, 0, 0, 0, 0, 1.0 / projMat[3][2], 0, 0, -1, projMat[2][2] / projMat[3][2]);
 }
 
 void main() {
@@ -55,18 +43,15 @@ void main() {
     c3 = vec4(0);
 
     vec4 viewPos = ModelViewMat * vec4(Position + ChunkOffset, 1.0);
-    vertexColor = Color ;
-    pos = Position; 
+    vertexColor = Color;
+    pos = Position;
 
-    
-
-
-    if (gl_VertexID < 4 ) {
-        if (gl_VertexID == 0) {
+    if(gl_VertexID < 4) {
+        if(gl_VertexID == 0) {
             c1 = viewPos;
-        } else if (gl_VertexID == 1 || gl_VertexID == 3) {
+        } else if(gl_VertexID == 1 || gl_VertexID == 3) {
             c2 = viewPos;
-        } else if (gl_VertexID == 2) {
+        } else if(gl_VertexID == 2) {
             c3 = viewPos;
         }
         projInv = fastInverseProjMat(ProjMat);
@@ -76,7 +61,6 @@ void main() {
     } else {
         gl_Position = ProjMat * viewPos;
     }
-
 
     glpos = gl_Position;
 }

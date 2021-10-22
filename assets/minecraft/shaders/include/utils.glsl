@@ -43,21 +43,21 @@ Control Map:
 
 // returns control pixel index or -1 if not control
 int inControl(vec2 screenCoord, float screenWidth) {
-    if (screenCoord.y < 1.0) {
+    if(screenCoord.y < 1.0) {
         float index = floor(screenWidth / 2.0) + THRESH / 2.0;
         index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+        if(fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
             return int(index);
         }
     }
     return -1;
 }
 int inControl2(vec2 screenCoord, vec4 glpos) {
-    if (screenCoord.y < 1.0) {
+    if(screenCoord.y < 1.0) {
         float screenWidth = round(screenCoord.x * 2.0 / (glpos.x / glpos.w + 1.0));
         float index = floor(screenWidth / 2.0) + THRESH / 2.0;
         index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+        if(fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
             return int(index);
         }
     }
@@ -66,10 +66,10 @@ int inControl2(vec2 screenCoord, vec4 glpos) {
 
 // discards the current pixel if it is control
 void discardControl(vec2 screenCoord, float screenWidth) {
-    if (screenCoord.y < 1.0) {
+    if(screenCoord.y < 1.0) {
         float index = floor(screenWidth / 2.0) + THRESH / 2.0;
         index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+        if(fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
             discard;
         }
     }
@@ -77,11 +77,11 @@ void discardControl(vec2 screenCoord, float screenWidth) {
 
 // discard but for when ScreenSize is not given
 void discardControlGLPos(vec2 screenCoord, vec4 glpos) {
-    if (screenCoord.y < 1.0) {
+    if(screenCoord.y < 1.0) {
         float screenWidth = round(screenCoord.x * 2.0 / (glpos.x / glpos.w + 1.0));
         float index = floor(screenWidth / 2.0) + THRESH / 2.0;
         index = (screenCoord.x - index) / 2.0;
-        if (fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
+        if(fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
             discard;
         }
     }
@@ -120,7 +120,6 @@ vec3 encodeFloat(float i) {
 float decodeFloat(vec3 ivec) {
     return decodeInt(ivec) / FPRECISION;
 }
-
 
 /*
  * Created by Onnowhere (https://github.com/onnowhere)
@@ -168,7 +167,7 @@ bool isNether(vec3 light0, vec3 light1) {
  * Creates matrix by comparing world space light directions to camera space light directions
  */
 mat3 getWorldMat(vec3 light0, vec3 light1) {
-    if (isNether(light0, light1)) {
+    if(isNether(light0, light1)) {
         // Cannot determine matrix in the nether due to parallel light directions
         return mat3(0.0);
     }
@@ -206,28 +205,20 @@ mat4 getOrthoMat(mat4 ProjMat, float Zoom) {
     float top = (0.5 / (ProjMat[1][1] / (2.0 * near))) / Zoom;
     float bottom = -top;
 
-    return mat4(2.0 / (right - left),               0.0,                                0.0,                            0.0,
-                0.0,                                2.0 / (top - bottom),               0.0,                            0.0,
-                0.0,                                0.0,                                -2.0 / (far - near),            0.0,
-                -(right + left) / (right - left),   -(top + bottom) / (top - bottom),   -(far + near) / (far - near),   1.0);
+    return mat4(2.0 / (right - left), 0.0, 0.0, 0.0, 0.0, 2.0 / (top - bottom), 0.0, 0.0, 0.0, 0.0, -2.0 / (far - near), 0.0, -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(far + near) / (far - near), 1.0);
 }
 
 #define steps 15.0
-vec3 ScreenSpaceDither(vec2 vScreenPos)
-{
-    vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(GameTime*2048)));
-    vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0,2.0,2.0) - vec3(0.5, 0.5, 0.5);
+vec3 ScreenSpaceDither(vec2 vScreenPos) {
+    vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(GameTime * 2048)));
+    vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0, 2.0, 2.0) - vec3(0.5, 0.5, 0.5);
     return (vDither.rgb / steps);
 }
 vec3 encodeFloat24(float val) {
     uint sign = val > 0.0 ? 0u : 1u;
     uint exponent = uint(log2(abs(val)));
     uint mantissa = uint((abs(val) / exp2(float(exponent)) - 1.0) * 131072.0);
-    return vec3(
-        (sign << 7u) | ((exponent + 31u) << 1u) | (mantissa >> 16u),
-        (mantissa >> 8u) & 255u,
-        mantissa & 255u
-    ) / 255.0;
+    return vec3((sign << 7u) | ((exponent + 31u) << 1u) | (mantissa >> 16u), (mantissa >> 8u) & 255u, mantissa & 255u) / 255.0;
 }
 
 float decodeFloat24(vec3 raw) {
@@ -239,24 +230,28 @@ float decodeFloat24(vec3 raw) {
 }
 
 float packUnorm2x4(vec2 xy) {
-	return dot(floor(15.0 * xy + 0.5), vec2(1.0 / 255.0, 16.0 / 255.0));
+    return dot(floor(15.0 * xy + 0.5), vec2(1.0 / 255.0, 16.0 / 255.0));
 }
 float packUnorm2x2(vec2 xy) {
-	return dot(floor(4.0 * xy + 0.5), vec2(1.0 / 16.0, 16.0 / 16.0));
+    return dot(floor(4.0 * xy + 0.5), vec2(1.0 / 16.0, 16.0 / 16.0));
 }
-float packUnorm2x4(float x, float y) { return packUnorm2x4(vec2(x, y)); }
+float packUnorm2x4(float x, float y) {
+    return packUnorm2x4(vec2(x, y));
+}
 vec2 unpackUnorm2x4(float pack) {
-	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
-	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+    vec2 xy;
+    xy.x = modf(pack * 255.0 / 16.0, xy.y);
+    return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 vec2 unpackUnorm2x2(float pack) {
-	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
-	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+    vec2 xy;
+    xy.x = modf(pack * 255.0 / 16.0, xy.y);
+    return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 
 //Dithering from Jodie
 float Bayer2(vec2 a) {
-    a = floor(a+fract(GameTime * 1200));
+    a = floor(a + fract(GameTime * 1200));
     return fract(dot(a, vec2(0.5, a.y * 0.75)));
 }
 
@@ -269,21 +264,20 @@ float Bayer2(vec2 a) {
 #define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
 #define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
 float map(float value, float min1, float max1, float min2, float max2) {
-  return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
+    return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
-
 
 // simple x-y decorrelated noise seems enough
 #define stepnoise0(p, size) rnd( floor(p/size)*size ) 
 #define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
 
 //   joeedh's original noise (cleaned-up)
-vec2 stepnoise(vec2 p, float size) { 
-    p = floor((p+10.)/size)*size;          // is p+10. useful ?   
-    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;    
-    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
-    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );      
-    return p;    
+vec2 stepnoise(vec2 p, float size) {
+    p = floor((p + 10.) / size) * size;          // is p+10. useful ?   
+    p = fract(p * .1) + 1. + p * vec2(2, 3) / 1e4;
+    p = fract(1e5 / (.1 * p.x * (p.y + vec2(0, 1)) + 1.));
+    p = fract(1e5 / (p * vec2(.1234, 2.35) + 1.));
+    return p;
 }
 
 // --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
@@ -291,10 +285,10 @@ vec2 stepnoise(vec2 p, float size) {
 #define SEED1 1.705
 #define DMUL  8.12235325       // are exact DMUL and -.5 important ?
 
-float mask(vec2 p) { 
+float mask(vec2 p) {
 
-    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
-    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+    p += (stepnoise0(p, 5.5) - .5) * DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract(p.x * SEED1 + p.y / (SEED1 + .15555)); //  weights: 1.705 , 0.5375
 
     //return f;  // If you want to skeep the tone mapping
     f *= 1.03; //  to avoid zero-stipple in plain white ?
@@ -302,6 +296,5 @@ float mask(vec2 p) {
     // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
     // returned value in [0,37.2] , but < 0.57 with P=50% 
 
-    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
-}                                        
-
+    return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}

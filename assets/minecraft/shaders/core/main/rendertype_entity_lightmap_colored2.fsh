@@ -23,28 +23,24 @@ in float lmx;
 in float lmy;
 
 void main() {
-    discardControlGLPos(gl_FragCoord.xy, glpos);
-    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+  discardControlGLPos(gl_FragCoord.xy, glpos);
+  vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
   //  vec4 color = texture(Sampler0, texCoord0) * 1 * ColorModulator;
 
-  if (color.a*255 <= 17.0) {
+  if(color.a * 255 <= 17.0) {
     discard;
   }
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-    fragColor = color;
-    color.rgb = clamp(color.rgb,0.01,1);
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res = mod(mod2, 2.0f);
+  fragColor = color;
+  color.rgb = clamp(color.rgb, 0.01, 1);
+  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+  float res = mod(mod2, 2.0f);
 
-
-
-float lm = lmx;
-  if (res == 0.0f)    {
+  float lm = lmx;
+  if(res == 0.0f) {
     lm = lmy;
   }
 
-   
-    fragColor.a = 1;
-
+  fragColor.a = 1;
 
 }

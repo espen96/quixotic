@@ -39,12 +39,8 @@ float decodeFloat6_4(uint raw) {
 vec3 decodeColor(vec4 raw) {
     uvec4 scaled = uvec4(round(raw * 255.0));
     uint encoded = (scaled.r << 24) | (scaled.g << 16) | (scaled.b << 8) | scaled.a;
-    
-    return vec3(
-        decodeFloat7_4(encoded >> 21),
-        decodeFloat7_4((encoded >> 10) & 2047u),
-        decodeFloat6_4(encoded & 1023u)
-    );
+
+    return vec3(decodeFloat7_4(encoded >> 21), decodeFloat7_4((encoded >> 10) & 2047u), decodeFloat6_4(encoded & 1023u));
 }
 
 uint encodeFloat7_4(float val) {
@@ -65,37 +61,26 @@ vec4 encodeColor(vec3 color) {
     uint r = encodeFloat7_4(color.r);
     uint g = encodeFloat7_4(color.g);
     uint b = encodeFloat6_4(color.b);
-    
+
     uint encoded = (r << 21) | (g << 10) | b;
-    return vec4(
-        encoded >> 24,
-        (encoded >> 16) & 255u,
-        (encoded >> 8) & 255u,
-        encoded & 255u
-    ) / 255.0;
+    return vec4(encoded >> 24, (encoded >> 16) & 255u, (encoded >> 8) & 255u, encoded & 255u) / 255.0;
 }
 
-
 void main() {
-    
-  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-  float res = mod(mod2, 2.0f);
+
+    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+    float res = mod(mod2, 2.0f);
     discardControlGLPos(gl_FragCoord.xy, glpos);
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
-    color.rgb = clamp(color.rgb,0.01,1);
+    color.rgb = clamp(color.rgb, 0.01, 1);
 
   //color.rgb = (noise)*100;
 
-
-
     fragColor = color;
 //    fragColor = linear_fog(color, vertexDistance,FogStart, FogEnd, FogColor);
-
-
 
 //    if(water > 0.9 )    fragColor = linear_fog(color, vertexDistance, -8, FogEnd*0.1, FogColor);
 
 //    if(water > 0.9 )  fragColor.a = 0.75;
 
-    
 }

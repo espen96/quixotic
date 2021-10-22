@@ -11,6 +11,7 @@
         { "name": "DiffuseSampler" },
         { "name": "MainSampler" },
         { "name": "blursampler" },
+        { "name": "volume" },
         { "name": "BloomSampler" },
         { "name": "DiffuseDepthSampler" }
     ],

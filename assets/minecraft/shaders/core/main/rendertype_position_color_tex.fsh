@@ -3,7 +3,6 @@
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
 
-
 uniform sampler2D Sampler0;
 
 uniform vec4 ColorModulator;
@@ -22,7 +21,7 @@ void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     color.a = 1;
-    color.rgb = clamp(color.rgb,0.01,1);
+    color.rgb = clamp(color.rgb, 0.01, 1);
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = color;
-    }
+}

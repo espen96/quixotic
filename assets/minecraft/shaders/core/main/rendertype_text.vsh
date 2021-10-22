@@ -2,7 +2,6 @@
 
 #moj_import <light.glsl>
 
-
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
@@ -24,7 +23,8 @@ void main() {
     glpos = gl_Position;
 
     vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
-    if (vertexDistance <= 800) vertexColor = Color * minecraft_sample_lightmap(Sampler2, UV2);
+    if(vertexDistance <= 800)
+        vertexColor = Color * minecraft_sample_lightmap(Sampler2, UV2);
     vertexColor = Color * texelFetch(Sampler2, UV2 / 16, 0);
     texCoord0 = UV0;
 }

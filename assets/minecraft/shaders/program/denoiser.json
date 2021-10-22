@@ -9,6 +9,7 @@
   "attributes": [ "Position" ],
   "samplers": [
     { "name": "DiffuseSampler" },
+    { "name": "volume" },
     { "name": "CurrentFrameDataSampler" },
     { "name": "CurrentFrameDepthSampler" },
     { "name": "PreviousFrameSampler" },

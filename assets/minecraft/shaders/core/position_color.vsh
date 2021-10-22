@@ -15,10 +15,10 @@ void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
     isHorizon = 0.0;
 
-    if ((ModelViewMat * vec4(Position, 1.0)).z > -HORIZONDIST - 10.0) {
+    if((ModelViewMat * vec4(Position, 1.0)).z > -HORIZONDIST - 10.0) {
         isHorizon = 1.0;
     }
-    
+
     vertexColor = Color;
 
 }

@@ -13,7 +13,7 @@ uniform mat4 ProjMat;
 uniform vec4 ColorModulator;
 
 out float vertexDistance;
- out vec4 vertexColor;
+out vec4 vertexColor;
 out vec4 glpos;
 
 void main() {

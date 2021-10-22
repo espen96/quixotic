@@ -1,6 +1,6 @@
     
     // Default Mappings
-    
+
     #define sssMin 22
     #define sssMax 47
     #define lightMin 48

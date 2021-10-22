@@ -9,6 +9,6 @@ out vec4 fragColor;
 
 void main() {
     fragColor = texture(DiffuseSampler, texCoord);
-    
+
 //    gl_FragDepth = texture(DepthSampler, texCoord).r;
 }

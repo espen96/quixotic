@@ -16,13 +16,13 @@ out vec4 fragColor;
 
 in vec4 glpos;
 void main() {
-    discardControlGLPos(gl_FragCoord.xy, glpos);
-    vec4 color = texture(Sampler0, texCoord0) * ColorModulator;
+  discardControlGLPos(gl_FragCoord.xy, glpos);
+  vec4 color = texture(Sampler0, texCoord0) * ColorModulator;
 
-  if (color.a*255 <= 17.0) {
+  if(color.a * 255 <= 17.0) {
     discard;
   }
-    color.rgb = clamp(color.rgb,0.01,1);
-    float fade = linear_fog_fade(vertexDistance, FogStart, FogEnd);
-    fragColor = vec4(color.rgb * fade, color.a);
+  color.rgb = clamp(color.rgb, 0.01, 1);
+  float fade = linear_fog_fade(vertexDistance, FogStart, FogEnd);
+  fragColor = vec4(color.rgb * fade, color.a);
 }

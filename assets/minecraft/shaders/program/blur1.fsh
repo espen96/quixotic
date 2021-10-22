@@ -12,34 +12,28 @@ in vec2 texCoord;
 #define SAMPLE_OFFSET 5.
 #define INTENSITY 1.
 
-
-
 vec2 unpackUnorm2x4(float pack) {
-	vec2 xy; xy.x = modf(pack * 255.0 / 16.0, xy.y);
-	return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
+    vec2 xy;
+    xy.x = modf(pack * 255.0 / 16.0, xy.y);
+    return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 
-
-
 void main() {
-float Intensity = 1.0;
-float BlurSize = 24.0;
+    float Intensity = 1.0;
+    float BlurSize = 24.0;
 
-
-    vec2 uv = gl_FragCoord.xy / ScreenSize.xy *4. -1.5;
+    vec2 uv = gl_FragCoord.xy / ScreenSize.xy * 4. - 1.5;
     vec2 res = ScreenSize.xy;
-	
+
     float i = SAMPLE_OFFSET;
-    i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x; 
-    
-     vec3 col = texture( DiffuseSampler, uv).rgb / 2.0;
-    col += texture( DiffuseSampler, uv + vec2( i, i ) / res ).rgb / 8.0;
-    col += texture( DiffuseSampler, uv + vec2( i, -i ) / res ).rgb / 8.0;
-    col += texture( DiffuseSampler, uv + vec2( -i, i ) / res ).rgb / 8.0;
-    col += texture( DiffuseSampler, uv + vec2( -i, -i ) / res ).rgb / 8.0;
+    i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x;
+
+    vec3 col = texture(DiffuseSampler, uv).rgb / 2.0;
+    col += texture(DiffuseSampler, uv + vec2(i, i) / res).rgb / 8.0;
+    col += texture(DiffuseSampler, uv + vec2(i, -i) / res).rgb / 8.0;
+    col += texture(DiffuseSampler, uv + vec2(-i, i) / res).rgb / 8.0;
+    col += texture(DiffuseSampler, uv + vec2(-i, -i) / res).rgb / 8.0;
     vec3 fin = max(vec3(0.0), col - 0.035);
 
-
-
-	fragColor= vec4((fin), 1.0);
+    fragColor = vec4((fin), 1.0);
 }

@@ -24,5 +24,4 @@ void main() {
     vertexColor = Color * minecraft_sample_lightmap2(Sampler2, UV2);
     texCoord0 = UV0;
 
-
 }
