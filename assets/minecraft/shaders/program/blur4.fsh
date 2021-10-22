@@ -1,20 +1,13 @@
 #version 150
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D DiffuseDepthSampler;
-uniform sampler2D MainSampler;
-uniform sampler2D BloomSampler;
 uniform vec2 ScreenSize;
 out vec4 fragColor;
-
-in vec2 texCoord;
 
 #define SAMPLE_OFFSET 5.
 #define INTENSITY 1.
 
 void main() {
-    float Intensity = 1.0;
-    float BlurSize = 24.0;
 
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy / 2. + .25;
 

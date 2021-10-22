@@ -1,11 +1,8 @@
 #version 150
 
-uniform sampler2D temporals3Sampler;
 uniform sampler2D noisetex;
 uniform sampler2D DiffuseDepthSampler;
 
-uniform vec2 OutSize;
-uniform vec2 ScreenSize;
 uniform float Time;
 
 in vec2 texCoord;
@@ -13,12 +10,6 @@ in vec2 oneTexel;
 in vec3 avgSky;
 in vec3 sc;
 
-in vec4 fogcol;
-in float near;
-
-in vec4 skycol;
-in vec4 rain;
-in float aspectRatio;
 in mat4 gbufferModelViewInverse;
 in float sunElevation;
 in float rainStrength;
@@ -26,10 +17,6 @@ in vec3 sunVec;
 
 out vec4 fragColor;
 #define CLOUDS_QUALITY 0.5 
-
-vec3 toLinear(vec3 sRGB) {
-	return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
-}
 
 ////////////////////////////////////////////////
 
@@ -45,21 +32,13 @@ const float cdensity = 0.20;
 
 ///////////////////////////
 
-vec3 ScreenSpaceDither(vec2 vScreenPos) {
-	vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(Time * 2048)));
-	vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0, 2.0, 2.0) - vec3(0.5, 0.5, 0.5);
-	return (vDither.rgb / steps);
-}
 
-	//Mie phase function
+//Mie phase function
 float phaseg(float x, float g) {
 	float gg = g * g;
 	return (gg * -0.25 / 3.14 + 0.25 / 3.14) * pow(-2.0 * (g * x) + (gg + 1.0), -1.5);
 }
 
-float cubeSmooth(float x) {
-	return (x * x) * (3.0 - 2.0 * x);
-}
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
 	vec2 res = textureSize(sam, 0) * 0.75;
@@ -75,33 +54,6 @@ vec4 textureGood(sampler2D sam, vec2 uv) {
 	vec4 d = textureLod(sam, (iuv + vec2(1.5, 1.5)) / res, 0);
 
 	return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
-}
-vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
-	float mCosT = clamp(cosT, 0.0, 1.);
-	float cosY = dot(sunVec, sVector);
-	float x = ((cosY * cosY) * (cosY * 0.5 * 256.) + 0.5 * 256. + 18. + 0.5) * oneTexel.x;
-	float y = (mCosT * 256. + 1.0 + 0.5) * oneTexel.y;
-
-	return textureGood(lut, vec2(x, y)).rgb;
-}
-
-float TextureCubic(sampler2D tex, vec2 pos) {
-	ivec2 texSize = textureSize(tex, 0) * 5;
-	vec2 texelSize = (1.0 / vec2(texSize));
-	float p0q0 = texture(tex, pos).a;
-	float p1q0 = texture(tex, pos + vec2(texelSize.x, 0)).a;
-
-	float p0q1 = texture(tex, pos + vec2(0, texelSize.y)).a;
-	float p1q1 = texture(tex, pos + vec2(texelSize.x, texelSize.y)).a;
-
-	float a = cubeSmooth(fract(pos.x * texSize.x));
-
-	float pInterp_q0 = mix(p0q0, p1q0, a);
-	float pInterp_q1 = mix(p0q1, p1q1, a);
-
-	float b = cubeSmooth(fract(pos.y * texSize.y));
-
-	return mix(pInterp_q0, pInterp_q1, b);
 }
 
 //Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
@@ -198,13 +150,6 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 	return mix(vec4(color, clamp(total_extinction * (1.0 + 1 / 250.) - 1 / 250., 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0), 1 - smoothstep(0.02, 0.7, cosY));
 
 }
-float luma(vec3 color) {
-	return dot(color, vec3(0.299, 0.587, 0.114));
-}
-
-float ditherGradNoise() {
-	return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
-}
 
 vec4 backProject(vec4 vec) {
 	vec4 tmp = gbufferModelViewInverse * vec;
@@ -247,10 +192,7 @@ float mask(vec2 p) {
 
 	return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
-vec2 sphereToCarte(vec3 dir) {
-	float lonlat = atan(-dir.x, -dir.z);
-	return vec2(lonlat * (0.5 / PI) + 0.5, 0.5 * dir.y + 0.5);
-}
+
 void main() {
 
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );

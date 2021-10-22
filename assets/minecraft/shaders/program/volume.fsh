@@ -1,15 +1,12 @@
 #version 150
 
 uniform sampler2D MainSampler;
-uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D TranslucentDepthSampler;
 
-uniform vec2 ScreenSize;
 uniform float Time;
 
-in vec3 ambientUp;
 in vec3 ambientLeft;
 in vec3 ambientRight;
 in vec3 ambientB;
@@ -20,18 +17,14 @@ in vec3 avgSky;
 in vec2 texCoord;
 in vec2 oneTexel;
 flat in vec4 fogcol;
-flat in vec4 skycol;
 in vec4 rain;
 in mat4 gbufferModelViewInverse;
 flat in float near;
 flat in float far;
-in float VFAmount;
-flat in float end;
 flat in float overworld;
 flat in vec3 currChunkOffset;
 
 flat in float sunElevation;
-flat in vec3 sunVec;
 flat in vec3 sunPosition;
 flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
@@ -141,15 +134,7 @@ float cloudVol(in vec3 pos) {
     float cloud = unifCov * 60. * fogAmount;
     return cloud;
 }
-vec3 reinhard(vec3 v) {
-    return v / (1.0f + v);
-}
-vec3 reinhard_jodie(vec3 v) {
-    float l = luma(v);
-    vec3 tv = v / (1.0f + v);
-    tv = mix(v / (1.0f + l), tv, tv);
-    return tv;
-}
+
 mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv) {
 
     vec3 wpos = fragpos;
@@ -186,7 +171,6 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
 
     float mu = 1.0;
-    float muS = 1.0 * mu;
     vec3 absorbance = vec3(1.0);
     float expFactor = 2.7;
     for(int i = 0; i < VL_SAMPLES; i++) {
@@ -305,10 +289,7 @@ void main() {
 
     if(overworld == 1.0) {
 
-        float al = length(OutTexel);
-
         vec3 direct;
-        vec3 ambient;
         direct = suncol;
 
         float df = length(fragpos);

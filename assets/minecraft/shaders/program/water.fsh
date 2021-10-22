@@ -1,7 +1,6 @@
 #version 150
 out vec4 fragColor;
 
-uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D TranslucentDepthSampler;
@@ -21,23 +20,10 @@ in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
 in mat4 wgbufferModelViewInverse;
 
-float LinearizeDepth(float depth) {
-    return (2.0 * near * far) / (far + near - depth * (far - near));
-}
 
 float luminance(vec3 rgb) {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
     return ((1.0 - redness) * dot(rgb, vec3(0.2126, 0.7152, 0.0722)) + redness * 1.4) * 4.0;
-}
-
-float luma4(vec3 color) {
-    return dot(color, vec3(0.21, 0.72, 0.07));
-}
-
-vec2 unpackUnorm2x4(float pack) {
-    vec2 xy;
-    xy.x = modf(pack * 255.0 / 16.0, xy.y);
-    return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 
 ////////////////////////////
@@ -50,9 +36,7 @@ vec2 unpackUnorm2x4(float pack) {
 #define FUDGE 32.0
 
 /////////
-float invLinZ(float lindepth) {
-    return -((2.0 * near / lindepth) - far - near) / (far - near);
-}
+
 float ld(float dist) {
     return (2.0 * near) / (far + near - dist * (far - near));
 }
@@ -63,9 +47,7 @@ vec3 nvec3(vec4 pos) {
 vec4 nvec4(vec3 pos) {
     return vec4(pos.xyz, 1.0);
 }
-float linZ(float depth) {
-    return (2.0 * near) / (far + near - depth * (far - near));
-}
+
 #define diagonal3(m) vec3((m)[0].x, (m)[1].y, m[2].z)
 #define  projMAD(m, v) (diagonal3(m) * (v) + (m)[3].xyz)
 
@@ -78,11 +60,6 @@ vec3 toClipSpace3(vec3 viewSpacePosition) {
 #define SSPTBIAS 0.5
 
 #define SSR_STEPS 15 //[10 15 20 25 30 35 40 50 100 200 400]
-float hash12(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * .1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
-}
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
     vec2 res = textureSize(sam, 0);
@@ -218,66 +195,7 @@ float mask(vec2 p) {
     return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }                                        
 
-//Dithering from Jodie
-float Bayer2(vec2 a) {
-    a = floor(a + (Time));
-    return fract(dot(a, vec2(0.5, a.y * 0.75)));
-}
 
-#define Bayer4(a)   (Bayer2(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer8(a)   (Bayer4(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer16(a)  (Bayer8(  0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer32(a)  (Bayer16( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer64(a)  (Bayer32( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer128(a) (Bayer64( 0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer256(a) (Bayer128(0.5 * (a)) * 0.25 + Bayer2(a))
-#define Bayer512(a) (Bayer256(0.5 * (a)) * 0.25 + Bayer2(a))
-
-float cdist(vec2 coord) {
-    return max(abs(coord.s - 0.5) * 1.95, abs(coord.t - 0.5) * 2.0);
-}
-
-vec4 Raytrace(sampler2D depthtex, vec3 viewPos, vec3 normal, float dither, out float border, float maxf, float stp, float ref, float inc) {
-
-    vec3 pos = vec3(0.0);
-    float dist = 0.0;
-    int sr = 0;
-
-    vec3 start = viewPos;
-
-    vec3 vector = stp * reflect(normalize(viewPos), normalize(normal));
-    viewPos += vector;
-    vec3 tvector = vector;
-
-    for(int i = 0; i < 16; i++) {
-        pos = nvec3(gbufferProjection * nvec4(viewPos)) * 0.5 + 0.5;
-        if(pos.x < -0.05 || pos.x > 1.05 || pos.y < -0.05 || pos.y > 1.05)
-            break;
-
-        vec3 rfragpos = vec3(pos.xy, texture(DiffuseDepthSampler, pos.xy).r);
-        rfragpos = nvec3(gbufferProjectionInverse * nvec4(rfragpos * 2.0 - 1.0));
-        dist = length(start - rfragpos);
-
-        float err = length(viewPos - rfragpos);
-        float lVector = length(vector);
-        if(lVector > 1.0)
-            lVector = pow(lVector, 1.14);
-        if(err < lVector) {
-            sr++;
-            if(sr >= maxf)
-                break;
-            tvector -= vector;
-            vector *= ref;
-        }
-        vector *= inc;
-        tvector += vector;
-        viewPos = start + tvector * (dither * 0.05 + 0.975);
-    }
-
-    border = cdist(pos.st);
-
-    return vec4(pos, dist);
-}
 vec3 rayTrace(vec3 dir, vec3 position, float dither, float fresnel) {
 
     float quality = mix(10, SSR_STEPS, fresnel);
@@ -318,11 +236,6 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
 
     vec3 pos = vec3(0.0);
 
-    float maxf = 4.0; // 4.0 max refinement steps
-    float stp = 1.0; // 1.0 initial length of the reflected vector
-    float ref = 0.1; // 0.1 refinement multiplier
-    float inc = 2.0; // 2.0 iteration multiplier
-
     vec4 color = vec4(0.0);
     float border = 0.0;
     vec3 reflectedVector = reflect(normalize(fragpos), surfacenorm);
@@ -330,7 +243,6 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
 
     float roughness = 0.02;
 
-    float emissive = 0.0;
     float F0 = f0;
 
     float normalDotEye = dot(surfacenorm, normalize(fragpos));
@@ -340,7 +252,6 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
     fresnel = fresnel * 0.87 + 0.04;	//faking additionnal roughness to the water
     roughness = 0.1;
 
-     //pos = Raytrace(DiffuseDepthSampler, fragpos, surfacenorm, noise , border, maxf, stp, ref, inc).xyz;
     pos = rayTrace(reflectedVector, fragpos, noise, 0);
 
     border = clamp(13.333 * (1.0 - border), 0.0, fresnel);
@@ -359,10 +270,6 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noi
 }
 void main() {
 
-    vec3 reflection = vec3(1.0);
-    float mod2 = gl_FragCoord.x + gl_FragCoord.y;
-    float res = mod(mod2, 2.0f);
-
     vec4 color = texture(TranslucentSampler, texCoord);
 
     vec4 color2 = color;
@@ -379,8 +286,6 @@ void main() {
         vec3 clipPos = screenPos2 * 2.0 - 1.0;
         vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
         vec3 viewPos = tmp.xyz / tmp.w;
-
-        float roughness = 0.1;
 
         float F0 = 0.02;
 

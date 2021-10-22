@@ -1,12 +1,10 @@
 #version 150
 const float sunPathRotation = -35.0;
 in vec4 Position;
-uniform float Time;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D shading;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -17,7 +15,6 @@ out vec4 rain;
 out mat4 gbufferModelViewInverse2;
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferProjectionInverse;
-out float VFAmount;
 
 out vec3 avgSky;
 out vec3 ambientUp;
@@ -133,7 +130,6 @@ void main() {
 // 12000 = -0.9765 +0.2154
 // 18000 = -0.0 -1.0
 // 24000 = +0.9765 +0.2154
-    float time3 = map(sunDir.y, -1, +1, 0, 1);
     bool time8 = sunDir.y > 0;
     float time4 = map(sunDir.x, -1, +1, 0, 1);
     float time5 = mix(12000, 0, time4);
@@ -172,11 +168,6 @@ void main() {
 
     sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
 
-    float angSky = -((pi * 0.5128205128205128 - acos(sunElevation * 0.95 + 0.05)) / 1.5);
-    float angSkyNight = -((pi * 0.5128205128205128 - acos(-sunElevation * 0.95 + 0.05)) / 1.5);
-
-    float fading = clamp(sunElevation + 0.095, 0.0, 0.08) / 0.08;
-    float fading2 = clamp(-sunElevation + 0.095, 0.0, 0.08) / 0.08;
 
     float modWT = (worldTime % 24000) * 1.0;
     float fogAmount0 = 1 / 3000. + FOG_TOD_MULTIPLIER * (1 / 180. * (clamp(modWT - 11000., 0., 2000.0) / 2000. + (1.0 - clamp(modWT, 0., 3000.0) / 3000.)) * (clamp(modWT - 11000., 0., 2000.0) / 2000. + (1.0 - clamp(modWT, 0., 3000.0) / 3000.)) + 1 / 200. * clamp(modWT - 13000., 0., 1000.0) / 1000. * (1.0 - clamp(modWT - 23000., 0., 1000.0) / 1000.));

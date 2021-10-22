@@ -3,10 +3,8 @@
 in vec2 texCoord;
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D CurrentFrameDepthSampler;
 uniform vec2 ScreenSize;
 uniform sampler2D PreviousFrameSampler;
-uniform sampler2D PreviousFrameDepthSampler;
 
 out vec4 fragColor;
 

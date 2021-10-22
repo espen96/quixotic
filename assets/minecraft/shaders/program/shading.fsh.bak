@@ -975,8 +975,8 @@ vec3 test = vec3( (OutTexel));
         pbr.b = test.r;
     }
     float sssa = pbr.g;
-    float ggxAmmount = pbr.b;
-    float ggxAmmount2 = pbr.a;
+    float smoothness = pbr.b;
+    float smoothness2 = pbr.a;
     float light = pbr.r;
       
     
@@ -1132,7 +1132,7 @@ if(overworld == 1.0){
     vec3 viewPos = tmp.xyz / tmp.w;	
 
 	vec3 f0 = vec3(0.04);
-	float roughness = 1-ggxAmmount;
+	float roughness = 1-smoothness;
 	vec3 indirectSpecular = vec3(0.0);
 	const int nSpecularSamples = 3;
 
@@ -1140,9 +1140,9 @@ if(overworld == 1.0){
 
     float ldepth = linZ2(depth);
             
-    if(ggxAmmount2 > 0.001){ 
+    if(smoothness2 > 0.001){ 
             f0 = vec3(0.8);  
-            ggxAmmount = ggxAmmount2;
+            smoothness = smoothness2;
 
 			vec3 rayContrib = vec3(0.0);
 			vec3 reflection = vec3(0.0);    
@@ -1161,7 +1161,7 @@ if(overworld == 1.0){
 
     }
         
-        float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-ggxAmmount, f0.x)));		
+        float sunSpec = ((GGX(normal,-normalize(view),  sunPosition2, 1-smoothness, f0.x)));		
 
     
         shadeDir =  clamp(shadeDirS + shadeDirM,0,1);

@@ -1,16 +1,9 @@
 #version 150
 
-uniform vec2 OutSize;
-uniform vec2 ScreenSize;
 uniform float Time;
 
-in vec2 texCoord;
-in vec4 skycol;
-
-uniform sampler2D DiffuseSampler;
 in float skyIntensity;
 in vec3 nsunColor;
-in vec3 sunDir;
 in float skyIntensityNight;
 in float rainStrength;
 in float sunIntensity;
@@ -23,11 +16,6 @@ in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
 in vec3 lightSourceColor;
-in vec3 sunColor;
-in vec3 sunColorCloud;
-in vec3 moonColor;
-in vec3 moonColorCloud;
-in vec3 zenithColor;
 in vec3 avgSky;
 
 in vec3 ds;
@@ -59,41 +47,10 @@ float facos(float inX) {
   return (inX >= 0) ? res : PI - res;
 }
 
-vec3 ScreenSpaceDither(vec2 vScreenPos) {
-  vec3 vDither = vec3(dot(vec2(131.0, 312.0), vScreenPos.xy + fract(Time * 2048)));
-  vDither.rgb = fract(vDither.rgb / vec3(103.0, 71.0, 97.0)) * vec3(2.0, 2.0, 2.0) - vec3(0.5, 0.5, 0.5);
-  return (vDither.rgb / 15);
-}
-
-vec3 lumaBasedReinhardToneMapping(vec3 color) {
-  float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  float toneMappedLuma = luma / (1. + luma);
-  color *= toneMappedLuma / luma;
-  color = pow(color, vec3(1. / 2.2));
-  return color;
-}
-
-vec3 reinhard_extended(vec3 v, float max_white) {
-  vec3 numerator = v * (1.0f + (v / vec3(max_white * max_white)));
-  return numerator / (1.0f + v);
-}
-vec3 reinhard(vec3 v) {
-  return v / (1.0f + v);
-}
 float luminance(vec3 v) {
   return dot(v, vec3(0.2126f, 0.7152f, 0.0722f));
 }
 
-vec3 change_luminance(vec3 c_in, float l_out) {
-  float l_in = luminance(c_in);
-  return c_in * (l_out / l_in);
-}
-vec3 reinhard_extended_luminance(vec3 v, float max_white_l) {
-  float l_old = luminance(v);
-  float numerator = l_old * (1.0f + (l_old / (max_white_l * max_white_l)));
-  float l_new = numerator / (1.0f + l_old);
-  return change_luminance(v, l_new);
-}
 vec3 reinhard_jodie(vec3 v) {
   float l = luminance(v);
   vec3 tv = v / (1.0f + v);

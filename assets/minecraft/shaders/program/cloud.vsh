@@ -5,9 +5,7 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
-uniform sampler2D shading;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -18,7 +16,7 @@ out vec4 skycol;
 out vec4 rain;
 out vec3 avgSky;
 out vec3 sc;
-out float aspectRatio;
+
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
 
@@ -26,7 +24,6 @@ out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
 
-uniform float Time;
 
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
@@ -63,26 +60,6 @@ float decodeFloat24(vec3 raw) {
 #define CLOUDS_QUALITY 0.5 
 #define PI 3.141592
 
-vec2 R2_samples(int n) {
-    vec2 alpha = vec2(0.75487765, 0.56984026);
-    return fract(alpha * n);
-}
-vec3 rodSample(vec2 Xi) {
-    float r = sqrt(1.0f - Xi.x * Xi.y);
-    float phi = 2 * 3.14159265359 * Xi.y;
-
-    return normalize(vec3(cos(phi) * r, sin(phi) * r, Xi.x)).xzy;
-}
-vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
-    const vec3 moonlight = vec3(0.8, 1.1, 1.4) * 0.06;
-
-    float mCosT = clamp(cosT, 0.0, 1.);
-    float cosY = dot(sunVec, sVector);
-    float x = ((cosY * cosY) * (cosY * 0.5 * 256.) + 0.5 * 256. + 18. + 0.5) * oneTexel.x;
-    float y = (mCosT * 256. + 1.0 + 0.5) * oneTexel.y;
-
-    return texture(lut, vec2(x, y)).rgb;
-}
 void main() {
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
@@ -119,7 +96,6 @@ void main() {
 // 12000 = -0.9765 +0.2154
 // 18000 = -0.0 -1.0
 // 24000 = +0.9765 +0.2154
-    float time3 = map(sunDir.y, -1, +1, 0, 1);
     bool time8 = sunDir.y > 0;
     float time4 = map(sunDir.x, -1, +1, 0, 1);
     float time5 = mix(12000, 0, time4);
@@ -156,7 +132,6 @@ void main() {
     float upPosY = upPosition.y / normUpVec;
     float upPosZ = upPosition.z / normUpVec;
 
-    vec3 upVec = vec3(upPosX, upPosY, upPosZ);
     sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
 
     avgSky = texelFetch(temporals3Sampler, ivec2(7, 37), 0).rgb;

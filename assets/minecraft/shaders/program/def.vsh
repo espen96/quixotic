@@ -13,8 +13,6 @@ out vec3 sunDir;
 out vec3 ds;
 out vec3 ms;
 
-uniform vec2 InSize;
-
 out vec4 skycol;
 out vec4 rain;
 
@@ -121,7 +119,6 @@ void main() {
 // 12000 = -0.9765 +0.2154
 // 18000 = -0.0 -1.0
 // 24000 = +0.9765 +0.2154
-	float time3 = map(sunDir.y, -1, +1, 0, 1);
 	bool time8 = sunDir.y > 0;
 	float time4 = map(sunDir.x, -1, +1, 0, 1);
 	float time5 = mix(12000, 0, time4);
@@ -129,7 +126,6 @@ void main() {
 	float time7 = mix(time6, time5, time8);
 
 	float worldTime = time7;
-	float modWT = worldTime;
 
 	const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
@@ -215,7 +211,6 @@ void main() {
 	}
 	vec3 lightSourceColor = lightCol.rgb;
 	float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
-	float moonVis = clamp(-sunElevation, 0.0, 0.05) / 0.05 * clamp(-sunElevation, 0.0, 0.05) / 0.05;
 	float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;
 
 	//Fake bounced sunlight
