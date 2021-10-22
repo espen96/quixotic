@@ -51,8 +51,7 @@ void main() {
   vec4 albedo = textureLod(Sampler0, texCoord0,0);
   float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
 
-  if(mipmapLevel > 1) albedo.rgb = test.rgb;
-
+  albedo.rgb = mix(albedo.rgb,test.rgb,clamp(mipmapLevel,0,1));
 
   if(albedo.a >0.5) albedo = texture(Sampler0, texCoord0);
 

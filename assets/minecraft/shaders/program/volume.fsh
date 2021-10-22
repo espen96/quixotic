@@ -33,7 +33,7 @@ flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
 in vec3 avgSky;
 
-#define VL_SAMPLES 12 
+#define VL_SAMPLES 4 
 #define Ambient_Mult 1.0 
 #define SEA_LEVEL 70 //The volumetric light uses an altitude-based fog density, this is where fog density is the highest, adjust this value according to your world.
 #define ATMOSPHERIC_DENSITY 1.0
@@ -269,10 +269,46 @@ void waterVolumetrics(inout vec3 inColor, vec3 rayStart, vec3 rayEnd, float estE
 }
 
 
+// simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
+// see also https://www.shadertoy.com/view/MdtGD7
 
+// --- checkerboard noise : to decorelate the pattern between size x size tiles 
+
+// simple x-y decorrelated noise seems enough
+#define stepnoise0(p, size) rnd( floor(p/size)*size ) 
+#define rnd(U) fract(sin( 1e3*(U)*mat2(1,-7.131, 12.9898, 1.233) )* 43758.5453)
+
+//   joeedh's original noise (cleaned-up)
+vec2 stepnoise(vec2 p, float size) { 
+    p = floor((p+10.)/size)*size;          // is p+10. useful ?   
+    p = fract(p*.1) + 1. + p*vec2(2,3)/1e4;    
+    p = fract( 1e5 / (.1*p.x*(p.y+vec2(0,1)) + 1.) );
+    p = fract( 1e5 / (p*vec2(.1234,2.35) + 1.) );      
+    return p;    
+}
+
+// --- stippling mask  : regular stippling + per-tile random offset + tone-mapping
+
+#define SEED1 1.705
+#define DMUL  8.12235325       // are exact DMUL and -.5 important ?
+
+float mask(vec2 p) { 
+
+    p += ( stepnoise0(p, 5.5) - .5 ) *DMUL;   // bias [-2,2] per tile otherwise too regular
+    float f = fract( p.x*SEED1 + p.y/(SEED1+.15555) ); //  weights: 1.705 , 0.5375
+
+    //return f;  // If you want to skeep the tone mapping
+    f *= 1.03; //  to avoid zero-stipple in plain white ?
+
+    // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
+    // returned value in [0,37.2] , but < 0.57 with P=50% 
+
+    return  (pow(f, 150.) + 1.3*f ) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}  
 
 void main() {
     float depth = texture(DiffuseDepthSampler, texCoord).r;
+    float noise = mask(gl_FragCoord.xy+(Time*100));
 
   	vec2 texCoord = texCoord; 
   	vec2 texCoord2 = texCoord; 
@@ -346,7 +382,7 @@ void main() {
       estEyeDepth *= estEyeDepth*estEyeDepth*2.0;
     
 
-     waterVolumetrics(vl, vec3(0.0), fragpos, estEyeDepth, estEyeDepth, length(fragpos), ditherGradNoise(), totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)),sunElevation);
+     waterVolumetrics(vl, vec3(0.0), fragpos, estEyeDepth, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)),sunElevation);
 
 	  fragColor.rgb += vl;
       if(depth >=1)fragColor.rgb = vec3(vl);
@@ -354,7 +390,7 @@ void main() {
 
 
    else if (isEyeInWater == 0 ){
-      mat2x3 vl = getVolumetricRays(R2_dither(),fragpos,avgSky,sunElevation);
+      mat2x3 vl = getVolumetricRays(noise,fragpos,avgSky,sunElevation);
      fragColor.rgb *= vl[1];
      fragColor.rgb += vl[0];
      if(luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)lmx =0.93;

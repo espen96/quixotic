@@ -38,10 +38,11 @@ void main() {
 
   discardControlGLPos(gl_FragCoord.xy, glpos);
                   
+
   vec4 albedo = textureLod(Sampler0, texCoord0,0);
   float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
-  albedo = texture(Sampler0, texCoord0);
-  if(mipmapLevel > 1) albedo.rgb = test.rgb;
+
+  albedo.rgb = mix(albedo.rgb,test.rgb,clamp(mipmapLevel,0,1));
   if(albedo.a >0.5) albedo = texture(Sampler0, texCoord0);
   vec4 color = albedo * vertexColor * ColorModulator;
   float alpha = color.a;
