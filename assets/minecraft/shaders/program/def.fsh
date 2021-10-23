@@ -115,7 +115,7 @@ float decodeFloat24(vec3 raw) {
 }
 
 void main() {
-//vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
+
   vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
 
   if(gl_FragCoord.x < 17. && gl_FragCoord.y < 17.) {

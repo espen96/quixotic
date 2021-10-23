@@ -64,7 +64,7 @@
         "auxtargets":[
           {
             "name":"temporals3Sampler",
-            "id":"swap1"
+            "id":"pre"
           },
           {
             "name":"DiffuseDepthSampler",
@@ -95,7 +95,7 @@
         "auxtargets":[
           {
             "name":"temporals3Sampler",
-            "id":"swap1"
+            "id":"pre"
           },
           {
             "name":"DiffuseDepthSampler",
@@ -142,7 +142,7 @@
           },
           {
             "name":"temporals3Sampler",
-            "id":"swap1"
+            "id":"pre"
           },
           {
             "name":"TranslucentSampler",
@@ -212,7 +212,7 @@
         "auxtargets":[
           {
             "name":"temporals3Sampler",
-            "id":"swap1"
+            "id":"pre"
           },
           {
             "name":"MainSampler",

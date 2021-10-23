@@ -4,6 +4,7 @@ in vec4 Position;
 
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
+uniform vec2 ScreenSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D pre;
 
@@ -99,9 +100,14 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 	return textureGood(lut, vec2(x, y)).rgb;
 }
 void main() {
+	vec2 oneTexel = 1.0 / OutSize;
 
 	vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 	gl_Position = vec4(outPos.xy, 0.2, 1.0);
+	gl_Position.xy = gl_Position.xy*vec2(18.+258*2,258.)*oneTexel;
+	gl_Position.xy = gl_Position.xy*2.-1.0;
+
+
 	texCoord = Position.xy / OutSize;
 
 	vec2 start = getControl(0, OutSize);
