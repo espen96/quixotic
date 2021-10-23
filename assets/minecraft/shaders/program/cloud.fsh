@@ -32,13 +32,11 @@ const float cdensity = 0.20;
 
 ///////////////////////////
 
-
 //Mie phase function
 float phaseg(float x, float g) {
 	float gg = g * g;
 	return (gg * -0.25 / 3.14 + 0.25 / 3.14) * pow(-2.0 * (g * x) + (gg + 1.0), -1.5);
 }
-
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
 	vec2 res = textureSize(sam, 0) * 0.75;
@@ -60,7 +58,7 @@ vec4 textureGood(sampler2D sam, vec2 uv) {
 float cloudCov(in vec3 pos, vec3 samplePos) {
 	float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
 	float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-	float coverage = clamp(texture(noisetex, (samplePos.xz / 12500.)).x - 0.2, 0.0, 1.0) / (0.8);
+	float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x - 0.2, 0.0, 1.0) / (0.8);
 	float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
 	return max(cloud, 0.0);
 }
@@ -117,17 +115,17 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 		vec2 xz = progress_view.xz - cameraPosition.xz;
 		curvedPos.y -= sqrt(pow(6731e3, 2.0) - dot(xz, xz)) - 6731e3;
 		vec3 samplePos = curvedPos * vec3(1.0, 1. / 32., 1.0) / 4 + frameTimeCounter * vec3(0.5, 0., 0.5);
-		samplePos += vec3(10000, 0, 10000);
+
 		float coverageSP = cloudCov(curvedPos, samplePos);
 		if(coverageSP > 0.05) {
 			float cloud = cloudVol(curvedPos, samplePos, coverageSP);
 			if(cloud > 0.05) {
 				float mu = cloud * cdensity;
 
-					//fake multiple scattering approx 2  (from horizon zero down clouds)
+				//fake multiple scattering approx 2  (from horizon zero down clouds)
 				float h = 0.35 - 0.35 * clamp(progress_view.y / 4000. - 1500. / 4000., 0.0, 1.0);
 				float powder = 1.0 - exp(-mu * mult);
-				float Shadow = mix(1.0, powder, h);
+				float Shadow = mix(0.69, powder, h);
 				float ambientPowder = mix(1.0, powder, h * ambientMult);
 				vec3 S = vec3(sunContribution * Shadow + Shadow * moonContribution + skyCol0 * ambientPowder);
 
@@ -147,7 +145,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 	float cosY = normalize(dV_view).y;
 
 	color.rgb = mix(color.rgb * vec3(0.5, 0.5, 1.0), color.rgb, 1 - rainStrength);
-	return mix(vec4(color, clamp(total_extinction * (1.0 + 1 / 250.) - 1 / 250., 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0), 1 - smoothstep(0.02, 0.7, cosY));
+	return mix(vec4(color, clamp(total_extinction, 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0), 1 - smoothstep(0.02, 0.20, cosY));
 
 }
 
@@ -201,7 +199,7 @@ void main() {
 	float depth = texture(DiffuseDepthSampler, texCoord).r;
 
 	vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
-
+    vec3 sc = sc*(1 - ((rainStrength) * 0.5));
 	vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
 	vec4 cloud = renderClouds(fragpos, avgSky, noise, sc, sc, avgSky).rgba;
 

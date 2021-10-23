@@ -77,24 +77,29 @@ out vec4 fragColor;
 
 #define CLOUDS_QUALITY 0.5
 float sqr(float x) {
-    return x*x;
+    return x * x;
 }
 float pow3(float x) {
-    return sqr(x)*x;
+    return sqr(x) * x;
 }
 float pow4(float x) {
-    return sqr(x)*sqr(x);
+    return sqr(x) * sqr(x);
 }
 float pow5(float x) {
-    return pow4(x)*x;
+    return pow4(x) * x;
 }
 float pow6(float x) {
-    return pow5(x)*x;
+    return pow5(x) * x;
 }
 float pow8(float x) {
-    return pow4(x)*pow4(x);
+    return pow4(x) * pow4(x);
 }
-
+float pow16(float x) {
+    return pow8(x) * pow8(x);
+}
+float pow32(float x) {
+    return pow16(x) * pow16(x);
+}
 ////////////////////////////////
     #define sssMin 22
     #define sssMax 47
@@ -168,7 +173,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test) {
         if(test.r < 0.05)
             test *= 2.0;
         test = clamp(test * 1.5 - 0.1, 0, 1);
-        pbr.b = clamp(test.r * 2.0 - 0.1, 0, 1);
+        pbr.b = clamp(test.r , 0, 1);
     }
 
     return pbr;
@@ -657,7 +662,7 @@ float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
 }
 
 float rayTraceShadow(vec3 dir, vec3 position, float dither, float translucent) {
-    float stepSize = 50;
+    float stepSize = clamp(50 * dither, 11, 50);
     int maxSteps = 11;
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
@@ -675,14 +680,24 @@ float rayTraceShadow(vec3 dir, vec3 position, float dither, float translucent) {
     int iterations = min(int(min(len, mult * len) - 2), maxSteps);
 
     vec3 spos = clipPosition + stepv / stepSize;
+    float sp = linZ(texture2D(TranslucentDepthSampler, spos.xy).x);
+
+    if(sp < spos.z + 0.000001) {
+        float dist = abs(linZ(sp) - linZ(spos.z)) / linZ(spos.z);
+
+        if(dist <= 0.05)
+            return 0.0;
+    }
 
     for(int i = 0; i < int(iterations); i++) {
         spos += stepv * dither;
-        if(clamp(clipPosition.xy, 0, 1) != clipPosition.xy)
+        if(spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0 || clamp(clipPosition.xy, 0, 1) != clipPosition.xy)
             break;
+
         float sp = texture(TranslucentDepthSampler, spos.xy).x;
 
-        //if (sp >=1.0) return 0.0;
+        if(sp >= 1.0)
+            break;
         if(sp < spos.z + 0.000001) {
 
             float dist = abs(linZ(sp) - linZ(spos.z)) / linZ(spos.z);
@@ -779,19 +794,19 @@ void main() {
 
         vec2 lmtrans2 = unpackUnorm2x4(lmgather.z);
         float depthb = depthgather.z;
-        lmtrans2 *= 1 - (depthb - depth);
+        lmtrans2 *= 1.0 - (depthb - depth);
 
         vec2 lmtrans3 = unpackUnorm2x4(lmgather.x);
         float depthc = depthgather.x;
-        lmtrans3 *= 1 - (depthc - depth);
+        lmtrans3 *= 1.0 - (depthc - depth);
 
         vec2 lmtrans4 = unpackUnorm2x4(lmgather.y);
         float depthd = depthgather.y;
-        lmtrans4 *= 1 - (depthd - depth);
+        lmtrans4 *= 1.0 - (depthd - depth);
 
         vec2 lmtrans5 = unpackUnorm2x4(lmgather.w);
         float depthe = depthgather.w;
-        lmtrans5 *= 1 - (depthe - depth);
+        lmtrans5 *= 1.0 - (depthe - depth);
 
         float lmy = mix(lmtrans.y, (lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, res);
         float lmx = mix((lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, lmtrans.y, res);
@@ -855,35 +870,33 @@ void main() {
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
 
             ambientLight *= (1.0 + rainStrength * 0.2);
-            ambientLight *= 2.0;
+            //ambientLight *= 2.0;
 
             ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
 
             vec3 shading = vec3(0.0);
 
             vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
-            vec3 sunVec = mix(sunVec, -sunVec, clamp(skyIntensityNight * 3, 0, 1));
 
             vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel2);
 
             float sssa = pbr.g;
-            float smoothness = pbr.b;
-            float smoothness2 = pbr.a;
+            float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
+
             float light = pbr.r;
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             float screenShadow = rayTraceShadow(sunVec, viewPos, noise, sssa);
-            screenShadow = clamp(((screenShadow + lmy) * clamp((pow(lmx, 32)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
+            screenShadow = clamp(((screenShadow + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
             shadeDir *= screenShadow;
-            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.45) * 1.5 + (max(0.0, screenShadow * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * 3 + (max(0.0, screenShadow * 2 - 1) * 0.5)) * float(sssa) * lmx);
+            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow * 2 - 1) * 0.5)) * float(sssa) * lmx);
+            shadeDir = clamp(shadeDir, 0, 1);
 
-            vec3 f0 = vec3(0.04);
+      
+            vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
             vec3 reflections = vec3(0.0);
 
-            if(smoothness2 > 0.001) {
-
-                f0 = vec3(0.8);
-                smoothness = smoothness2;
+            if(pbr.a * 255 > 1.0) {
                 float ldepth = linZ2(depth);
                 vec3 normal2 = normal3 + (noise * (1 - smoothness));
                 vec3 fragpos3 = (vec4(texCoord, ldepth, 1.0)).xyz;
@@ -923,9 +936,9 @@ void main() {
             outcol.rgb = lumaBasedReinhardToneMapping(dlight * ao);
 
             outcol.rgb *= 1.0 + max(0.0, light);
-
-            //outcol.rgb = clamp(vec3(lmx), 0.01, 1);
-
+        ///---------------------------------------------
+            //outcol.rgb = clamp(vec3(pbr.a), 0.01, 1);
+        ///---------------------------------------------
         } else {
             if(end != 1.0) {
                 vec2 p_m = texCoord;

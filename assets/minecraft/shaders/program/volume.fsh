@@ -28,7 +28,7 @@ flat in float sunElevation;
 flat in vec3 sunPosition;
 flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
-
+in vec3 suncol;
 #define VL_SAMPLES 6 
 #define Ambient_Mult 1.0 
 #define SEA_LEVEL 70 //The volumetric light uses an altitude-based fog density, this is where fog density is the highest, adjust this value according to your world.
@@ -61,8 +61,6 @@ flat in vec2 eyeBrightnessSmooth;
 
 out vec4 fragColor;
 const float pi = 3.141592653589793238462643383279502884197169;
-
-vec3 suncol = texelFetch(temporals3Sampler, ivec2(8, 37), 0).rgb * 10;
 
 vec4 lightCol = vec4(suncol, float(sunElevation > 1e-5) * 2 - 1.);
 
@@ -162,9 +160,9 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
     ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
 
-    vec3 skyCol0 = ambientLight * 8. * 1.0 / 2.0 / 3. * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
-    vec3 sunColor = lightCol.rgb * 8. / 5 / 3.;
-    sunColor *= 1 - ((1 - rain.x) * 0.5);
+    vec3 skyCol0 = ambientLight * 8.0 * 1.0 / 2.0 / 3.0 * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
+    vec3 sunColor = lightCol.rgb * 8.0 / 1.0 / 3.0;
+    sunColor *= 1 - ((1 - rain.x) * 1.0);
 	//skyCol0 *= 1-((1-rain.x)*0.5);
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);

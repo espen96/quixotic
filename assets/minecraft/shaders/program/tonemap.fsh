@@ -31,6 +31,9 @@ in vec2 texCoord;
 float luma(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
 }
+float rand(vec2 co){
+  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
     vec2 res = textureSize(sam, 0);
@@ -163,7 +166,6 @@ void main() {
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
 
     float i = SAMPLE_OFFSET;
-    i = i * sin(1 * 0.5 + vec3(0, 0, 0)).x;
 
     vec3 col = texture(blursampler, uv + vec2(i, i) / ScreenSize).rgb / 6.0;
 
@@ -175,7 +177,7 @@ void main() {
     col += texture(blursampler, uv + vec2(i * 2., 0) / ScreenSize).rgb / 12.0;
     col += texture(blursampler, uv + vec2(-i * 2., 0) / ScreenSize).rgb / 12.0;
     col += texture(blursampler, uv + vec2(0, -i * 2.) / ScreenSize).rgb / 12.0;
-    col *= col;
+    col *= 1.0;
     vec3 fin = col;
 
     float lightScat = clamp(5.0 * 0.05 * pow(1, 0.2), 0.0, 1.0) * vignette;
@@ -192,6 +194,6 @@ void main() {
     color = color + diff * (-lumC * CROSSTALK + SATURATION);
   //  color.rgb = vec3(VL_abs);
 
-    fragColor = vec4(int8Dither(vec3(color.rgb)), 1.0);
+    fragColor = vec4((vec3(color.rgb)), 1.0);
 
 }
