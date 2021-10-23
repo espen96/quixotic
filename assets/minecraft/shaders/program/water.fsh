@@ -212,9 +212,9 @@ float mask(vec2 p) {
     return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
 
-vec3 rayTrace(vec3 dir, vec3 position, float dither, float fresnel) {
+vec3 rayTrace(vec3 dir, vec3 position, float dither) {
 
-    float quality = mix(10, SSR_STEPS, fresnel);
+    float quality = SSR_STEPS;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
     float rayLength = ((position.z + dir.z * far * sqrt(3.)) > -near) ? (-near - position.z) / dir.z : far * sqrt(3.);
     vec3 direction = normalize(toClipSpace3(position + dir * rayLength) - clipPosition);  //convert to clip space
@@ -247,43 +247,25 @@ vec3 rayTrace(vec3 dir, vec3 position, float dither, float fresnel) {
 
     return vec3(1.1);
 }
-
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 surfacenorm, vec4 skycol, float noise) {
+vec4 SSR(vec3 fragpos, vec3 normal, float noise) {
 
     vec3 pos = vec3(0.0);
 
     vec4 color = vec4(0.0);
-    float border = 0.0;
-    vec3 reflectedVector = reflect(normalize(fragpos), surfacenorm);
-    float f0 = 0.02;
 
-    float roughness = 0.02;
+    vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
 
-    float F0 = f0;
-
-    float normalDotEye = dot(surfacenorm, normalize(fragpos));
-    float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
-    fresnel = mix(F0, 1.0, fresnel);
-
-    fresnel = fresnel * 0.87 + 0.04;	//faking additionnal roughness to the water
-    roughness = 0.1;
-
-    pos = rayTrace(reflectedVector, fragpos, noise, 0);
-
-    border = clamp(13.333 * (1.0 - border), 0.0, fresnel);
+    pos = rayTrace(reflectedVector, fragpos, noise);
 
     if(pos.z < 1.0 - 1e-5) {
-        color.a = texture(TerrainCloudsSampler, pos.st).a;
-        if(color.a > 0.0) {
-            color.rgb = texture(TerrainCloudsSampler, pos.st).rgb;
-            color.rgb += texture(TranslucentSampler, pos.st).rgb * 0.45;
-        }
 
-		//color.a *= border;
+        color = texture(TerrainCloudsSampler, pos.st);
+        color.rgb += texture(TranslucentSampler, pos.st).rgb * 0.45;
     }
 
     return color;
 }
+
 float decodeFloat7_4(uint raw) {
     uint sign = raw >> 11u;
     uint exponent = (raw >> 7u) & 15u;
@@ -346,11 +328,11 @@ void main() {
         vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
         vec3 viewPos = tmp.xyz / tmp.w;
 
-        float F0 = 0.02;
-
         float normalDotEye = dot(normal, normalize(fragpos3));
-        float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0)) * 0.87 + 0.04;
-        fresnel = mix(F0, 1.0, fresnel);
+        float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
+        fresnel = fresnel * 0.98 + 0.02;
+        fresnel *= max(1.0 - 0 * 0.5 * 1, 0.5);
+        fresnel *= 1.0 - 1 * 0.3;
 
         vec4 screenPos = gl_FragCoord;
         screenPos.xy = (screenPos.xy / ScreenSize - vec2(0.5)) * 2.0;
@@ -366,7 +348,7 @@ void main() {
         vec4 reflection = vec4(sky_c.rgb, 0.);
 
         normal += noise * 0.02;
-        reflection = vec4(SSR(viewPos.xyz, depth, normal, vec4(sky_c, 1), noise));
+        reflection = vec4(SSR(viewPos.xyz, normal, noise));
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
         vec3 reflected = reflection.rgb * fresnel;
 

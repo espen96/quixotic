@@ -565,25 +565,15 @@ vec4 SSR(vec3 fragpos, float fragdepth, vec3 normal, float noise) {
     vec3 pos = vec3(0.0);
 
     vec4 color = vec4(0.0);
-    float border = 0.0;
-    vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
-    float f0 = 0.02;
-    float F0 = f0;
 
-    float normalDotEye = dot(normal, normalize(fragpos));
-    float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
-    fresnel = mix(F0, 1.0, fresnel);
+    vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
 
     pos = rayTrace(reflectedVector, fragpos, noise);
 
-    border = clamp(13.333 * (1.0 - border), 0.0, fresnel);
-
     if(pos.z < 1.0 - 1e-5) {
-        color.a = texture(PreviousFrameSampler, pos.st).a;
 
-        color.rgb = texture(PreviousFrameSampler, pos.st).rgb * 5.0;
-
-		//color.a *= border;
+        color = texture(PreviousFrameSampler, pos.st);
+        color.rgb *= 5.0;
     }
 
     return color;
@@ -892,7 +882,7 @@ void main() {
 
             vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
             vec3 reflections = vec3(0.0);
-            
+
             if(pbr.a * 255 > 1.0) {
                 float ldepth = linZ2(depth);
                 vec3 normal2 = normal3 + (noise * (1 - smoothness));
@@ -901,7 +891,11 @@ void main() {
                 vec3 avgSky = mix(lightmap * 0.5, ambientLight, lmx);
                 vec4 reflection2 = vec4(SSR(viewPos.xyz, depth, normal2, noise));
 
-                float fresnel = pow5(clamp(1.0 + dot(normal2, normalize(fragpos3.xyz)), 0.0, 1.0));
+                float normalDotEye = dot(normal, normalize(fragpos3));
+                float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
+                fresnel = fresnel * 0.98 + 0.02;
+                fresnel *= max(1.0 - 0 * 0.5 * 1, 0.5);
+                fresnel *= 1.0 - 1 * 0.3;
 
                 reflection2 = mix(vec4(avgSky, 1), reflection2, reflection2.a);
                 reflections += ((reflection2.rgb) * (fresnel * OutTexel));
@@ -962,7 +956,7 @@ void main() {
             vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
             vec3 totEpsilon = dirtEpsilon * Dirt_Amount + waterEpsilon;
             outcol.rgb *= clamp(exp(-length(viewPos) * totEpsilon), 0.2, 1.0);
-            
+
         }
 
     }
