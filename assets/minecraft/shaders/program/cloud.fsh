@@ -58,14 +58,15 @@ vec4 textureGood(sampler2D sam, vec2 uv) {
 float cloudCov(in vec3 pos, vec3 samplePos) {
 	float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
 	float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-	float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x - 0.2, 0.0, 1.0) / (0.8);
+	float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x*1.+0.5*rainStrength,0.0,1.0);
 	float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
 	return max(cloud, 0.0);
 }
 //Erode cloud with 3d Perlin-worley noise, actual cloud value
 
 float cloudVol(in vec3 pos, in vec3 samplePos, in float cov) {
-	float mult2 = (pos.y - 1500) / 2500.0;
+	float mult2 = (pos.y - 1500) / 2500 + rainStrength * 0.4;
+
 	float cloud = clamp(cov - 0.11 * (0.2 + mult2), 0.0, 1.0);
 	return cloud;
 
@@ -144,7 +145,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 
 	float cosY = normalize(dV_view).y;
 
-	color.rgb = mix(color.rgb * vec3(0.5, 0.5, 1.0), color.rgb, 1 - rainStrength);
+	color.rgb = mix(color.rgb * vec3(0.2, 0.21, 0.21), color.rgb, 1 - rainStrength);
 	return mix(vec4(color, clamp(total_extinction, 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0), 1 - smoothstep(0.02, 0.20, cosY));
 
 }
@@ -199,7 +200,7 @@ void main() {
 	float depth = texture(DiffuseDepthSampler, texCoord).r;
 
 	vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
-    vec3 sc = sc*(1 - ((rainStrength) * 0.5));
+	vec3 sc = sc * (1 - ((rainStrength) * 0.5));
 	vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
 	vec4 cloud = renderClouds(fragpos, avgSky, noise, sc, sc, avgSky).rgba;
 

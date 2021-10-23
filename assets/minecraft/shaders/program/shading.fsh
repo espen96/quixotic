@@ -42,6 +42,8 @@ in float skyIntensityNight;
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);
 
 out vec4 fragColor;
+
+
 #define AOStrength 1.0
 #define steps 6
 
@@ -185,44 +187,6 @@ vec3 toLinear(vec3 sRGB) {
     return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
 }
 
-// this code is in the public domain
-vec4 textureQuadratic(in sampler2D sam, in vec2 p) {
-    vec2 texSize = (textureSize(sam, 0).xy);
-
-    p = p * texSize;
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    p = i + f * 0.5;
-    p = p / texSize;
-    f = f * f * (3.0 - 2.0 * f); // optional for extra sweet
-    vec2 w = 0.5 / texSize;
-    return mix(mix(texture(sam, p + vec2(0, 0)), texture(sam, p + vec2(w.x, 0)), f.x), mix(texture(sam, p + vec2(0, w.y)), texture(sam, p + vec2(w.x, w.y)), f.x), f.y);
-
-}
-
-// avoid hardware interpolation
-vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
-    vec2 res = (textureSize(channel, 0).xy);
-    vec2 q = fract(uv * res);
-    ivec2 t = ivec2(uv * res);
-    const ivec3 e = ivec3(-1, 0, 1);
-    vec4 s00 = texelFetch(channel, t + e.xx, 0);
-    vec4 s01 = texelFetch(channel, t + e.xy, 0);
-    vec4 s02 = texelFetch(channel, t + e.xz, 0);
-    vec4 s12 = texelFetch(channel, t + e.yz, 0);
-    vec4 s11 = texelFetch(channel, t + e.yy, 0);
-    vec4 s10 = texelFetch(channel, t + e.yx, 0);
-    vec4 s20 = texelFetch(channel, t + e.zx, 0);
-    vec4 s21 = texelFetch(channel, t + e.zy, 0);
-    vec4 s22 = texelFetch(channel, t + e.zz, 0);
-    vec2 q0 = (q + 1.0) / 2.0;
-    vec2 q1 = q / 2.0;
-    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
-    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
-    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);
-    return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
-}
-
 float invLinZ(float lindepth) {
     return -((2.0 * near / lindepth) - far - near) / (far - near);
 }
@@ -250,15 +214,6 @@ vec3 lumaBasedReinhardToneMapping(vec3 color) {
     return color;
 }
 
-vec4 smoothfilter(in sampler2D tex, in vec2 uv) {
-    vec2 textureResolution = (textureSize(tex, 0).xy);
-    uv = uv * textureResolution + 0.5;
-    vec2 iuv = floor(uv);
-    vec2 fuv = fract(uv);
-    uv = iuv + fuv * fuv * fuv * (fuv * (fuv * 6.0 - 15.0) + 10.0);
-    uv = (uv - 0.5) / textureResolution;
-    return texture(tex, uv);
-}
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
     vec2 res = textureSize(sam, 0);
@@ -332,113 +287,7 @@ vec2 Nnoise(vec2 coord) {
     return vec2(x, y);
 }
 
-/*/////////////////////////////////
 
-uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
-
-
-        const float FXS = 0.02;         // font/screen resolution ratio
-        const float FYS = 0.02;         // font/screen resolution ratio
-
-        const int TEXT_BUFFER_LENGTH = 32;
-        int text[TEXT_BUFFER_LENGTH];
-        int textIndex;
-        vec4 colour;                    // color interface for printTextAt()
-
-        void floatToDigits(float x) {
-            float y, a;
-            const float base = 10.0;
-
-            // Handle sign
-            if (x < 0.0) { 
-                text[textIndex] = '-'; textIndex++; x = -x; 
-            } else { 
-                text[textIndex] = '+'; textIndex++; 
-            }
-
-            // Get integer (x) and fractional (y) part of number
-            y = x; 
-            x = floor(x); 
-            y -= x;
-
-            // Handle integer part
-            int i = textIndex;  // Start of integer part
-            while (textIndex < TEXT_BUFFER_LENGTH) {
-                // Get last digit, scale x down by 10 (or other base)
-                a = x;
-                x = floor(x / base);
-                a -= base * x;
-                // Add last digit to text array (results in reverse order)
-                text[textIndex] = int(a) + '0'; textIndex++;
-                if (x <= 0.0) break;
-            }
-            int j = textIndex - 1;  // End of integer part
-
-            // In-place reverse integer digits
-            while (i < j) {
-                int chr = text[i]; 
-                text[i] = text[j];
-                text[j] = chr;
-                i++; j--;
-            }
-
-            text[textIndex] = '.'; textIndex++;
-
-            // Handle fractional part
-            while (textIndex < TEXT_BUFFER_LENGTH) {
-                // Get first digit, scale y up by 10 (or other base)
-                y *= base;
-                a = floor(y);
-                y -= a;
-                // Add first digit to text array
-                text[textIndex] = int(a) + '0'; textIndex++;
-                if (y <= 0.0) break;
-            }
-
-            // Terminante string
-            text[textIndex] = 0;
-        }
-
-        void printTextAt(float x0, float y0) {
-            // Fragment position **in char-units**, relative to x0, y0
-            float x = texCoord.x/FXS; x -= x0;
-            float y = 0.5*(1.0 - texCoord.y)/FYS; y -= y0;
-
-            // Stop if not inside bbox
-            if ((x < 0.0) || (x > float(textIndex)) || (y < 0.0) || (y > 1.0)) return;
-            
-            int i = int(x); // Char index of this fragment in text
-            x -= float(i); // Fraction into this char
-
-            // Grab pixel from correct char texture
-            i = text[i];
-            x += float(int(i - ((i/16)*16)));
-            y += float(int(i/16));
-            x /= 16.0; y /= 16.0; // Divide by character-sheet size (in chars)
-
-            vec4 fontPixel = texture(FontSampler, vec2(x,y));
-
-            colour = vec4(fontPixel.rgb*fontPixel.a + colour.rgb*colour.a*(1 - fontPixel.a), 1.0);
-        }
-
-        void clearTextBuffer() {
-            for (int i = 0; i < TEXT_BUFFER_LENGTH; i++) {
-                text[i] = 0;
-            }
-            textIndex = 0;
-        }
-
-        void c(int character) {
-            // Adds character to text buffer, increments index for next character
-            // Short name for convenience
-            text[textIndex] = character; 
-            textIndex++;
-        }
-
-
-
-
-///////////////////////////////////*/
 
 vec3 reinhard(vec3 x) {
     x *= 1.66;
@@ -586,13 +435,6 @@ vec3 reinhard_jodie(vec3 v) {
     return pow(tv, vec3(1. / 2.2));
 }
 
-float decodeFloat24(vec3 raw) {
-    uvec3 scaled = uvec3(raw * 255.0);
-    uint sign = scaled.r >> 7;
-    uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
-    uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
-    return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
-}
 vec3 toScreenSpace(vec2 p, float depth) {
     vec4 fragposition = gbufferProjectionInverse * vec4(vec3(p, texture(TranslucentDepthSampler, p).x) * 2.0 - 1.0, 1.0);
     return fragposition.xyz /= fragposition.w;
@@ -650,7 +492,7 @@ float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
 
 }
 
-float rayTraceShadow(vec3 dir, vec3 position, float dither, float translucent) {
+float rayTraceShadow(vec3 dir, vec3 position, float dither) {
     float stepSize = clamp(50 * dither, 11, 50);
     int maxSteps = 11;
 
@@ -738,7 +580,7 @@ float mask(vec2 p) {
 }
 
 void main() {
-    vec4 outcol = vec4(0.0);
+    vec4 outcol = vec4(0.0,0.0,0.0,1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
 
     vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
@@ -818,10 +660,6 @@ void main() {
 
             OutTexel *= mix(vec3(1.0), lightmap, postlight);
 
-            float depth2 = depthc;
-            float depth3 = depthd;
-            float depth4 = depthb;
-            float depth5 = depthe;
             float normalstrength = (1 - luma(OutTexel2.rgb)) * 0.5;
             ivec2 texoffsets[4] = ivec2[] (ivec2(0, 3), ivec2(3, 0), -ivec2(0, 3), -ivec2(3, 0));
             vec4 normoffset = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 1);
@@ -829,19 +667,19 @@ void main() {
             vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
             fragpos.rgb += pow4(OutTexel2.g) * normalstrength;
 
-            vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depth2, 1.0)).xyz;
+            vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depthc, 1.0)).xyz;
             p2.rgb += pow4(normoffset.x) * normalstrength;
             p2 = p2 - fragpos;
 
-            vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depth3, 1.0)).xyz;
+            vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depthd, 1.0)).xyz;
             p3.rgb += pow4(normoffset.y) * normalstrength;
 
             p3 = p3 - fragpos;
-            vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depth4, 1.0)).xyz;
+            vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depthb, 1.0)).xyz;
             p4.rgb += pow4(normoffset.z) * normalstrength;
 
             p4 = p4 - fragpos;
-            vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depth5, 1.0)).xyz;
+            vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depthe, 1.0)).xyz;
             p5.rgb += pow4(normoffset.w) * normalstrength;
 
             p5 = p5 - fragpos;
@@ -874,7 +712,7 @@ void main() {
             float light = pbr.r;
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
-            float screenShadow = rayTraceShadow(sunVec, viewPos, noise, sssa);
+            float screenShadow = rayTraceShadow(sunVec, viewPos, noise);
             screenShadow = clamp(((screenShadow + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
             shadeDir *= screenShadow;
             shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow * 2 - 1) * 0.5)) * float(sssa) * lmx);
@@ -913,10 +751,6 @@ void main() {
 
             shading += lightmap * 0.1;
 
-            ambientLight = mix(ambientLight * vec3(0.2, 0.2, 0.5) * 2.0, ambientLight, 1 - (rainStrength * lmx));
-            if(postlight == 1)
-                ambientLight = mix(vec3(0.1, 0.1, 0.5), vec3(1.0), 1 - (rainStrength * lmx));
-
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if(light > 0.001)
                 shading.rgb = vec3(light * 2.0);
@@ -946,7 +780,7 @@ void main() {
                 OutTexel = toLinear(texture(DiffuseSampler, texCoord).rgb);
             }
 
-            outcol.rgb = mix(reinhard_jodie(OutTexel.rgb * ((((lmx + 0.15) * vec3(1.0)) + ((lmy * lmy * lmy) * vec3(TORCH_R, TORCH_G, TORCH_G))))), fogcol.rgb * 0.5, pow(depth, 2048));
+            outcol.rgb = mix(reinhard_jodie(OutTexel.rgb * ((((lmx + 0.15) * vec3(1.0)) + (pow3(lmy) * vec3(TORCH_R, TORCH_G, TORCH_G))))), fogcol.rgb * 0.5, pow(depth, 2048));
             //if(light > 0.001) outcol.rgb *= clamp(vec3(2.0 - 1 * 2) * light * 2, 1.0, 10.0);
         }
 
@@ -960,9 +794,8 @@ void main() {
         }
 
     }
-    outcol = (clamp(outcol, 0, 2));
 
-    fragColor = vec4(outcol.rgb, 1);
+    fragColor = outcol;
 
 /*
 	vec4 numToPrint = vec4(worldTime);

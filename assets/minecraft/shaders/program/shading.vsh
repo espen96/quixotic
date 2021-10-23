@@ -19,7 +19,6 @@ out vec3 suncol;
 out vec2 oneTexel;
 out vec4 fogcol;
 
-
 out vec2 texCoord;
 
 out mat3 gbufferModelViewInverse;
@@ -39,9 +38,6 @@ out vec3 sunVec;
 
 out vec3 sunPosition3;
 out float skyIntensityNight;
-
-
-
 
 float map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
@@ -122,8 +118,6 @@ vec4 encodeColor(vec3 color) {
 }
 
 void main() {
-
-    suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 
@@ -212,9 +206,8 @@ void main() {
     skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
     sunVec = mix(sunVec2, -sunVec2, clamp(skyIntensityNight * 3, 0, 1));
 
-
 ///////////////////////////
-
+    suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
     ambientUp = texelFetch(temporals3Sampler, ivec2(0, 37), 0).rgb;
     ambientDown = texelFetch(temporals3Sampler, ivec2(1, 37), 0).rgb;
     ambientLeft = texelFetch(temporals3Sampler, ivec2(2, 37), 0).rgb;

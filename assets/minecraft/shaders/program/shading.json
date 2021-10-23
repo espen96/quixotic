@@ -9,14 +9,11 @@
     "attributes": [ "Position" ],
     "samplers": [
         { "name": "DiffuseSampler" },
-        { "name": "DiffuseDepthSampler" },
         { "name": "PreviousFrameSampler" },
         { "name": "TranslucentSampler" },
         { "name": "temporals3Sampler" },
-        { "name": "TranslucentSpecSampler" },
         { "name": "TranslucentDepthSampler" },
         { "name": "cloudsample" },
-        { "name": "clouds" },
         { "name": "FontSampler" }
     ],
     "uniforms": [

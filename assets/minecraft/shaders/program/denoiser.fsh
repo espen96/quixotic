@@ -1,10 +1,10 @@
 #version 150
 
 in vec2 texCoord;
-
+uniform sampler2D PreviousFrameSampler;
 uniform sampler2D DiffuseSampler;
 uniform vec2 ScreenSize;
-uniform sampler2D PreviousFrameSampler;
+
 
 out vec4 fragColor;
 
@@ -100,10 +100,10 @@ void main() {
     history.a = VXAALuma(history.rgb);
     const float offset = 1.1;
     vec4 currN[4];
-    currN[VXAA_W] = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(-offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    currN[VXAA_E] = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    currN[VXAA_N] = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(0.0f, -offset) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    currN[VXAA_S] = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(0.0f, -offset) / ScreenSize), vec4(0.0f), vec4(1.0f));
+    currN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    currN[VXAA_E].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    currN[VXAA_N].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    currN[VXAA_S].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
     currN[VXAA_W].a = VXAALuma(currN[VXAA_W].rgb);
     currN[VXAA_E].a = VXAALuma(currN[VXAA_E].rgb);
     currN[VXAA_N].a = VXAALuma(currN[VXAA_N].rgb);
@@ -111,10 +111,10 @@ void main() {
 
     vec4 histN[4];
     
-    histN[VXAA_W] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(-offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    histN[VXAA_E] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(offset, 0.0f) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    histN[VXAA_N] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize), vec4(0.0f), vec4(1.0f));
-    histN[VXAA_S] = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize), vec4(0.0f), vec4(1.0f));
+    histN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_E].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_N].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_S].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
     histN[VXAA_W].a = VXAALuma(histN[VXAA_W].rgb);
     histN[VXAA_E].a = VXAALuma(histN[VXAA_E].rgb);
     histN[VXAA_N].a = VXAALuma(histN[VXAA_N].rgb);

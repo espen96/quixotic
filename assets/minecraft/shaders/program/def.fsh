@@ -116,12 +116,12 @@ float decodeFloat24(vec3 raw) {
 
 void main() {
 
-  vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
-
+  //vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
+  fragColor = vec4(0.0);
   if(gl_FragCoord.x < 17. && gl_FragCoord.y < 17.) {
 
     vec3 avgAmbient = ds + ms;
-    avgAmbient = mix(avgAmbient * vec3(0.2, 0.2, 0.5) * 2.0, avgAmbient, 1 - rainStrength);
+    avgAmbient = mix(avgAmbient * vec3(0.2, 0.2, 0.5) * 1.0, avgAmbient, 1 - rainStrength);
     float lumC = luma3(avgAmbient.rgb);
     vec3 diff = avgAmbient.rgb - lumC;
     avgAmbient = avgAmbient.rgb + diff * (-lumC * 0.5 + 0.5);
@@ -153,20 +153,17 @@ void main() {
     fragColor = vec4(ambientF, 1.0);
   if(gl_FragCoord.x > 6. && gl_FragCoord.x < 7. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1)
     fragColor = vec4(lightSourceColor, 1.0);
-  if(gl_FragCoord.x > 7. && gl_FragCoord.x < 8. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1)
-    fragColor = vec4(avgAmbient, 1.0);
-  if(gl_FragCoord.x > 8. && gl_FragCoord.x < 9. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1) {
-    float lumC = luma3(lightCol.rgb);
-    vec3 diff = lightCol.rgb - lumC;
-    //vec3 lightCol = lightCol.rgb + diff * (-lumC * 0.2 + 0.7);
+  /*if(gl_FragCoord.x > 7. && gl_FragCoord.x < 8. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1)
+    fragColor = vec4(avgAmbient, 1.0);*/
+  if(gl_FragCoord.x > 8. && gl_FragCoord.x < 9. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1) 
     fragColor.rgba = encodeColor(lightCol.rgb);
-  }
+  
 
   if(gl_FragCoord.x > 11. && gl_FragCoord.x < 12. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1)
     fragColor = vec4(avgSky, 1.0);
 
   else if(gl_FragCoord.x > 18. && gl_FragCoord.y > 1.) {
-    float cosY = clamp(floor(gl_FragCoord.x - 18.0) / 256. * 2.0 - 1.0, -1.0 + 1e-5, 1.0 - 1e-5);
+    float cosY = clamp(floor(gl_FragCoord.x - 18.0) / 256. * 2.0 - 1.0, -0.99999, 0.99999);
     cosY = pow(abs(cosY), 1 / 3.0) * fsign(cosY);
     float mCosT = clamp(floor(gl_FragCoord.y - 1.0) / 256., 0.0, 1.0);
     float Y = facos(cosY);
@@ -185,17 +182,17 @@ void main() {
       vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength);
       vec3 normalizedSunColor = nsunColor;
 
-      vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength * 0.5);
-      daySky = pow(L0, 1.0 - rainStrength * 0.75) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * SKY_BRIGHTNESS_DAY;
+      vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength);
+      daySky = pow(L0, 1.0 - rainStrength) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * SKY_BRIGHTNESS_DAY;
     }
 	// Night
     else if(skyIntensityNight > 0.00001) {
       float L0Moon = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * (PI - Y)) - exp(d * 3.1415 / 2.)) + e * cosY * cosY);
-      moonSky = pow(L0Moon, 1.0 - rainStrength * 0.75) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
+      moonSky = pow(L0Moon, 1.0 - rainStrength) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
     }
     fragColor.rgb = (daySky + moonSky);
 
-    fragColor.rgb = mix(fragColor.rgb * vec3(0.2, 0.2, 0.2) * 1.0, fragColor.rgb, 1 - rainStrength);
+    //fragColor.rgb = mix(fragColor.rgb * vec3(0.2, 0.2, 0.2) * 1.0, fragColor.rgb, 1 - rainStrength);
 
   }
 

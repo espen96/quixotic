@@ -24,7 +24,6 @@ out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
 
-
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
 #define PROJNEAR 0.05
@@ -147,9 +146,8 @@ void main() {
 
     float worldTime = time7;
 
-
-sc =decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
-
+    sc = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
+    avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
 
     const vec2 sunRotationData = vec2(cos(sunPathRotation * 0.01745329251994), -sin(sunPathRotation * 0.01745329251994)); //radians() is not a const function on some drivers, so multiply by pi/180 manually.
 
@@ -180,7 +178,6 @@ sc =decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
     sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
 
-    avgSky = texelFetch(temporals3Sampler, ivec2(7, 37), 0).rgb;
 
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
     gl_Position.xy = (gl_Position.xy * 0.5 + 0.5) * clamp(CLOUDS_QUALITY + 0.01, 0.0, 1.0) * 2.0 - 1.0;

@@ -67,7 +67,7 @@ float decodeFloat24(vec3 raw) {
 
 #define BASE_FOG_AMOUNT 1.0 
 #define FOG_TOD_MULTIPLIER 1.0 
-#define FOG_RAIN_MULTIPLIER 1.0
+#define FOG_RAIN_MULTIPLIER 0.5
 
 const float pi = 3.141592653589793238462643383279502884197169;
 vec3 rodSample(vec2 Xi) {
@@ -195,7 +195,7 @@ void main() {
     vec3 sunDirTemp = vec3(-sin(ang), cos(ang) * sunRotationData);
     sunDir = normalize(vec3(sunDirTemp.x, sunDir.y, sunDirTemp.z));
 
-    float rainStrength = (1 - rain.r) * 0.75;
+    float rainStrength = (1 - rain.r) * 0.5;
     vec3 sunDir2 = sunDir;
     sunPosition = sunDir2;
     vec3 upPosition = vec3(0, 1, 0);
@@ -227,7 +227,7 @@ void main() {
     ambientRight = texelFetch(temporals3Sampler, ivec2(3, 37), 0).rgb;
     ambientB = texelFetch(temporals3Sampler, ivec2(4, 37), 0).rgb;
     ambientF = texelFetch(temporals3Sampler, ivec2(5, 37), 0).rgb;
-    avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
+    //avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
 ///////////////////////////
 
 }

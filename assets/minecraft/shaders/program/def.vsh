@@ -146,7 +146,7 @@ void main() {
 
 	vec3 sunPosition = sunDir2;
 	const vec3 upPosition = vec3(0, 1, 0);
-	rainStrength = (1 - (rain.r)) * 0.5;
+	rainStrength = (1 - (rain.r)) * 0.25;
 
 	float normSunVec = sqrt(sunPosition.x * sunPosition.x + sunPosition.y * sunPosition.y + sunPosition.z * sunPosition.z);
 	float normUpVec = sqrt(upPosition.x * upPosition.x + upPosition.y * upPosition.y + upPosition.z * upPosition.z);
@@ -190,6 +190,7 @@ void main() {
 	const float sunAmount = 27.0*2.0;
 	float lightSign = clamp(sunIntensity * pow(10., 35.), 0., 1.);
 	lightCol = vec4((sunlightR * 3. * sunAmount * sunIntensity + 0.16 / 5. - 0.16 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * 7.84 * exposure, 7.84 * (sunlightG * 3. * sunAmount * sunIntensity + 0.24 / 5. - 0.24 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, 7.84 * (sunlightB * 3. * sunAmount * sunIntensity + 0.36 / 5. - 0.36 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, lightSign * 2.0 - 1.0);
+	rainStrength = (1 - (rain.r)) * 0.75;
 
 	ambientUp = vec3(0.0);
 	ambientDown = vec3(0.0);
@@ -204,7 +205,6 @@ void main() {
 		vec3 pos = normalize(rodSample(ij));
 
 		vec3 samplee = 2.2 * skyLut(pos.xyz, sunDir2, pos.y, pre) / maxIT;
-            //samplee *= 2.0;
 		avgSky += samplee / 2.2;
 
 		ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
@@ -237,7 +237,7 @@ void main() {
 	vec3 moonSky = vec3(0.0);
 	// Day
 	if(skyIntensity > 0.00001) {
-		vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength * 2);
+		vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength);
 		vec3 skyColor = mix(skyColor0, nsunColor, 0.5);
 		daySky = skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * 0.5;
 	}
