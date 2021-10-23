@@ -173,7 +173,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test) {
         if(test.r < 0.05)
             test *= 2.0;
         test = clamp(test * 1.5 - 0.1, 0, 1);
-        pbr.b = clamp(test.r , 0, 1);
+        pbr.b = clamp(test.r, 0, 1);
     }
 
     return pbr;
@@ -637,7 +637,6 @@ float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
     float vvisibility = 0.0;
 
     for(int i = 0; i < steps; i++) {
-
         vec2 circlePoint = circlemap(hammersley(i * 15 + 1, 16 * steps)) * clipRadius;
 
         circlePoint *= noise + 0.1;
@@ -762,6 +761,7 @@ void main() {
     vec3 viewPos = tmp.xyz / tmp.w;
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
+    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
 
     //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
 
@@ -781,7 +781,6 @@ void main() {
 
         atmosphere = (clamp(atmosphere * 1.1, 0, 2));
         outcol.rgb = reinhard(atmosphere);
-
     } else {
 
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
@@ -858,6 +857,7 @@ void main() {
             p5 = p5 - fragpos;
             vec3 normal = normalize(cross(p2, p3)) + normalize(cross(-p4, p3)) + normalize(cross(p2, -p5)) + normalize(cross(-p4, -p5));
             normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
+
             vec3 normal3 = worldToView(normal);
 
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
@@ -868,10 +868,8 @@ void main() {
             ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
             ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
-
             ambientLight *= (1.0 + rainStrength * 0.2);
             //ambientLight *= 2.0;
-
             ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
 
             vec3 shading = vec3(0.0);
@@ -892,10 +890,9 @@ void main() {
             shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow * 2 - 1) * 0.5)) * float(sssa) * lmx);
             shadeDir = clamp(shadeDir, 0, 1);
 
-      
             vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
             vec3 reflections = vec3(0.0);
-
+            
             if(pbr.a * 255 > 1.0) {
                 float ldepth = linZ2(depth);
                 vec3 normal2 = normal3 + (noise * (1 - smoothness));
@@ -958,7 +955,6 @@ void main() {
             outcol.rgb = mix(reinhard_jodie(OutTexel.rgb * ((((lmx + 0.15) * vec3(1.0)) + ((lmy * lmy * lmy) * vec3(TORCH_R, TORCH_G, TORCH_G))))), fogcol.rgb * 0.5, pow(depth, 2048));
             //if(light > 0.001) outcol.rgb *= clamp(vec3(2.0 - 1 * 2) * light * 2, 1.0, 10.0);
         }
-        bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
 
         if(isWater) {
 
@@ -966,7 +962,7 @@ void main() {
             vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
             vec3 totEpsilon = dirtEpsilon * Dirt_Amount + waterEpsilon;
             outcol.rgb *= clamp(exp(-length(viewPos) * totEpsilon), 0.2, 1.0);
-
+            
         }
 
     }

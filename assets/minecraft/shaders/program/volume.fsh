@@ -77,18 +77,6 @@ vec4 backProject(vec4 vec) {
     return tmp / tmp.w;
 }
 
-vec3 normVec(vec3 vec) {
-    return vec * inversesqrt(dot(vec, vec));
-}
-
-float ditherGradNoise() {
-    return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
-}
-
-float GetLinearDepth(float depth) {
-    return (2.0 * near) / (far + near - depth * (far - near));
-}
-
 float packUnorm2x4(vec2 xy) {
     return dot(floor(15.0 * xy + 0.5), vec2(1.0 / 255.0, 16.0 / 255.0));
 }
@@ -115,10 +103,6 @@ float facos(float inX) {
     return (inX >= 0) ? res : pi - res;
 }
 
-float R2_dither() {
-    vec2 alpha = vec2(0.75487765, 0.56984026);
-    return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 0.43015971 * Time);
-}
 float phaseRayleigh(float cosTheta) {
     vec2 mul_add = vec2(0.1, 0.28) / facos(-1.0);
     return cosTheta * mul_add.x + mul_add.y; // optimized version from [Elek09], divided by 4 pi for energy conservation
@@ -149,7 +133,6 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
 	//Mie phase + somewhat simulates multiple scattering (Horizon zero down cloud approx)
     float mie = max(phaseg(SdotV, fog_mieg1), 1.0 / 13.0);
     float rayL = phaseRayleigh(SdotV);
-//	wpos.y = clamp(wpos.y,0.0,1.0);
 
     vec3 ambientCoefs = dVWorld / dot(abs(dVWorld), vec3(1.));
 
@@ -163,19 +146,17 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     vec3 skyCol0 = ambientLight * 8.0 * 1.0 / 2.0 / 3.0 * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
     vec3 sunColor = lightCol.rgb * 8.0 / 1.0 / 3.0;
     sunColor *= 1 - ((1 - rain.x) * 1.0);
-	//skyCol0 *= 1-((1-rain.x)*0.5);
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
 
-    float mu = 1.0;
     vec3 absorbance = vec3(1.0);
     float expFactor = 2.7;
     for(int i = 0; i < VL_SAMPLES; i++) {
         float d = (pow(expFactor, float(i + dither) / float(VL_SAMPLES)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);
         float dd = pow(expFactor, float(i + dither) / float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES) / (expFactor - 1.0);
         progressW = gbufferModelViewInverse[3].xyz + 0 + d * dVWorld;
-        float density = cloudVol(progressW) * 1.5 * ATMOSPHERIC_DENSITY * mu * 400.;
+        float density = cloudVol(progressW) * 1.5 * ATMOSPHERIC_DENSITY * 400.;
 		//Just air
         vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * 8.0) * 8.0;
 
@@ -190,7 +171,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
 }
 
 void waterVolumetrics(inout vec3 inColor, vec3 rayStart, vec3 rayEnd, float estEyeDepth, float estSunDepth, float rayLength, float dither, vec3 waterCoefs, vec3 scatterCoef, vec3 ambient, vec3 lightSource, float VdotL, float sunElevation) {
-    int spCount = 6;
+    int spCount = 2;
 		//limit ray length at 32 blocks for performance and reducing integration error
 		//you can't see above this anyway
     float maxZ = min(rayLength, 32.0) / (1e-8 + rayLength);
@@ -300,14 +281,17 @@ void main() {
             vec3 totEpsilon = dirtEpsilon * dirtAmount + waterEpsilon;
             vec3 scatterCoef = dirtAmount * vec3(Dirt_Scatter_R, Dirt_Scatter_G, Dirt_Scatter_B);
             fragColor.rgb *= clamp(exp(-df * totEpsilon), 0.2, 1.0);
+            
+
             float estEyeDepth = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0., 1.0);
             estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
 
             waterVolumetrics(vl, vec3(0.0), fragpos, estEyeDepth, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation);
 
             fragColor.rgb += vl;
-            if(depth >= 1)
-                fragColor.rgb = vec3(vl);
+            fragColor.rgb = mix(fragColor.rgb,vl,  clamp(LinearizeDepth(depth) * 0.001,0,1));
+
+                
         } else if(isEyeInWater == 0) {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation);
             fragColor.rgb *= vl[1];
