@@ -156,8 +156,8 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     return pos.xyz;
 }
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 noise) {
-    vec2 offsetB = vec2(0.0, oneTexel.y) + 0;
-    vec2 offsetC = vec2(oneTexel.x, 0.0) + 0;
+    vec2 offsetB = vec2(0.0, oneTexel.y+(noise.y*3.0));
+    vec2 offsetC = vec2(oneTexel.x+(noise.x*3.0), 0.0);
 
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = texture(depthtex, texcoords + offsetC).r;
@@ -347,7 +347,7 @@ void main() {
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
 
-        normal += noise * 0.02;
+        //normal += noise * 0.02;
         reflection = vec4(SSR(viewPos.xyz, normal, noise));
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
         vec3 reflected = reflection.rgb * fresnel;
