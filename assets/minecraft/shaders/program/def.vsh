@@ -4,7 +4,6 @@ in vec4 Position;
 
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
-uniform vec2 ScreenSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D pre;
 

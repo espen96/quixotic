@@ -4,12 +4,11 @@
         "srcrgb": "one",
         "dstrgb": "zero"
     },
-    "vertex": "shading",
-    "fragment": "shading",
+    "vertex": "shadow",
+    "fragment": "shadow",
     "attributes": [ "Position" ],
     "samplers": [
         { "name": "DiffuseSampler" },
-        { "name": "shadow" },
         { "name": "PreviousFrameSampler" },
         { "name": "TranslucentSampler" },
         { "name": "temporals3Sampler" },

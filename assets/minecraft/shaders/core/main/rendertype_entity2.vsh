@@ -40,7 +40,7 @@ void main() {
     lm = clamp((float(UV2.y) / 255) - (float(UV2.x) / 255), 0, 1);
     ProjMat2 = ProjMat;
 
-    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
+    //normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
     glpos = gl_Position;
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);

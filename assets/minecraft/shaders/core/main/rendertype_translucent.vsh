@@ -104,44 +104,9 @@ vec2 calculateJitter() {
 
 void main() {
  //   gl_Position = ProjMat * ModelViewMat * vec4(Position + ChunkOffset, 1.0);
-    vec3 position = Position + ChunkOffset;
 
-    mat4 gbufferModelViewInverse = inverse(ModelViewMat);
-
-    vec3 position2 = Position;
-    float animation = GameTime * 1000.0;
-    float animation3 = (GameTime * 2000.0);
-    float xs = 0.0;
-    float zs = 0.0;
-    water = 0.0;
-    float offset_y = 0.0;
     float wtest = (texture(Sampler0, UV0).a);
-/*
-    if(wtest*255 == 200) {
 
-      
-          xs = sin(position.x + animation);
-          xs += sin(position.x + animation3);
-          xs += sin(position.x + animation);    
-          xs *= sin(position.z *0.5);
-          xs *= sin(position.z - 0.8 + animation) + 1.0 * sin((position.z + 0.5) / 3 + animation) + 2.0 * sin((position.z - 20.0) / 10.0 + animation3) + sin(position.z + 30 - animation);
-
-
-          zs = cos(position.z + animation);
-          zs += cos(position.x + animation);
-          zs += cos(position.z + animation3);
-          zs += sin(position.z*0.5 );
-          zs *= sin(position.x - 0.8 + animation3) + 1.0 * sin((position.x + 0.5) / 4 + animation) + 2.0 * sin((position.x - 20.0) / 10.0 + animation) + sin(position.x + 30 - animation);
-
-
-          xs *= 0.7 + (fract(GameTime)*0.01);
-          zs *= 0.5;
-          water = 1;
-
-            
-    }	
-
-    */
     vec3 posxz = sin(Position - 0.145);
 
     lmx = clamp((float(UV2.y) / 255), 0, 1);

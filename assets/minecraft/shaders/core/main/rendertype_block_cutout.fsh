@@ -5,23 +5,11 @@
 #moj_import <mappings.glsl>
 
 uniform sampler2D Sampler0;
-uniform sampler2D Sampler2;
-uniform vec2 ScreenSize;
 
 uniform vec4 ColorModulator;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
-in vec3 chunkOffset;
 
-in float vertexDistance;
-in float lm;
 in vec4 vertexColor;
-in vec4 lm2;
 in vec2 texCoord0;
-in vec2 texCoord2;
-in vec2 texCoord3;
-in vec4 normal;
 noperspective in vec3 test;
 in vec4 glpos;
 in float lmx;
@@ -58,8 +46,6 @@ vec4 color = albedo * vertexColor * ColorModulator;
 float alpha = color.a;
 float lightm = 0;
 
-//  color.rgb = (color.rgb*lm2.rgb);
-
 if(color.a * 255 <= 17.0) {
 discard;
 }
@@ -88,11 +74,7 @@ if(diff.r < 0.1 && diff.b < 0.05) alpha0 = int(floor(map((albedo.g * 0.1) * 255,
  //if(test3 <= 255 && test3 >= 250 && test2.r >= 105 && test2.b <= 90)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
 }
 
-  /*
- if (alpha0 ==255) {
-                   alpha0 = int(floor(map(procedual1,0,255,roughMin,roughMax-16)));
- }
-*/
+
 float noise = luma4(rnd) * 255;
 
 if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0 + noise * 0.1, sssMin, sssMax)); // SSS
@@ -118,11 +100,8 @@ float lm = lmx + (luma4(rnd * clamp(lmx * 100, 0, 1)));
 if(res == 0.0f) {
 lm = lmy + (luma4(rnd * clamp(lmy * 100, 0, 1)));
 alpha3 = alpha2;
-    //color.rgb = normal.rgb;
 }
-fragColor = color;
-//  fragColor.rgb = test.rgb;
-//if(int(textureLod(Sampler0, texCoord0,0).a*255)==255)alpha3 = 1.0;   
-fragColor.a = packUnorm2x4(alpha3, clamp(lm, 0, 0.95));
+fragColor = vec4(color.rgb,packUnorm2x4(alpha3, clamp(lm, 0, 0.95)));
+
 
 }

@@ -296,5 +296,5 @@ float mask(vec2 p) {
     // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
     // returned value in [0,37.2] , but < 0.57 with P=50% 
 
-    return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+    return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }

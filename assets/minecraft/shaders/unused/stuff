@@ -128,6 +128,27 @@ uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
 
 ///////////////////////////////////*/
+/*
+	vec4 numToPrint = vec4(worldTime);
+	// Define text to draw
+    clearTextBuffer();
+    c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
+    printTextAt(1.0, 1.0);
+
+    clearTextBuffer();
+    c('G'); c(':'); c(' '); floatToDigits(numToPrint.g);
+    printTextAt(1.0, 2.0);
+
+    clearTextBuffer();
+    c('B'); c(':'); c(' '); floatToDigits(numToPrint.b);
+    printTextAt(1.0, 3.0);
+
+    clearTextBuffer();
+    c('A'); c(':'); c(' '); floatToDigits(numToPrint.a);
+    printTextAt(1.0, 4.0);
+
+    fragColor += colour;
+*/
 
 float decodeFloat7_4(uint raw) {
     uint sign = raw >> 11u;
@@ -388,3 +409,5 @@ float decodeFloat24(vec3 raw) {
     uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
+
+            //ambientLight.rgb = rtGI(normal,normal3, vec4(noise), viewPos,0, ambientLight,vec3(1.0)*lmy, OutTexel.rgb,vec2(lmx,lmy));  

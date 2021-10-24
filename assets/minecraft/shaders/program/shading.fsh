@@ -3,6 +3,7 @@
 uniform sampler2D DiffuseSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
+uniform sampler2D shadow;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
@@ -17,6 +18,7 @@ in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
 in vec3 suncol;
+in vec3 zMults;
 
 in vec2 oneTexel;
 in vec4 fogcol;
@@ -42,7 +44,6 @@ in float skyIntensityNight;
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);
 
 out vec4 fragColor;
-
 
 #define AOStrength 1.0
 #define steps 6
@@ -210,10 +211,9 @@ vec3 lumaBasedReinhardToneMapping(vec3 color) {
     float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
     float toneMappedLuma = luma / (1. + luma);
     color *= clamp(toneMappedLuma / luma, 0, 10);
-    color = pow(color, vec3(1. / 2.2));
+    color = pow(color, vec3(0.45454545454));
     return color;
 }
-
 
 vec4 textureGood(sampler2D sam, vec2 uv) {
     vec2 res = textureSize(sam, 0);
@@ -287,8 +287,6 @@ vec2 Nnoise(vec2 coord) {
     return vec2(x, y);
 }
 
-
-
 vec3 reinhard(vec3 x) {
     x *= 1.66;
     return x / (1.0 + x);
@@ -314,7 +312,7 @@ vec2 GGX_FV(float dotLH, float roughness) {
 
 	// V
     float vis;
-    float k = alpha / 2.0f;
+    float k = alpha * 0.5;
     float k2 = k * k;
     float invK2 = 1.0f - k2;
     vis = 1 / (dotLH * dotLH * invK2 + k2);
@@ -432,7 +430,7 @@ vec3 reinhard_jodie(vec3 v) {
     float l = luma(v);
     vec3 tv = v / (1.0f + v);
     tv = mix(v / (1.0f + l), tv, tv);
-    return pow(tv, vec3(1. / 2.2));
+    return pow(tv, vec3(0.45454545454));
 }
 
 vec3 toScreenSpace(vec2 p, float depth) {
@@ -493,7 +491,7 @@ float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
 }
 
 float rayTraceShadow(vec3 dir, vec3 position, float dither) {
-    float stepSize = clamp(50 * dither, 11, 50);
+    float stepSize = map(100 * dither, 0, 100, 25, 75);
     int maxSteps = 11;
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
@@ -576,15 +574,93 @@ float mask(vec2 p) {
     // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
     // returned value in [0,37.2] , but < 0.57 with P=50% 
 
-    return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+    return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+}
+float ld(float depth) {
+    return 1.0 / (zMults.y - depth * zMults.z);		// (-depth * (far - near)) = (2.0 * near)/ld - far - near
+}
+vec4 textureGood2(sampler2D sam, vec2 uv) {
+    vec2 res = textureSize(sam, 0);
+
+    vec2 st = uv * res - 0.5;
+
+    vec2 iuv = floor(st);
+    vec2 fuv = fract(st);
+
+    vec4 a = textureLod(sam, (iuv + vec2(0.5, 0.5)) / res, 0);
+    vec4 b = textureLod(sam, (iuv + vec2(1.5, 0.5)) / res, 0);
+    vec4 c = textureLod(sam, (iuv + vec2(0.5, 1.5)) / res, 0);
+    vec4 d = textureLod(sam, (iuv + vec2(1.5, 1.5)) / res, 0);
+
+    return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
+}
+vec4 BilateralUpscale(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
+    coord = coord;
+    vec4 vl = vec4(0.0);
+    float sum = 0.0;
+
+    mat3x3 weights;
+    ivec2 scaling = ivec2(1.0 / rendres);
+    ivec2 posD = ivec2(coord * rendres) * scaling;
+    ivec2 posVl = ivec2(coord * rendres);
+    float dz = zMults.x;
+    ivec2 pos = (ivec2(gl_FragCoord.xy + Time) % 2) * 2;
+	//pos = ivec2(1,-1);
+
+    ivec2 tcDepth = posD + ivec2(-2, -2) * scaling + pos * scaling;
+    float dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    float w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2) + pos, 0) * w;
+    sum += w;
+
+    tcDepth = posD + ivec2(-2, 0) * scaling + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2, 0) + pos, 0) * w;
+    sum += w;
+
+    tcDepth = posD + ivec2(0) + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(0) + pos, 0) * w;
+    sum += w;
+
+    tcDepth = posD + ivec2(0, -2) * scaling + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(0, -2) + pos, 0) * w;
+    sum += w;
+
+    return vl / sum;
+}
+// avoid hardware interpolation
+vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
+    vec2 res = (textureSize(channel, 0).xy);
+    vec2 q = fract(uv * res);
+    ivec2 t = ivec2(uv * res);
+    const ivec3 e = ivec3(-1, 0, 1);
+    vec4 s00 = texelFetch(channel, t + e.xx, 0);
+    vec4 s01 = texelFetch(channel, t + e.xy, 0);
+    vec4 s02 = texelFetch(channel, t + e.xz, 0);
+    vec4 s12 = texelFetch(channel, t + e.yz, 0);
+    vec4 s11 = texelFetch(channel, t + e.yy, 0);
+    vec4 s10 = texelFetch(channel, t + e.yx, 0);
+    vec4 s20 = texelFetch(channel, t + e.zx, 0);
+    vec4 s21 = texelFetch(channel, t + e.zy, 0);
+    vec4 s22 = texelFetch(channel, t + e.zz, 0);
+    vec2 q0 = (q + 1.0) / 2.0;
+    vec2 q1 = q / 2.0;
+    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
+    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
+    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);
+    return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
 }
 
 void main() {
-    vec4 outcol = vec4(0.0,0.0,0.0,1.0);
+    vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
 
     vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
-    vec3 OutTexel2 = OutTexel3.rgb;
     vec3 OutTexel = toLinear(OutTexel3.rgb);
 
     vec3 screenPos = vec3(texCoord, depth);
@@ -658,31 +734,29 @@ void main() {
 
             vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
 
-            OutTexel *= mix(vec3(1.0), lightmap, postlight);
-
-            float normalstrength = (1 - luma(OutTexel2.rgb)) * 0.5;
+            float normalstrength = (1 - luma(OutTexel3.rgb)) * 0.2;
             ivec2 texoffsets[4] = ivec2[] (ivec2(0, 3), ivec2(3, 0), -ivec2(0, 3), -ivec2(3, 0));
-            vec4 normoffset = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 1);
+            vec4 normoffset = pow(textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 2) * 1.5, vec4(8.0)) * normalstrength;
 
             vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-            fragpos.rgb += pow4(OutTexel2.g) * normalstrength;
+            fragpos.rgb += pow8(OutTexel3.b * 1.5) * normalstrength;
 
             vec3 p2 = backProject(vec4(scaledCoord + 2.0 * vec2(0.0, oneTexel.y), depthc, 1.0)).xyz;
-            p2.rgb += pow4(normoffset.x) * normalstrength;
+            p2.rgb += (normoffset.x);
             p2 = p2 - fragpos;
 
             vec3 p3 = backProject(vec4(scaledCoord + 2.0 * vec2(oneTexel.x, 0.0), depthd, 1.0)).xyz;
-            p3.rgb += pow4(normoffset.y) * normalstrength;
-
+            p3.rgb += (normoffset.y);
             p3 = p3 - fragpos;
+
             vec3 p4 = backProject(vec4(scaledCoord - 2.0 * vec2(0.0, oneTexel.y), depthb, 1.0)).xyz;
-            p4.rgb += pow4(normoffset.z) * normalstrength;
-
+            p4.rgb += (normoffset.z);
             p4 = p4 - fragpos;
-            vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depthe, 1.0)).xyz;
-            p5.rgb += pow4(normoffset.w) * normalstrength;
 
+            vec3 p5 = backProject(vec4(scaledCoord - 2.0 * vec2(oneTexel.x, 0.0), depthe, 1.0)).xyz;
+            p5.rgb += (normoffset.w);
             p5 = p5 - fragpos;
+
             vec3 normal = normalize(cross(p2, p3)) + normalize(cross(-p4, p3)) + normalize(cross(p2, -p5)) + normalize(cross(-p4, -p5));
             normal = normal == vec3(0.0) ? vec3(0.0, 1.0, 0.0) : normalize(-normal);
 
@@ -697,27 +771,14 @@ void main() {
             ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= (1.0 + rainStrength * 0.2);
-            //ambientLight *= 2.0;
             ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
 
-            vec3 shading = vec3(0.0);
-
-            vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
-
-            vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel2);
+            vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel3.rgb);
 
             float sssa = pbr.g;
             float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
 
             float light = pbr.r;
-
-            float shadeDir = max(0.0, dot(normal, sunPosition2));
-            float screenShadow = rayTraceShadow(sunVec, viewPos, noise);
-            screenShadow = clamp(((screenShadow + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
-            shadeDir *= screenShadow;
-            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow * 2 - 1) * 0.5)) * float(sssa) * lmx);
-            shadeDir = clamp(shadeDir, 0, 1);
-
             vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
             vec3 reflections = vec3(0.0);
 
@@ -727,7 +788,7 @@ void main() {
                 vec3 fragpos3 = (vec4(texCoord, ldepth, 1.0)).xyz;
                 fragpos3 *= ldepth;
                 vec3 avgSky = mix(lightmap * 0.5, ambientLight, lmx);
-                vec4 reflection2 = vec4(SSR(viewPos.xyz, depth, normal2, noise));
+                vec4 reflection = vec4(SSR(viewPos.xyz, depth, normal2, noise));
 
                 float normalDotEye = dot(normal, normalize(fragpos3));
                 float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
@@ -735,17 +796,27 @@ void main() {
                 fresnel *= max(1.0 - 0 * 0.5 * 1, 0.5);
                 fresnel *= 1.0 - 1 * 0.3;
 
-                reflection2 = mix(vec4(avgSky, 1), reflection2, reflection2.a);
-                reflections += ((reflection2.rgb) * (fresnel * OutTexel));
+                reflection = mix(vec4(avgSky, 1), reflection, reflection.a);
+                reflections += ((reflection.rgb) * (fresnel * OutTexel));
                 OutTexel *= 0.075;
                 reflections = max(vec3(0.0), reflections);
             }
-
-            float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));		
-
-            //shadeDir = mix(0.0,shadeDir,clamp((lmx)*5.0,0,1));
+            OutTexel *= mix(vec3(1.0), lightmap, postlight);
             float ao = 1.0 * ((1.0 - AOStrength) + jaao(texCoord, normal3, noise, depth, 1.2) * AOStrength);
-            //ambientLight.rgb = rtGI(normal,normal3, vec4(noise), viewPos,0, ambientLight,vec3(1.0)*lmy, OutTexel.rgb,vec2(lmx,lmy));  
+
+            vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
+            float shadeDir = max(0.0, dot(normal, sunPosition2));
+            float frDepth = ld(depth);
+            float screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth,0.5).x;
+            screenShadow = clamp(((screenShadow + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
+            shadeDir *= screenShadow;
+            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow*ao * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow*ao * 2 - 1) * 0.5)) * float(sssa) * lmx);
+            shadeDir = clamp(shadeDir, 0, 1);
+
+            float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));
+
+            vec3 shading = vec3(0.0);
+
             shading = (suncol * shadeDir) + ambientLight;
             shading += (sunSpec * suncol) * shadeDir;
 
@@ -762,7 +833,7 @@ void main() {
 
             outcol.rgb *= 1.0 + max(0.0, light);
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(pbr.a), 0.01, 1);
+            //outcol.rgb = clamp(vec3(shadeDir), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {
@@ -796,27 +867,5 @@ void main() {
     }
 
     fragColor = outcol;
-
-/*
-	vec4 numToPrint = vec4(worldTime);
-	// Define text to draw
-    clearTextBuffer();
-    c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
-    printTextAt(1.0, 1.0);
-
-    clearTextBuffer();
-    c('G'); c(':'); c(' '); floatToDigits(numToPrint.g);
-    printTextAt(1.0, 2.0);
-
-    clearTextBuffer();
-    c('B'); c(':'); c(' '); floatToDigits(numToPrint.b);
-    printTextAt(1.0, 3.0);
-
-    clearTextBuffer();
-    c('A'); c(':'); c(' '); floatToDigits(numToPrint.a);
-    printTextAt(1.0, 4.0);
-
-    fragColor += colour;
-*/
 
 }

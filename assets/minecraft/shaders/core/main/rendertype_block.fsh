@@ -6,23 +6,15 @@
 #extension GL_EXT_gpu_shader4_1 : enable
 
 uniform sampler2D Sampler0;
-uniform sampler2D Sampler2;
-uniform vec2 ScreenSize;
 
 uniform vec4 ColorModulator;
 uniform float FogStart;
 uniform float FogEnd;
 uniform vec4 FogColor;
-in vec3 chunkOffset;
-
-in float vertexDistance;
-in float lm;
 in vec4 vertexColor;
-in vec4 lm2;
+
 noperspective in vec3 test;
 in vec2 texCoord0;
-in vec2 texCoord2;
-in vec2 texCoord3;
 in vec4 normal;
 in vec4 glpos;
 in float lmx;
@@ -58,20 +50,12 @@ vec3 diff = albedo.rgb - lum;
 
 float alpha0 = int(textureLod(Sampler0, texCoord0, 0).a * 255);
 float procedual1 = ((distance(textureLod(Sampler0, texCoord0, 0).rgb, test.rgb))) * 255;
- //if (alpha0 ==255) {alpha0 = map(procedual1,0,255,roughMin,roughMax-16);
- //}
 
-//color.rgb = test;
 if(alpha0 == 255) {
 vec3 test2 = floor(test.rgb * 255);
 float test3 = floor(test2.r + test2.g + test2.b);
 
- //if(test3 <= 560 && test3 >= 550)  alpha0 = clamp(procedual1*albedo.r,lightMin,lightMax);
- //if(test3 == 382 && test2.b == 83)  alpha0 = clamp((color.r*color.r*color.r)*255,lightMin,lightMax);
- //if(test3 <= 316 && test3 >= 310)  alpha0 = clamp(procedual1,lightMax,lightMax);
 }
-// if(test3 <= 316 && test3 >= 310)  color.rgb = vec3(1,0,0);
-//    if(alpha0 >=  sssMin && alpha0 <=  sssMax)   alpha0 = clamp(alpha0+noise,sssMin,sssMax); // SSS
 
 float noise = luma4(rnd) * 255;
 
@@ -98,11 +82,8 @@ float lm = lmx + (luma4(rnd * clamp(lmx * 100, 0, 1)));
 if(res == 0.0f) {
 lm = lmy + (luma4(rnd * clamp(lmy * 100, 0, 1)));
 alpha3 = alpha2;
-    //color.rgb = normal.rgb;
 }
-fragColor = color;
-//  fragColor.rgb = test.rgb;
-//if(int(textureLod(Sampler0, texCoord0,0).a*255)==255)alpha3 = 1.0;   
-fragColor.a = packUnorm2x4(alpha3, clamp(lm, 0, 0.95));
+fragColor = vec4(color.rgb,packUnorm2x4(alpha3, clamp(lm, 0, 0.95)));
+
 
 }

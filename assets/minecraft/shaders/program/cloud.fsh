@@ -58,7 +58,7 @@ vec4 textureGood(sampler2D sam, vec2 uv) {
 float cloudCov(in vec3 pos, vec3 samplePos) {
 	float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
 	float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-	float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x*1.+0.5*rainStrength,0.0,1.0);
+	float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
 	float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
 	return max(cloud, 0.0);
 }
@@ -189,7 +189,7 @@ float mask(vec2 p) {
     // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
     // returned value in [0,37.2] , but < 0.57 with P=50% 
 
-	return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+	return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
 
 void main() {

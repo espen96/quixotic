@@ -146,7 +146,6 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     vec3 skyCol0 = ambientLight * 8.0 * 1.0 / 2.0 / 3.0 * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
     vec3 sunColor = lightCol.rgb * 8.0 / 1.0 / 3.0;
 
-
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
 
@@ -227,7 +226,7 @@ float mask(vec2 p) {
     // --- indeed, is a tone mapping ( equivalent to do the reciprocal on the image, see tests )
     // returned value in [0,37.2] , but < 0.57 with P=50% 
 
-    return (pow(f, 150.) + 1.3 * f) / 2.3; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
+    return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
 
 void main() {
@@ -281,7 +280,6 @@ void main() {
             vec3 totEpsilon = dirtEpsilon * dirtAmount + waterEpsilon;
             vec3 scatterCoef = dirtAmount * vec3(Dirt_Scatter_R, Dirt_Scatter_G, Dirt_Scatter_B);
             fragColor.rgb *= clamp(exp(-df * totEpsilon), 0.2, 1.0);
-            
 
             float estEyeDepth = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0., 1.0);
             estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
@@ -289,9 +287,8 @@ void main() {
             waterVolumetrics(vl, vec3(0.0), fragpos, estEyeDepth, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation);
 
             fragColor.rgb += vl;
-            fragColor.rgb = mix(fragColor.rgb,vl,  clamp(LinearizeDepth(depth) * 0.001,0,1));
+            fragColor.rgb = mix(fragColor.rgb, vl, clamp(LinearizeDepth(depth) * 0.001, 0, 1));
 
-                
         } else if(isEyeInWater == 0) {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation);
             fragColor.rgb *= vl[1];

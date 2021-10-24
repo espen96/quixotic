@@ -1,6 +1,7 @@
 {
     "targets":[
       "pre",
+      "shadow",
       "swap1",
       "swap2",
       "swap3",
@@ -89,6 +90,45 @@
         ]
       },
       {
+        "name":"shadow",
+        "intarget":"minecraft:main",
+        "outtarget":"shadow",
+        "auxtargets":[
+          {
+            "name":"temporals3Sampler",
+            "id":"pre"
+          },
+          {
+            "name":"clouds",
+            "id":"clouds"
+          },          
+          {
+            "name":"PreviousFrameSampler",
+            "id":"previousFrame"
+          },
+          {
+            "name":"cloudsample",
+            "id":"swap3"
+          },
+          {
+            "name":"TranslucentSampler",
+            "id":"translucent"
+          },
+          {
+            "name":"TranslucentDepthSampler",
+            "id":"translucent:depth"
+          },
+          {
+            "name":"FontSampler",
+            "id":"shader_font",
+            "width":1,
+            "height":1,
+            "bilinear":false
+          }
+        ]
+      },
+
+      {
         "name":"shading",
         "intarget":"minecraft:main",
         "outtarget":"shading",
@@ -100,7 +140,11 @@
           {
             "name":"clouds",
             "id":"clouds"
-          },          
+          },
+          {
+            "name":"shadow",
+            "id":"shadow"
+          },              
           {
             "name":"PreviousFrameSampler",
             "id":"previousFrame"
