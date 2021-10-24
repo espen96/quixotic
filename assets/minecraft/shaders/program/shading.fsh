@@ -670,7 +670,7 @@ void main() {
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
     bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
-
+    float frDepth = ld(depth);
     //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
 
     bool sky = depth >= 1.0;
@@ -806,11 +806,11 @@ void main() {
 
             vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
             float shadeDir = max(0.0, dot(normal, sunPosition2));
-            float frDepth = ld(depth);
-            float screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth,0.5).x;
+
+            float screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).x;
             screenShadow = clamp(((screenShadow + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
             shadeDir *= screenShadow;
-            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow*ao * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6 + (max(0.0, screenShadow*ao * 2 - 1) * 0.5)) * float(sssa) * lmx);
+            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0 + (max(0.0, screenShadow * ao * 2 - 1) * 0.5), phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6) * float(sssa) * lmx);
             shadeDir = clamp(shadeDir, 0, 1);
 
             float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));

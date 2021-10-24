@@ -116,12 +116,12 @@ float rayTraceShadow(vec3 dir, vec3 position, float dither) {
         spos += stepv*dither;
         float sp = texture(TranslucentDepthSampler, spos.xy).x;
 
-        if(sp < spos.z + 0.0000015) {
+        if(sp < spos.z + 0.000001) {
 
             float dist = abs(linZ(sp) - linZ(spos.z)) / linZ(spos.z);
 
-            if(dist < 0.05)
-                return 0.0;
+            if(dist < 0.07)
+                return exp2(position.z/8.);
 
         }
 
