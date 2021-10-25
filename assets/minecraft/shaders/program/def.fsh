@@ -115,11 +115,11 @@ float decodeFloat24(vec3 raw) {
 
 void main() {
 
-  //vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
+  vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
   vec4 outcol = vec4(0.0);
   if(gl_FragCoord.x < 17. && gl_FragCoord.y < 17.) {
 
-    vec3 avgAmbient = ds + ms;
+    //vec3 avgAmbient = ds + ms;
     avgAmbient = mix(avgAmbient * vec3(0.2, 0.2, 0.5) * 1.0, avgAmbient, 1 - rainStrength);
     float lumC = luma3(avgAmbient.rgb);
     vec3 diff = avgAmbient.rgb - lumC;

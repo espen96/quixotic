@@ -16,7 +16,7 @@ in float rainStrength;
 in vec3 sunVec;
 
 out vec4 fragColor;
-#define CLOUDS_QUALITY 0.5 
+#define CLOUDS_QUALITY 0.85 
 
 ////////////////////////////////////////////////
 
@@ -87,8 +87,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 	float total_extinction = 1.0;
 
 	worldV = normalize(worldV) * 300000. + cameraPosition; //makes max cloud distance not dependant of render distance
-	if(worldV.y < cloud_height)
-		return vec4(0.0, 0.0, 0.0, 1.0);	//don't trace if no intersection is possible
+	//if(worldV.y < cloud_height) return vec4(0.0, 0.0, 0.0, 1.0);	//don't trace if no intersection is possible
 
 	dV_view = normalize(dV_view);
 
@@ -126,7 +125,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 				//fake multiple scattering approx 2  (from horizon zero down clouds)
 				float h = 0.35 - 0.35 * clamp(progress_view.y / 4000. - 1500. / 4000., 0.0, 1.0);
 				float powder = 1.0 - exp(-mu * mult);
-				float Shadow = mix(0.6, powder, h);
+				float Shadow = mix(0.5, powder, h);
 				float ambientPowder = mix(1.0, powder, h * ambientMult);
 				vec3 S = vec3(sunContribution * Shadow + Shadow * moonContribution + skyCol0 * ambientPowder);
 

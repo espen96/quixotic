@@ -4,8 +4,7 @@
       "shadow",
       "swap1",
       "swap2",
-      "swap3",
-      "swap4",
+      "volume",
       "denoised1",
       "previousFrame",
       "shading",
@@ -49,10 +48,6 @@
         "outtarget":"pre",
         "auxtargets":[
           {
-            "name":"DepthSampler",
-            "id":"swap3:depth"
-          },
-          {
             "name":"MainSampler",
             "id":"minecraft:main"
           }
@@ -61,7 +56,7 @@
       {
         "name":"cloud",
         "intarget":"minecraft:main",
-        "outtarget":"swap3",
+        "outtarget":"swap1",
         "auxtargets":[
           {
             "name":"temporals3Sampler",
@@ -108,7 +103,7 @@
           },
           {
             "name":"cloudsample",
-            "id":"swap3"
+            "id":"swap1"
           },
           {
             "name":"TranslucentSampler",
@@ -151,7 +146,7 @@
           },
           {
             "name":"cloudsample",
-            "id":"swap3"
+            "id":"swap1"
           },
           {
             "name":"TranslucentSampler",
@@ -174,7 +169,7 @@
       {
         "name":"water",
         "intarget":"minecraft:main",
-        "outtarget":"swap2",
+        "outtarget":"swap1",
         "auxtargets":[
           {
             "name":"DiffuseDepthSampler",
@@ -205,7 +200,7 @@
       {
         "name":"transparency",
         "intarget":"shading",
-        "outtarget":"swap3",
+        "outtarget":"swap2",
         "auxtargets":[
           {
             "name":"DiffuseDepthSampler",
@@ -213,7 +208,7 @@
           },
           {
             "name":"TranslucentSampler",
-            "id":"swap2"
+            "id":"swap1"
           },
           {
             "name":"TranslucentDepthSampler",
@@ -248,7 +243,7 @@
       {
         "name":"volume",
         "intarget":"minecraft:main",
-        "outtarget":"swap4",
+        "outtarget":"volume",
         "auxtargets":[
           {
             "name":"temporals3Sampler",
@@ -256,7 +251,7 @@
           },
           {
             "name":"MainSampler",
-            "id":"swap3"
+            "id":"swap2"
           },
           {
             "name":"shading",
@@ -278,16 +273,12 @@
       },
       {
         "name":"denoiser",
-        "intarget":"swap4",
+        "intarget":"volume",
         "outtarget":"denoised1",
         "auxtargets":[
           {
             "name":"CurrentFrameDataSampler",
             "id":"minecraft:main"
-          },
-          {
-            "name":"CurrentFrameDepthSampler",
-            "id":"swap3:depth"
           },
           {
             "name":"PreviousFrameSampler",
@@ -307,10 +298,6 @@
         "outtarget":"previousFrame",
         "auxtargets":[
           {
-            "name":"DepthSampler",
-            "id":"swap3:depth"
-          },
-          {
             "name":"MainSampler",
             "id":"minecraft:main"
           }
@@ -319,67 +306,51 @@
       {
         "name":"blur1",
         "intarget":"denoised1",
-        "outtarget":"swap2",
-        "auxtargets":[
-          {
-            "name":"MainSampler",
-            "id":"minecraft:main"
-          },
-          {
-            "name":"BloomSampler",
-            "id":"swap3"
-          }
-        ]
-      },
-      {
-        "name":"blur2",
-        "intarget":"swap2",
         "outtarget":"swap1",
         "auxtargets":[
           {
             "name":"MainSampler",
             "id":"minecraft:main"
-          },
-          {
-            "name":"BloomSampler",
-            "id":"swap3"
           }
         ]
       },
       {
-        "name":"blur3",
+        "name":"blur2",
         "intarget":"swap1",
         "outtarget":"swap2",
         "auxtargets":[
           {
             "name":"MainSampler",
             "id":"minecraft:main"
-          },
-          {
-            "name":"BloomSampler",
-            "id":"swap3"
           }
         ]
       },
       {
-        "name":"blur4",
+        "name":"blur3",
         "intarget":"swap2",
         "outtarget":"swap1",
         "auxtargets":[
           {
             "name":"MainSampler",
             "id":"minecraft:main"
-          },
+          }
+        ]
+      },
+      {
+        "name":"blur4",
+        "intarget":"swap1",
+        "outtarget":"swap2",
+        "auxtargets":[
           {
-            "name":"BloomSampler",
-            "id":"swap3"
+            "name":"MainSampler",
+            "id":"minecraft:main"
           }
         ]
       },
       {
         "name":"tonemap",
         "intarget":"denoised1",
-        "outtarget":"swap2",
+        "outtarget":"swap1",
         "auxtargets":[
           {
             "name":"MainSampler",
@@ -387,17 +358,17 @@
           },
           {
             "name":"blursampler",
-            "id":"swap1"
+            "id":"swap2"
           },
           {
             "name":"BloomSampler",
-            "id":"swap4"
+            "id":"volume"
           }
         ]
       },
       {
         "name":"blit",
-        "intarget":"swap2",
+        "intarget":"swap1",
         "outtarget":"minecraft:main"
       }
     ]
