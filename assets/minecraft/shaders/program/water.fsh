@@ -247,13 +247,19 @@ vec3 rayTrace(vec3 dir, vec3 position, float dither) {
 
     return vec3(1.1);
 }
+vec4 backProject(vec4 vec) {
+    vec4 tmp = gbufferProjectionInverse * vec;
+    return tmp / tmp.w;
+}
+
 vec4 SSR(vec3 fragpos, vec3 normal, float noise) {
+    vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
     vec3 pos = vec3(0.0);
 
     vec4 color = vec4(0.0);
 
-    vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
+    vec3 reflectedVector = reflect(normalize(fragpos-origin), normalize(normal));
 
     pos = rayTrace(reflectedVector, fragpos, noise);
 

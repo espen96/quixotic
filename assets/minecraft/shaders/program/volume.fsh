@@ -1,10 +1,10 @@
 #version 150
 
 uniform sampler2D MainSampler;
-uniform sampler2D temporals3Sampler;
+uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D TranslucentDepthSampler;
-
+uniform vec2 ScreenSize;
 uniform float Time;
 
 in vec3 ambientLeft;
@@ -43,7 +43,7 @@ in vec3 suncol;
 #define fog_coefficientMieG 3.0
 #define fog_coefficientMieB 3.0
 
-#define Dirt_Amount 0.015  //How much dirt there is in water
+#define Dirt_Amount 0.02  //How much dirt there is in water
 
 #define Dirt_Scatter_R 0.6  //How much dirt diffuses red
 #define Dirt_Scatter_G 0.6  //How much dirt diffuses green
@@ -169,26 +169,31 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     return mat2x3(vL, absorbance);
 }
 
-void waterVolumetrics(inout vec3 inColor, vec3 rayStart, vec3 rayEnd, float estEyeDepth, float estSunDepth, float rayLength, float dither, vec3 waterCoefs, vec3 scatterCoef, vec3 ambient, vec3 lightSource, float VdotL, float sunElevation) {
-    int spCount = 2;
+void waterVolumetrics(inout vec3 inColor,vec3 rayEnd, float estEyeDepth, float rayLength, float dither, vec3 waterCoefs, vec3 scatterCoef, vec3 ambient, vec3 lightSource, float VdotL, float sunElevation,float depth) {
+		int spCount = 6;
+        
 		//limit ray length at 32 blocks for performance and reducing integration error
 		//you can't see above this anyway
-    float maxZ = min(rayLength, 32.0) / (1e-8 + rayLength);
-    rayLength *= maxZ;
-    float dY = normalize(rayEnd).y * rayLength;
-    vec3 absorbance = vec3(1.0);
-    vec3 vL = vec3(0.0);
-    float phase = phaseg(VdotL, Dirt_Mie_Phase);
-    float expFactor = 11.0;
-    for(int i = 0; i < spCount; i++) {
-        float d = (pow(expFactor, float(i + dither) / float(spCount)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);		// exponential step position (0-1)
-        float dd = pow(expFactor, float(i + dither) / float(spCount)) * log(expFactor) / float(spCount) / (expFactor - 1.0);	//step length (derivative)
-        vec3 ambientMul = exp(-max(estEyeDepth - dY * d, 0.0) * waterCoefs * 1.1);
-        vec3 sunMul = exp(-max((estEyeDepth - dY * d), 0.0) / abs(sunElevation) * waterCoefs);
-        vec3 light = (0.75 * lightSource * phase * sunMul + ambientMul * ambient) * scatterCoef;
-        vL += (light - light * exp(-waterCoefs * dd * rayLength)) / waterCoefs * absorbance;
-        absorbance *= exp(-dd * rayLength * waterCoefs);
-    }
+		float maxZ = min(rayLength,32.0)/(1e-8+rayLength);
+
+		rayLength *= maxZ;
+		float dY = normalize(rayEnd).y * rayLength;
+		vec3 absorbance = vec3(1.0);
+		vec3 vL = vec3(0.0);
+		float phase = phaseg(VdotL, Dirt_Mie_Phase);
+		float expFactor = 11.0;
+        bool issky = depth >= 1.0;
+		for (int i=0;i<spCount;i++) {
+			float d = (pow(expFactor, float(i+dither)/float(spCount))/expFactor - 1.0/expFactor)/(1-1.0/expFactor);		// exponential step position (0-1)
+			float dd = pow(expFactor, float(i+dither)/float(spCount)) * log(expFactor) / float(spCount)/(expFactor-1.0);	//step length (derivative)
+
+			vec3 ambientMul = exp(-max(estEyeDepth - dY * d,0.0) * waterCoefs * 1.1);
+			vec3 sunMul = exp(-max((estEyeDepth - dY * d) ,0.0)/abs(sunElevation) * waterCoefs);
+			vec3 light = (lightSource * phase * sunMul + ambientMul*ambient )*scatterCoef;
+			vL += (light - light * exp(-waterCoefs * dd * rayLength)) / waterCoefs *absorbance;
+			absorbance *= exp(-dd * rayLength * waterCoefs);
+		}
+		inColor += vL;
     inColor += vL;
 }
 
@@ -231,6 +236,7 @@ float mask(vec2 p) {
 
 void main() {
     float depth = texture(TranslucentDepthSampler, texCoord).r;
+    float depth2 = texture(DiffuseDepthSampler, texCoord).r;
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
 
     vec2 texCoord = texCoord;
@@ -284,11 +290,11 @@ void main() {
             float estEyeDepth = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0., 1.0);
             estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
 
-            waterVolumetrics(vl, vec3(0.0), fragpos, estEyeDepth, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation);
+            waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
 
             fragColor.rgb += vl;
-            fragColor.rgb = mix(fragColor.rgb, vl, clamp(LinearizeDepth(depth) * 0.001, 0, 1));
-
+            if(depth >= 1.0)
+                fragColor.rgb = vl;
         } else if(isEyeInWater == 0) {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation);
             fragColor.rgb *= vl[1];

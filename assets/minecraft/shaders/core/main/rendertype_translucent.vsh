@@ -18,7 +18,6 @@ uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
 
-out float vertexDistance;
 out float water;
 out vec4 vertexColor;
 out vec2 texCoord0;

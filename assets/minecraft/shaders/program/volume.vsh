@@ -32,6 +32,7 @@ flat out vec3 currChunkOffset;
 flat out float sunElevation;
 flat out vec3 sunVec;
 flat out vec3 sunPosition;
+flat out vec3 sunPosition3;
 flat out float fogAmount;
 flat out vec2 eyeBrightnessSmooth;
 
@@ -149,7 +150,7 @@ void main() {
     vec2 inc = vec2(2.0 / OutSize.x, 0.0);
 
     // ProjMat constructed assuming no translation or rotation matrices applied (aka no view bobbing).
-    mat4 ProjMat = mat4(tan(decodeFloat(texture(DiffuseSampler, start + 3.0 * inc).xyz)), decodeFloat(texture(DiffuseSampler, start + 5.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 9.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 13.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 6.0 * inc).xyz), tan(decodeFloat(texture(DiffuseSampler, start + 4.0 * inc).xyz)), decodeFloat(texture(DiffuseSampler, start + 10.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 14.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 7.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 11.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 15.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 8.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 12.0 * inc).xyz), 0.0);
+    mat4 ProjMat = mat4(tan(decodeFloat(texture(DiffuseSampler, start + 3.0 * inc).xyz)), decodeFloat(texture(DiffuseSampler, start + 6.0 * inc).xyz), 0.0, 0.0, decodeFloat(texture(DiffuseSampler, start + 5.0 * inc).xyz), tan(decodeFloat(texture(DiffuseSampler, start + 4.0 * inc).xyz)), decodeFloat(texture(DiffuseSampler, start + 7.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 8.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 9.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 10.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 11.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 12.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 13.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 14.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 15.0 * inc).xyz), 0.0);
 
     mat4 ModeViewMat = mat4(decodeFloat(texture(DiffuseSampler, start + 16.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 17.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 18.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 19.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 20.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 21.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 22.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 23.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 24.0 * inc).xyz), 0.0, 0.0, 0.0, 0.0, 1.0);
     currChunkOffset = vec3(decodeFloat(texture(DiffuseSampler, start + 100 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 101 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 102 * inc).xyz));
@@ -198,6 +199,8 @@ void main() {
     float rainStrength = (1 - rain.r) * 0.5;
     vec3 sunDir2 = sunDir;
     sunPosition = sunDir2;
+
+    sunPosition3 =  mat3(ModeViewMat) * sunDir2;
     vec3 upPosition = vec3(0, 1, 0);
     sunVec = sunDir2;
 
@@ -227,7 +230,7 @@ void main() {
     ambientRight = texelFetch(temporals3Sampler, ivec2(3, 37), 0).rgb;
     ambientB = texelFetch(temporals3Sampler, ivec2(4, 37), 0).rgb;
     ambientF = texelFetch(temporals3Sampler, ivec2(5, 37), 0).rgb;
-    //avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
+    avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
 ///////////////////////////
 
 }

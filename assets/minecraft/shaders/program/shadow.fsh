@@ -233,13 +233,14 @@ float R2_dither() {
 }
 
 float rayTraceShadow(vec3 dir, vec3 position, float dither) {
-    float stepSize = map(linZ( texture(TranslucentDepthSampler, texCoord).r) * dither, 0, 100, 25, 50);
+    float stepSize = clamp(linZ( texture(TranslucentDepthSampler, texCoord).r),15,90);
     int maxSteps = 50;
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
     float rayLength = ((position.z + dir.z * sqrt(3.0) * far) > -sqrt(3.0) * near) ? (-sqrt(3.0) * near - position.z) / dir.z : sqrt(3.0) * far;
 
     vec3 end = toClipSpace3(position + dir * rayLength);
+    //vec3 end = nvec3(gbufferProjection * nvec4(position + dir * rayLength)) * 0.5 + 0.5;
     vec3 direction = end - clipPosition;
 
     float len = max(abs(direction.x) / oneTexel.x, abs(direction.y) / oneTexel.y) / stepSize;
@@ -400,10 +401,16 @@ float mask(vec2 p) {
 
     return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
+vec4 backProject(vec4 vec) {
+    vec4 tmp = gbufferProjectionInverse * vec;
+    return tmp / tmp.w;
+}
+
 
 void main() {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
+    vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
@@ -422,7 +429,7 @@ void main() {
             // bool raytraceIntersection(in sampler2D depthtexture, in vec3 startPosition, in vec3 rayDirection, out vec3 hitPosition, in uint stride, in float depthLeniency, in float maxSteps) {
             //bool shadow =  raytraceIntersection(TranslucentDepthSampler, screenPos, sunVec, vec3(1.0) ,uint(10.0), 0.1, 50);
 
-        float screenShadow = rayTraceShadow(sunVec, viewPos, noise);
+        float screenShadow = rayTraceShadow(sunVec+(origin*0.1), viewPos, noise);
 
         outcol.rgb = clamp(vec3(screenShadow), 0.01, 1);
 

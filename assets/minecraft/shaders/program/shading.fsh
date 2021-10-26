@@ -1086,7 +1086,7 @@ void main() {
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(ao), 0.01, 1);
+            //outcol.rgb = clamp(vec3(shadeDir), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {
