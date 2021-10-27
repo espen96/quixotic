@@ -67,26 +67,33 @@ void main() {
     vec4 viewPos = ModelViewMat * vec4(Position + ChunkOffset, 1.0);
     vertexColor = Color;
 
-
+mat4 mvm = ModelViewMat*0;
+vec3 p = Position*0;
     if(gl_VertexID < 4) {
         if(gl_VertexID == 0) {
             c1 = viewPos;
         } else if(gl_VertexID == 1 || gl_VertexID == 3) {
             c2 = viewPos;
+            
         } else if(gl_VertexID == 2) {
             c3 = viewPos;
         }
+        
         projInv = fastInverseProjMat(ProjMat);
         projMat = ProjMat;
         chunkOffset = ChunkOffset;
         gl_Position = vertexPositions[gl_VertexID];
+
+        p = Position;
+        mvm = ModelViewMat;
+
     } else {
         gl_Position = vec4(-1);
     }
-    pos1 = encodeFloat24((Position.x)+ModelViewMat[3].x );
-    float temp = (floor(Position.y)-125)+((ModelViewMat[3].y));
+    pos1 = encodeFloat24((p.x)+mvm[3].x );
+    float temp = (floor(p.y)-125)+((mvm[3].y));
 
     pos2 = encodeFloat24(temp);
-    pos3 = encodeFloat24((Position.z)+ModelViewMat[3].z );
+    pos3 = encodeFloat24((p.z)+mvm[3].z );
     glpos = gl_Position;
 }
