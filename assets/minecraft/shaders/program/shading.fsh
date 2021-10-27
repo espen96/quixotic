@@ -951,24 +951,71 @@ vec3 DecodeNormal(vec2 enc) {
     n.z = 1.0 - f / 2.0;
     return n;
 }
+vec3 getDepthPoint(vec2 coord, float depth) {
+    vec4 pos;
+    pos.xy = coord;
+    pos.z = depth;
+    pos.w = 1.0;
+    pos.xyz = pos.xyz * 2.0 - 1.0; //convert from the 0-1 range to the -1 to +1 range
+    pos = gbufferProjectionInverse * pos;
+    pos.xyz /= pos.w;
+
+    return pos.xyz;
+}
+vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
+    vec2 offsetB = vec2(0.0, oneTexel.y);
+    vec2 offsetC = vec2(oneTexel.x, 0.0);
+
+    float depthB = texture(depthtex, texcoords + offsetB).r;
+    float depthC = texture(depthtex, texcoords + offsetC).r;
+
+    vec3 A = getDepthPoint(texcoords, depthA);
+    vec3 B = getDepthPoint(texcoords + offsetB, depthB);
+    vec3 C = getDepthPoint(texcoords + offsetC, depthC);
+
+    vec3 AB = normalize(B - A);
+    vec3 AC = normalize(C - A);
+
+    vec3 normal = -cross(AB, AC);
+	// normal.z = -normal.z;
+
+    return normalize(normal);
+}
+
 void main() {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    float depth2 = texture(TranslucentDepthSampler, gl_FragCoord.xy*oneTexel).r;
-    vec4 lmnormal = texture(normal, texCoord);
-    float frDepth = ld(depth2);
-    lmnormal.zw = mix( lmnormal.zw,BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw,0.5);
+    float depth2 = texture(TranslucentDepthSampler, gl_FragCoord.xy*oneTexel).r;    
+    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
+    vec3 wnormal = vec3(0.0);
+    float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
 
-    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
-    vec3 OutTexel = toLinear(OutTexel3.rgb);
-
+    if(isWater) wnormal =  viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler));
+    vec2 texCoord = texCoord;    
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
-    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
+
+    if(isWater) { 
+    float displ = wnormal.z/(length(viewPos)/far)/2000. * (1.0 + 0.0*2.0);
+    vec2 refractedCoord = texCoord+ displ;
+
+    if (texture(TranslucentSampler,refractedCoord).r <= 0.0)
+      refractedCoord = texCoord;
+      texCoord = refractedCoord;
+    
+    }
+
+
+    vec4 lmnormal = texture(normal, texCoord);
+    float frDepth = ld(depth2);
+    lmnormal.zw = mix( lmnormal.zw,BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw,0.5);
+
+    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
+    vec3 OutTexel = toLinear(OutTexel3.rgb);
 
     //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
 
@@ -1002,7 +1049,6 @@ void main() {
         if(overworld == 1.0) {
             vec2 screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).xy;
 
-            float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
 
             float postlight = 1;
 
@@ -1095,7 +1141,7 @@ void main() {
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(shading), 0.01, 1);
+            //outcol.rgb = clamp(vec3(wnormal), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {
