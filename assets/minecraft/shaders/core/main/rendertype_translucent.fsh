@@ -17,6 +17,7 @@ in vec3 noise;
 in vec3 color2;
 in vec2 texCoord0;
 in vec4 normal;
+in vec4 lm;
 in vec4 glpos;
 in float lmx;
 in float lmy;
@@ -74,9 +75,9 @@ void main() {
     vec4 color = texture(Sampler0, texCoord0);
     color = color * vertexColor * ColorModulator;
 
-    if(textureLod(Sampler0, texCoord0,0).a *255 == 200) color.rgb = mix(color.rgb,vec3(0.42,0.6,0.7),0.25)+noise;
+    if(textureLod(Sampler0, texCoord0,0).a *255 == 200) {color.rgb = mix(color.rgb,vec3(0.42,0.6,0.7),0.25)+noise;
+    color.a = textureLod(Sampler0, texCoord0,0).a;}
     color.rgb = clamp(color.rgb, 0.01, 1);
-
   //color.rgb = (noise)*100;
 
     fragColor = color;

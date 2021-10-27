@@ -22,6 +22,7 @@ out float water;
 out vec4 vertexColor;
 out vec2 texCoord0;
 out vec4 normal;
+out vec4 lm;
 out vec4 glpos;
 out vec3 noise;
 out vec3 color2;
@@ -113,12 +114,12 @@ void main() {
 
     float wavea = 0.0;
     if(wtest * 255 == 200)
-        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1));
-    vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea*1.5-0.1, 0) + ChunkOffset, 1.0);
+        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1))*1.5-0.1;
+    vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
-    vertexColor = Color * texelFetch(Sampler2, UV2 / 16, 0);
+    vertexColor = Color*texelFetch(Sampler2, UV2 / 16, 0);
 
     texCoord0 = UV0;
 //    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
@@ -126,6 +127,7 @@ void main() {
     float test = 0;
     if(posxz.z < 0.5)
         test = 1;
+    lm =  texelFetch(Sampler2, UV2 / 16, 0);    
 
     glpos = vec4(waterH(posxz) * 10);
 }
