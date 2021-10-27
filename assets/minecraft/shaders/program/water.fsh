@@ -326,7 +326,7 @@ void main() {
         float depth = texture(TranslucentDepthSampler, texCoord).r;
         float noise = mask(gl_FragCoord.xy + (Time * 100));
         vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(noise * 0.15) * oneTexel);
-
+        if(color.a*255 == 200) normal *= 2.0-0.5;
 ////////////////////
         vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
         vec3 screenPos2 = vec3(texCoord, depth);
@@ -355,7 +355,7 @@ void main() {
 
         //normal += noise * 0.02;
         reflection = vec4(SSR(viewPos.xyz, normal, noise));
-        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb*1.5, reflection.a);
         vec3 reflected = reflection.rgb * fresnel;
 
         float alpha0 = color2.a;

@@ -71,7 +71,10 @@ void main() {
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     discardControlGLPos(gl_FragCoord.xy, glpos);
-    vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
+    vec4 color = texture(Sampler0, texCoord0);
+    color = color * vertexColor * ColorModulator;
+
+    if(textureLod(Sampler0, texCoord0,0).a *255 == 200) color.rgb = mix(color.rgb,vec3(0.42,0.6,0.7),0.25)+noise;
     color.rgb = clamp(color.rgb, 0.01, 1);
 
   //color.rgb = (noise)*100;

@@ -114,7 +114,7 @@ void main() {
     float wavea = 0.0;
     if(wtest * 255 == 200)
         wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1));
-    vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0);
+    vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea*1.5-0.1, 0) + ChunkOffset, 1.0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);

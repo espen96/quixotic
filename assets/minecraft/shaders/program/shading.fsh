@@ -990,7 +990,7 @@ void main() {
     vec3 wnormal = vec3(0.0);
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
 
-    if(isWater) wnormal =  viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler));
+    if(isWater) wnormal =  normalize(viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler))*1.5-0.1);
     vec2 texCoord = texCoord;    
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
