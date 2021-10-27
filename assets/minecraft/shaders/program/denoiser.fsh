@@ -126,7 +126,7 @@ void main() {
     VXAAUpsampleT4x(vtex, current, history, currN, histN);
 
     // Average all samples.
-    fragColor = (vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f;
+    fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f,0,1);
     //fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
 
 }

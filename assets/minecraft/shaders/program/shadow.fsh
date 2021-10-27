@@ -1,13 +1,15 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D DiffuseSampler;
+uniform sampler2D normal;
 uniform sampler2D TranslucentDepthSampler;
 
 uniform float Time;
 uniform vec2 ScreenSize;
 
 in vec2 oneTexel;
-in vec2 texCoord;
+    		vec2 texCoord = floor(gl_FragCoord.xy)*2.0*oneTexel+0.5*oneTexel;
+
 in mat4 gbufferProjection;
 in float near;
 in float far;
@@ -16,6 +18,7 @@ in vec3 sunVec;
 in mat4 gbufferProjectionInverse;
 
 out vec4 fragColor;
+const float pi = 3.141592653589793238462643383279502884197169;
 
 float sqr(float x) {
     return x * x;
@@ -406,8 +409,208 @@ vec4 backProject(vec4 vec) {
     return tmp / tmp.w;
 }
 
+vec3 calculateBaseHorizonVector(vec3 Po, vec3 Td, vec3 L, vec3 N, float LdotN) {
+    vec3 negPoLd = Td - Po;
+    float D = -dot(negPoLd, N) / LdotN;
+    return normalize(D * L + negPoLd);
+}
+#define HBAO_RADIUS 2 //[0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3 3.1 3.2 3.3 3.4 3.5 3.6 3.7 3.8 3.9 4 4.1 4.2 4.3 4.4 4.5 4.6 4.7 4.8 4.9 5 5.1 5.2 5.3 5.4 5.5 5.6 5.7 5.8 5.9 6 6.1 6.2 6.3 6.4 6.5 6.6 6.7 6.8 6.9 7 7.1 7.2 7.3 7.4 7.5 7.6 7.7 7.8 7.9 8 8.1 8.2 8.3 8.4 8.5 8.6 8.7 8.8 8.9 9 9.1 9.2 9.3 9.4 9.5 9.6 9.7 9.8 9.9 10]
+#define HBAO_HORIZON_DIRECTIONS 2 //[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16]
+#define HBAO_ANGLE_SAMPLES 2 //[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16]
+vec3 toScreenSpace(vec2 p) {
+    vec4 fragposition = gbufferProjectionInverse * vec4(vec3(p, texture(TranslucentDepthSampler, p).x) * 2.0 - 1.0, 1.0);
+    return fragposition.xyz /= fragposition.w;
+}
+float calculateHorizonAngle(vec3 position, vec2 screencoord, vec3 horizondir, vec3 viewdir, vec3 normal, float NdotV, float sampleoffset, float radius) {
+    vec3 horizonvector = calculateBaseHorizonVector(position, horizondir, viewdir, normal, NdotV);
+    float coshorizonangle = clamp(dot(horizonvector, viewdir), -1.0, 1.0);
 
+    for(int i = 0; i < HBAO_ANGLE_SAMPLES; ++i) {
+        float sampledistance2D = pow(float(i) / float(HBAO_ANGLE_SAMPLES) + sampleoffset, 2.0);
+        vec2 samplecoord = horizondir.xy * sampledistance2D + screencoord;
+
+        if(clamp(samplecoord, 0.0, 1.0) != samplecoord) {
+            break;
+        }
+
+        vec3 samplepos = vec3(samplecoord, texture(TranslucentDepthSampler, samplecoord).r);
+        samplepos.z = 1e-3 * (1.0 - samplepos.z) + samplepos.z;
+
+        samplepos = toScreenSpace(samplepos.xy);
+
+        vec3 samplevector = samplepos - position;
+        float sampledistancesquared = dot(samplevector, samplevector);
+        vec3 sampledir = samplevector * inversesqrt(sampledistancesquared);
+
+        if(sampledistancesquared > radius * radius) {
+            continue;
+        }
+
+        float cossampleangle = dot(viewdir, sampledir);
+
+        coshorizonangle = clamp(cossampleangle, coshorizonangle, 1.0);
+    }
+
+    return acos(coshorizonangle);
+}
+#define tau 6.2831853071795864769252867665590
+vec3 DecodeNormal(vec2 enc){
+    vec2 fenc = enc * 4.0 - 2.0;
+    float f = dot(fenc,fenc);
+    float g = sqrt(1.0 - f / 4.0);
+    vec3 n;
+    n.xy = fenc * g;
+    n.z = 1.0 - f / 2.0;
+    return n;
+}
+float goldenAngle = tau / (phi + 1.0);
+float calculateHBAO(vec3 position, vec2 screencoord, vec3 viewdir, vec3 normal, float NdotV, float radius, float dither, const float ditherSize) {
+    dither = ditherSize * dither + 0.5;
+
+    vec2 norm = vec2(gbufferProjection[0].x, gbufferProjection[1].y) * ((-0.5 * radius) / position.z);
+
+    float result = 0.0;
+    for(int i = 0; i < HBAO_HORIZON_DIRECTIONS; ++i) {
+        float theta = (i * ditherSize + dither) * goldenAngle;
+        vec3 horizondir = vec3(abs(sin(theta)), cos(theta), 0.0);
+        horizondir.xy *= norm;
+
+        float sampleoffset = (i + dither / ditherSize) / (HBAO_ANGLE_SAMPLES * HBAO_HORIZON_DIRECTIONS);
+        result += calculateHorizonAngle(position, screencoord, horizondir, viewdir, normal, NdotV, sampleoffset, radius);
+        result += calculateHorizonAngle(position, screencoord, -horizondir, viewdir, normal, NdotV, sampleoffset, radius);
+    }
+
+    return result / (HBAO_HORIZON_DIRECTIONS);
+}
+
+float rand(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+}
+
+vec3 getProjPos(in ivec2 iuv, in float depth) {
+    vec2 invWidthHeight = vec2(1.0 / ScreenSize.x, 1.0 / ScreenSize.y);
+
+    return vec3(vec2(iuv) * invWidthHeight, depth) * 2.0 - 1.0;
+}
+
+vec3 proj2view(in vec3 proj_pos) {
+    vec4 view_pos = gbufferProjectionInverse * vec4(proj_pos, 1.0);
+    return view_pos.xyz / view_pos.w;
+}
+
+float getHorizonAngle(ivec2 iuv, vec2 offset, vec3 vpos, vec3 nvpos, out float l) {
+    ivec2 ioffset = ivec2(offset * vec2(ScreenSize));
+    ivec2 suv = iuv + ioffset;
+
+    if(suv.x < 0 || suv.y < 0 || suv.x > ScreenSize.x || suv.y > ScreenSize.y)
+        return -1.0;
+    float depth_sample = texelFetch(TranslucentDepthSampler, suv, 0).r;
+
+    vec3 proj_pos = getProjPos(suv, depth_sample);
+    vec3 view_pos = proj2view(proj_pos);
+
+    vec3 ws = view_pos - vpos;
+    l = sqrt(dot(ws, ws));
+    ws /= l;
+
+    return dot(nvpos, ws);
+}
+#define AOQuality 0   //[0 1 2] Increases the quality of Ambient Occlusion from 0 to 2, 0 is default
+#define AORadius 2.0 //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0] //Changes the radius of Ambient Occlusion to be larger or smaller, 1.0 is default
+
+float dither5x3() {
+    const int ditherPattern[15] = int[15] (9, 3, 7, 12, 0, 11, 5, 1, 14, 8, 2, 13, 10, 4, 6);
+
+    vec2 position = floor(mod(vec2(texCoord.s * ScreenSize.x, texCoord.t * ScreenSize.y), vec2(5.0, 3.0)));
+
+    int dither = ditherPattern[int(position.x) + int(position.y) * 5];
+
+    return float(dither) * 0.0666666666666667f;
+}
+#define g(a) (-4.*a.x*a.y+3.*a.x+a.y*2.)
+
+float bayer16x16(vec2 p) {
+
+    vec2 m0 = vec2(mod(floor(p * 0.125), 2.));
+    vec2 m1 = vec2(mod(floor(p * 0.25), 2.));
+    vec2 m2 = vec2(mod(floor(p * 0.5), 2.));
+    vec2 m3 = vec2(mod(floor(p), 2.));
+
+    return (g(m0) + g(m1) * 4.0 + g(m2) * 16.0 + g(m3) * 64.0) * 0.003921568627451;
+}
+#undef g
+
+float dither = bayer16x16(gl_FragCoord.xy);
+
+
+#define bayer4(a)   (bayer2( .5*(a))*.25+bayer2(a))
+#define bayer8(a)   (bayer4( .5*(a))*.25+bayer2(a))
+#define bayer16(a)  (bayer8( .5*(a))*.25+bayer2(a))
+#define bayer32(a)  (bayer16(.5*(a))*.25+bayer2(a))
+#define bayer64(a)  (bayer32(.5*(a))*.25+bayer2(a))
+#define bayer128(a) (bayer64(.5*(a))*.25+bayer2(a))
+
+float dither64 = bayer64(gl_FragCoord.xy);
+float getAO(ivec2 iuv, vec3 vpos, vec3 vnorm, float noise) {
+    float aspectRatio = ScreenSize.x / ScreenSize.y;
+    float dither = fract(1 * (1.0 / 15.0) + bayer16(gl_FragCoord.st));
+    float dither2 = fract(dither5x3() - dither64);
+
+    float rand1 = (1.0 / 16.0) * float((((iuv.x + iuv.y) & 0x3) << 2) + (iuv.x & 0x3));
+    float rand2 = (1.0 / 4.0) * float((iuv.y - iuv.x) & 0x3);
+
+    float radius = 2.0 / -vpos.z * gbufferProjection[0][0];
+    int frameCounter = int(Time * 100);
+    const float rotations[] = float[] (60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f);
+    float rotation = rotations[frameCounter % 6] / 360.0f;
+    float angle = (dither + rotation) * 3.1415926;
+    const float offsets[] = float[] (0.0f, 0.5f, 0.25f, 0.75f);
+    float offset = offsets[(frameCounter / 6) % 4];
+
+    radius = clamp(radius, 0.01, 0.2);
+
+    vec2 t = vec2(cos(angle), sin(angle));
+
+    float theta1 = -1.0, theta2 = -1.0;
+
+    vec3 wo_norm = -normalize(vpos);
+
+    for(int i = 0; i < 4; i++) {
+        float r = radius * (float(i) + fract(dither2 + offset) + 0.05) * 0.125;
+
+        float l1;
+        float h1 = getHorizonAngle(iuv, t * r * vec2(1.0, aspectRatio), vpos, wo_norm, l1);
+        float theta1_p = mix(h1, theta1, clamp((l1 - 4) * 0.3, 0.0, 1.0));
+        theta1 = theta1_p > theta1 ? theta1_p : mix(theta1_p, theta1, 0.7);
+        float l2;
+        float h2 = getHorizonAngle(iuv, -t * r * vec2(1.0, aspectRatio), vpos, wo_norm, l2);
+        float theta2_p = mix(h2, theta2, clamp((l2 - 4) * 0.3, 0.0, 1.0));
+        theta2 = theta2_p > theta2 ? theta2_p : mix(theta2_p, theta2, 0.7);
+    }
+
+    theta1 = -acos(theta1);
+    theta2 = acos(theta2);
+
+    vec3 bitangent = normalize(cross(vec3(t, 0.0), wo_norm));
+    vec3 tangent = cross(wo_norm, bitangent);
+    vec3 nx = vnorm - bitangent * dot(vnorm, bitangent);
+
+    float nnx = length(nx);
+    float invnnx = 1.0 / (nnx + 1e-6);			// to avoid division with zero
+    float cosxi = dot(nx, tangent) * invnnx;	// xi = gamma + HALF_PI
+    float gamma = acos(cosxi) - 3.1415926 / 2.0;
+    float cos_gamma = dot(nx, wo_norm) * invnnx;
+    float sin_gamma = -2.0 * cosxi;
+
+    theta1 = gamma + max(theta1 - gamma, -3.1415926 / 2.0);
+    theta2 = gamma + min(theta2 - gamma, 3.1415926 / 2.0);
+
+    float alpha = 0.5 * cos_gamma + 0.5 * (theta1 + theta2) * sin_gamma - 0.25 * (cos(2.0 * theta1 - gamma) + cos(2.0 * theta2 - gamma));
+
+    return nnx * alpha;
+}
 void main() {
+
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
     vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
@@ -418,11 +621,13 @@ void main() {
     vec3 viewPos = tmp.xyz / tmp.w;
 
     bool sky = depth >= 1.0;
+    vec4 lmnormal = texture(normal, texCoord);
 
-    if(!sky && overworld == 1.0) {
+    if(!sky) {
         float noise = R2_dither();
 
     
+            vec3 normal = (DecodeNormal(lmnormal.rg));
             //vec3 hitPosition;
             //vec3 rayDirection = reflect(rayDirection, mat3(gbufferModelView) * sd.flatNormal);
             //bool hit = raytraceIntersection(depthtex1, pd.screenPosition[0], rayDirection, hitPosition, REFLECTION_RAY_STRIDE * 2u, 16.0, pixelCount * rcp(2.0));
@@ -430,8 +635,12 @@ void main() {
             //bool shadow =  raytraceIntersection(TranslucentDepthSampler, screenPos, sunVec, vec3(1.0) ,uint(10.0), 0.1, 50);
 
         float screenShadow = rayTraceShadow(sunVec+(origin*0.1), viewPos, noise);
-
-        outcol.rgb = clamp(vec3(screenShadow), 0.01, 1);
+            const float ditherRadius = 16.0 * 16.0;
+            float dither = fract(Time * (1.0 / 15.0) + bayer128(gl_FragCoord.st));
+            float ao = calculateHBAO(viewPos, texCoord, -normalize(viewPos), normal, dot(normal, -normalize(viewPos)), HBAO_RADIUS, dither, ditherRadius) / pi;
+            //ivec2 iuv = ivec2(gl_FragCoord.st);
+            //float ao = getAO(iuv, viewPos, normal, noise);
+        outcol.rgb = clamp(vec3(screenShadow,ao,0), 0.01, 1);
 
     }
 

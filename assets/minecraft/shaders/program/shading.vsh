@@ -15,14 +15,14 @@ out vec3 ambientB;
 out vec3 ambientF;
 out vec3 ambientDown;
 out vec3 suncol;
-out vec3 zMults;
+flat out vec3 zMults;
 
 out vec2 oneTexel;
 out vec4 fogcol;
 
 out vec2 texCoord;
 
-out mat3 gbufferModelViewInverse;
+out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
 out mat4 wgbufferModelView;
 out mat4 gbufferProjection;
@@ -144,10 +144,11 @@ void main() {
 
     near = PROJNEAR;
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
+    zMults = vec3(1.0 / (far * near), far + near, far - near);
 
     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
-    gbufferModelViewInverse = inverse(mat3(ModeViewMat));
+    gbufferModelViewInverse = inverse(mat4(ModeViewMat));
     wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
 
     gbufferModelView = (ModeViewMat);
@@ -186,7 +187,6 @@ void main() {
     sunPosition3 = sunDir2;
     vec3 upPosition = vec3(gbufferModelView[1].xyz);
     const vec3 cameraPosition = vec3(0.0);
-    zMults = vec3(1.0 / (far * near), far + near, far - near);
 
     float normSunVec = sqrt(sunPosition.x * sunPosition.x + sunPosition.y * sunPosition.y + sunPosition.z * sunPosition.z);
     float normUpVec = sqrt(upPosition.x * upPosition.x + upPosition.y * upPosition.y + upPosition.z * upPosition.z);

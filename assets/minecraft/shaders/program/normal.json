@@ -4,16 +4,17 @@
         "srcrgb": "one",
         "dstrgb": "zero"
     },
-    "vertex": "shadow",
-    "fragment": "shadow",
+    "vertex": "normal",
+    "fragment": "normal",
     "attributes": [ "Position" ],
     "samplers": [
         { "name": "DiffuseSampler" },
+        { "name": "shadow" },
         { "name": "PreviousFrameSampler" },
         { "name": "TranslucentSampler" },
         { "name": "temporals3Sampler" },
         { "name": "TranslucentDepthSampler" },
-        { "name": "normal" },
+        { "name": "cloudsample" },
         { "name": "FontSampler" }
     ],
     "uniforms": [

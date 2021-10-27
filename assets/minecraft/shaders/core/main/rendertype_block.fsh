@@ -21,9 +21,19 @@ in float lmx;
 in float lmy;
 out vec4 fragColor;
 
+
+float dither5x3() {
+    const int ditherPattern[15] = int[15] (9, 3, 7, 12, 0, 11, 5, 1, 14, 8, 2, 13, 10, 4, 6);
+    int dither = ditherPattern[int(texCoord0.x) + int(texCoord0.y) * 5];
+
+    return float(dither) * 0.0666666666666667f;
+}
+
+float dither64 = Bayer64(gl_FragCoord.xy);
+
 void main() {
 
-vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
+vec3 rnd = clamp(vec3(fract(dither5x3() - dither64)),0,1)/8;
 
 discardControlGLPos(gl_FragCoord.xy, glpos);
 

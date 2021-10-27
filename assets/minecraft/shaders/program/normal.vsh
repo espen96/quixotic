@@ -6,15 +6,39 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D temporals3Sampler;
+
+out vec3 ambientUp;
+out vec3 ambientLeft;
+out vec3 ambientRight;
+out vec3 ambientB;
+out vec3 ambientF;
+out vec3 ambientDown;
+out vec3 suncol;
+out vec3 zMults;
 
 out vec2 oneTexel;
+out vec4 fogcol;
+
 out vec2 texCoord;
+
+out mat3 gbufferModelViewInverse;
+out mat4 gbufferModelView;
+out mat4 wgbufferModelView;
 out mat4 gbufferProjection;
+//out mat4 gbufferProjectionInverse;
+out mat4 wgbufferModelViewInverse;
+
 out float near;
 out float far;
+out float end;
 out float overworld;
+
+out float rainStrength;
 out vec3 sunVec;
-out mat4 gbufferProjectionInverse;
+
+out vec3 sunPosition3;
+out float skyIntensityNight;
 
 float map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
@@ -111,8 +135,10 @@ void main() {
 
     mat4 ModeViewMat = mat4(decodeFloat(texture(DiffuseSampler, start + 16.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 17.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 18.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 19.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 20.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 21.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 22.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 23.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 24.0 * inc).xyz), 0.0, 0.0, 0.0, 0.0, 1.0);
 
+    fogcol = vec4((texture(DiffuseSampler, start + 25.0 * inc)));
 
     overworld = vec4((texture(DiffuseSampler, start + 28.0 * inc))).r;
+    end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
 
     vec4 rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
 
@@ -121,10 +147,14 @@ void main() {
 
     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
+    gbufferModelViewInverse = inverse(mat3(ModeViewMat));
+    wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
 
+    gbufferModelView = (ModeViewMat);
+    wgbufferModelView = (ProjMat * ModeViewMat);
 
     gbufferProjection = ProjMat;
-    gbufferProjectionInverse = inverse(ProjMat);
+    //gbufferProjectionInverse = inverse(ProjMat);
 
 ////////////////////////////////////////////////
 
@@ -150,11 +180,13 @@ void main() {
     vec3 sunDirTemp = vec3(-sin(ang), cos(ang) * sunRotationData);
     sunDir = normalize(vec3(sunDirTemp.x, sunDir.y, sunDirTemp.z));
 
-    float rainStrength = 1 - rain.r;
+    rainStrength = 1 - rain.r;
     vec3 sunDir2 = sunDir;
-    vec3 sunPosition = mat3(ModeViewMat) * sunDir2;
-    vec3 upPosition = vec3(ModeViewMat[1].xyz);
+    vec3 sunPosition = mat3(gbufferModelView) * sunDir2;
+    sunPosition3 = sunDir2;
+    vec3 upPosition = vec3(gbufferModelView[1].xyz);
     const vec3 cameraPosition = vec3(0.0);
+    zMults = vec3(1.0 / (far * near), far + near, far - near);
 
     float normSunVec = sqrt(sunPosition.x * sunPosition.x + sunPosition.y * sunPosition.y + sunPosition.z * sunPosition.z);
     float normUpVec = sqrt(upPosition.x * upPosition.x + upPosition.y * upPosition.y + upPosition.z * upPosition.z);
@@ -173,14 +205,19 @@ void main() {
     float angSkyNight = -((pi * 0.5128205128205128 - facos(-sunElevation * 0.95 + 0.05)) / 1.5);
 
     float fading2 = clamp(-sunElevation + 0.095, 0.0, 0.08) / 0.08;
-    float skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
+    skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
     sunVec = mix(sunVec2, -sunVec2, clamp(skyIntensityNight * 3, 0, 1));
 
 ///////////////////////////
-
+    suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
+    ambientUp = texelFetch(temporals3Sampler, ivec2(0, 37), 0).rgb;
+    ambientDown = texelFetch(temporals3Sampler, ivec2(1, 37), 0).rgb;
+    ambientLeft = texelFetch(temporals3Sampler, ivec2(2, 37), 0).rgb;
+    ambientRight = texelFetch(temporals3Sampler, ivec2(3, 37), 0).rgb;
+    ambientB = texelFetch(temporals3Sampler, ivec2(4, 37), 0).rgb;
+    ambientF = texelFetch(temporals3Sampler, ivec2(5, 37), 0).rgb;
+    //avgSky = texelFetch(temporals3Sampler, ivec2(11, 37), 0).rgb;
 
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
-	gl_Position.xy = (gl_Position.xy*0.5+0.5)*0.51*2.0-1.0;
-
 
 }

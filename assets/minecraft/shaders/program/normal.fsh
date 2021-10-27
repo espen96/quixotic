@@ -4,7 +4,6 @@ uniform sampler2D DiffuseSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
 uniform sampler2D shadow;
-uniform sampler2D normal;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
@@ -19,14 +18,14 @@ in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
 in vec3 suncol;
-flat in vec3 zMults;
+in vec3 zMults;
 
 in vec2 oneTexel;
 in vec4 fogcol;
 
 in vec2 texCoord;
 
-in mat4 gbufferModelViewInverse;
+in mat3 gbufferModelViewInverse;
 in mat4 gbufferModelView;
 in mat4 wgbufferModelViewInverse;
 in mat4 gbufferProjection;
@@ -678,81 +677,43 @@ vec4 textureGood2(sampler2D sam, vec2 uv) {
     return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
 }
 vec4 BilateralUpscale(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
+    coord = coord;
+    vec4 vl = vec4(0.0);
+    float sum = 0.0;
 
-  vec4 vl = vec4(0.0);
-  float sum = 0.0;
-  mat3x3 weights;
-  ivec2 posD = ivec2(coord/2.0)*2;
-  ivec2 posVl = ivec2(coord/2.0);
-  float dz = zMults.x;
-  ivec2 pos = (ivec2(gl_FragCoord.xy+(Time*1000)) % 2 )*2;
+    mat3x3 weights;
+    ivec2 scaling = ivec2(1.0 / rendres);
+    ivec2 posD = ivec2(coord * rendres) * scaling;
+    ivec2 posVl = ivec2(coord * rendres);
+    float dz = zMults.x;
+    ivec2 pos = (ivec2(gl_FragCoord.xy + Time) % 2) * 2;
 	//pos = ivec2(1,-1);
 
-  ivec2 tcDepth =  posD + ivec2(-4,-4) + pos*2;
-  float dsample = ld(texelFetch(depth,tcDepth,0).r);
-  float w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(-2)+pos,0)*w;
-  sum += w;
+    ivec2 tcDepth = posD + ivec2(-2, -2) * scaling + pos * scaling;
+    float dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    float w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(-4,0) + pos*2;
-  dsample = ld(texelFetch(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(-2,0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(-2, 0) * scaling + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2, 0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0) + pos*2;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0) + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0,-4) + pos*2;
-  dsample = ld(texelFetch(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(0,-2)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0, -2) * scaling + pos * scaling;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(0, -2) + pos, 0) * w;
+    sum += w;
 
-  return vl/sum;
-}
-vec4 BilateralUpscale2(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
-
-  vec4 vl = vec4(0.0);
-  float sum = 0.0;
-  mat3x3 weights;
-    const ivec2 scaling = ivec2(1.0/1);
-
-  ivec2 posD = ivec2(coord/1.0)*scaling;
-  ivec2 posVl = ivec2(coord/1.0);
-
-  float dz = zMults.x;
-  ivec2 pos = (ivec2(gl_FragCoord.xy+(Time*1000)) % 2 )*2;
-	//pos = ivec2(1,-1);
-
-  ivec2 tcDepth =  posD + ivec2(-4,-4) * scaling + pos * scaling;
-  float dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  float w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(-2)+pos,0)*w;
-  sum += w;
-
-	tcDepth =  posD + ivec2(-10,0) * scaling + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(-2,0)+pos,0)*w;
-  sum += w;
-
-	tcDepth =  posD + ivec2(0) + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0)+pos,0)*w;
-  sum += w;
-
-	tcDepth =  posD + ivec2(0,-4) * scaling + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0,-2)+pos,0)*w;
-  sum += w;
-
-  return vl/sum;
+    return vl / sum;
 }
 // avoid hardware interpolation
 vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
@@ -797,6 +758,8 @@ float getHorizonAngle(ivec2 iuv, vec2 offset, vec3 vpos, vec3 nvpos, out float l
 
     if(suv.x < 0 || suv.y < 0 || suv.x > ScreenSize.x || suv.y > ScreenSize.y)
         return -1.0;
+
+    float lod = 1;
     float depth_sample = texelFetch(TranslucentDepthSampler, suv, 0).r;
 
     vec3 proj_pos = getProjPos(suv, depth_sample);
@@ -933,15 +896,7 @@ vec2 EncodeNormal(vec3 n) {
     float f = sqrt(n.z * 8.0 + 8.0);
     return n.xy / f + 0.5;
 }
-vec3 viewToWorld(vec3 viewPos) {
 
-    vec4 pos;
-    pos.xyz = viewPos;
-    pos.w = 0.0;
-    pos = gbufferModelViewInverse * pos;
-
-    return pos.xyz;
-}
 vec3 DecodeNormal(vec2 enc) {
     vec2 fenc = enc * 4.0 - 2.0;
     float f = dot(fenc, fenc);
@@ -951,180 +906,84 @@ vec3 DecodeNormal(vec2 enc) {
     n.z = 1.0 - f / 2.0;
     return n;
 }
+vec3 getDepthPoint(vec2 coord, float depth) {
+    vec4 pos;
+    pos.xy = coord;
+    pos.z = depth;
+    pos.w = 1.0;
+    pos.xyz = pos.xyz * 2.0 - 1.0; //convert from the 0-1 range to the -1 to +1 range
+    pos = gbufferProjectionInverse * pos;
+    pos.xyz /= pos.w;
+
+    return pos.xyz;
+}
+vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
+    vec2 offsetB = vec2(0.0, oneTexel.y);
+    vec2 offsetC = vec2(oneTexel.x, 0.0);
+    float depthB = texture(depthtex, texcoords + offsetB).r;
+    float depthC = textureGood(depthtex, texcoords + offsetC).r;
+    vec3 A = getDepthPoint(texcoords, depthA);
+    A += pow4(texture(DiffuseSampler, texCoord).g)*0.01;
+
+    vec3 B = getDepthPoint(texcoords + offsetB, depthB);
+    B += pow4(texture(DiffuseSampler, texCoord+ offsetB*3.0).g)*0.01;
+
+    vec3 C = getDepthPoint(texcoords + offsetC, depthC);
+    C +=pow4(texture(DiffuseSampler, texCoord+ offsetC*3.0).g)*0.01;
+
+    vec3 AB = normalize(B - A);
+    vec3 AC = normalize(C - A);
+
+    vec3 normal = -cross(AB, AC);
+	// normal.z = -normal.z;
+
+    return normalize(normal);
+}
+
 void main() {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    float depth2 = texture(TranslucentDepthSampler, gl_FragCoord.xy*oneTexel).r;
-    vec4 lmnormal = texture(normal, texCoord);
-    float frDepth = ld(depth2);
-    lmnormal.zw = mix( lmnormal.zw,BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw,0.5);
-
-    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
-    vec3 OutTexel = toLinear(OutTexel3.rgb);
-
-    vec3 screenPos = vec3(texCoord, depth);
-    vec3 clipPos = screenPos * 2.0 - 1.0;
-    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
-    vec3 viewPos = tmp.xyz / tmp.w;
-    vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
-    vec3 view = normVec(p3);
-    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
 
     //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
 
     bool sky = depth >= 1.0;
 
-    if(sky && overworld == 1.0) {
+    if(!sky) {
+        vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
 
-        vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler);
-
-        if(view.y > 0.) {
-            vec4 cloud = texture(cloudsample, texCoord * CLOUDS_QUALITY);
-
-            atmosphere += (stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1);
-            atmosphere += drawSun(dot(sunPosition3, view), 0, suncol.rgb / 150., vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1) * 20;
-            atmosphere += drawSun(dot(-sunPosition3, view), 0, suncol.rgb, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
-            atmosphere = atmosphere * cloud.a + (cloud.rgb);
-        }
-
-        atmosphere = (clamp(atmosphere * 1.1, 0, 2));
-        outcol.rgb = reinhard(atmosphere);
-        fragColor = outcol;
-
-        return;
-    } else {
+        float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+        float res = mod(mod2, 2.0f);
+        ivec2 texoffsets[4] = ivec2[] (ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
+        vec4 depthgather = textureGatherOffsets(TranslucentDepthSampler, texCoord, texoffsets, 0);
+        vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
 
         vec2 lmtrans = unpackUnorm2x4(OutTexel3.a);
 
-        float lmy = lmnormal.w;
-        float lmx = lmnormal.z;
+        vec2 lmtrans2 = unpackUnorm2x4(lmgather.z);
+        float depthb = depthgather.z;
+        lmtrans2 *= 1.0 - (depthb - depth);
 
-        if(overworld == 1.0) {
-            vec2 screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).xy;
+        vec2 lmtrans3 = unpackUnorm2x4(lmgather.x);
+        float depthc = depthgather.x;
+        lmtrans3 *= 1.0 - (depthc - depth);
 
-            float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
+        vec2 lmtrans4 = unpackUnorm2x4(lmgather.y);
+        float depthd = depthgather.y;
+        lmtrans4 *= 1.0 - (depthd - depth);
 
-            float postlight = 1;
+        vec2 lmtrans5 = unpackUnorm2x4(lmgather.w);
+        float depthe = depthgather.w;
+        lmtrans5 *= 1.0 - (depthe - depth);
 
-            if(lmx > 0.95) {
-                lmx *= 0.75;
-                lmy = 0.1;
-                postlight = 0.0;
-            }
+        float lmy = clamp(mix(lmtrans.y, (lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, res),0.01,1);
+        float lmx = clamp(mix((lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, lmtrans.y, res),0.01,1);
 
-            vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
+        vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler));
 
-            vec3 normal = (DecodeNormal(lmnormal.rg));
-
-            vec3 normal3 = (normal);
-            normal = viewToWorld(normal3);
-            vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
-
-            vec3 ambientLight = ambientUp * clamp(ambientCoefs.y, 0., 1.);
-            ambientLight += ambientDown * clamp(-ambientCoefs.y, 0., 1.);
-            ambientLight += ambientRight * clamp(ambientCoefs.x, 0., 1.);
-            ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
-            ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
-            ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
-            ambientLight *= (1.0 + rainStrength * 0.2);
-            ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
-
-            vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel3.rgb);
-
-            float sssa = pbr.g;
-            float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
-
-            float light = pbr.r;
-            vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
-            vec3 reflections = vec3(0.0);
-
-            if(pbr.a * 255 > 1.0) {
-                vec3 normal2 = normal3 + (noise * (1 - smoothness));
-
-                vec3 avgSky = mix(lightmap * 0.5, ambientLight, lmx);
-                vec4 reflection = vec4(SSR(viewPos.xyz, depth, normal2, noise));
-
-                float normalDotEye = dot(normal, normalize(viewPos));
-                float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
-                fresnel = fresnel * 0.98 + 0.02;
-                fresnel *= max(1.0 - 0 * 0.5 * 1, 0.5);
-                fresnel *= 1.0 - 1 * 0.3;
-
-                reflection = mix(vec4(avgSky, 1), reflection, reflection.a);
-                reflections += ((reflection.rgb) * (fresnel * OutTexel));
-                OutTexel *= 0.075;
-                reflections = max(vec3(0.0), reflections);
-            }
-            OutTexel *= mix(vec3(1.0), lightmap, postlight);
-            float ao = 1.0;
-            //ao = jaao(texCoord, normal3, noise, depth, 1.3);dbao(TranslucentDepthSampler)
-            //ao = dbao(TranslucentDepthSampler);
-            //vec2 invWidthHeight = vec2(1.0 / ScreenSize.x, 1.0 / ScreenSize.y);
-
-            //ivec2 iuv = ivec2(gl_FragCoord.st);
-            //ao = getAO(iuv, viewPos, normal3, noise);
-            ao = screenShadow.y;
-
-            vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
-            float shadeDir = max(0.0, dot(normal, sunPosition2));
-
-            screenShadow.x = clamp(((screenShadow.x + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
-            shadeDir *= screenShadow.x;
-            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0, phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6) * float(sssa) * lmx) * (max(0.1, (screenShadow.x * ao) * 2 - 1));
-            shadeDir = clamp(shadeDir, 0, 1);
-
-            float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));
-
-            vec3 shading = vec3(0.0);
-
-            shading = (suncol * shadeDir) + ambientLight;
-            shading += (sunSpec * suncol) * shadeDir;
-
-            shading += lightmap * 0.1;
-
-            shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
-            if(light > 0.001)
-                shading.rgb = vec3(light * 2.0);
-            shading = max(vec3(0.1), shading);
-            shading *= ao;
-
-            vec3 dlight = (OutTexel * shading) + reflections;
-
-            outcol.rgb = lumaBasedReinhardToneMapping(dlight);
-
-            outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(shading), 0.01, 1);
+        outcol = clamp(vec4(EncodeNormal(normal), lmx, lmy), 0.0, 1);
         ///---------------------------------------------
-        } else {
-            if(end != 1.0) {
-                vec2 p_m = texCoord;
-                vec2 p_d = p_m;
-                p_d.xy -= Time * 0.1;
-                vec2 dst_map_val = vec2(Nnoise(p_d.xy));
-                vec2 dst_offset = dst_map_val.xy;
-
-                dst_offset *= 2.0;
-                dst_offset *= 0.0025;
-                dst_offset *= (1. - p_m.t);
-
-                vec2 texCoord = p_m.st + dst_offset;
-                OutTexel = toLinear(texture(DiffuseSampler, texCoord).rgb);
-            }
-
-            outcol.rgb = mix(reinhard_jodie(OutTexel.rgb * ((((lmx + 0.15) * vec3(1.0)) + (pow3(lmy) * vec3(TORCH_R, TORCH_G, TORCH_G))))), fogcol.rgb * 0.5, pow(depth, 2048));
-            //if(light > 0.001) outcol.rgb *= clamp(vec3(2.0 - 1 * 2) * light * 2, 1.0, 10.0);
-        }
-
-        if(isWater) {
-
-            vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B) * fogcol.rgb;
-            vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
-            vec3 totEpsilon = dirtEpsilon * Dirt_Amount + waterEpsilon;
-            outcol.rgb *= clamp(exp(-length(viewPos) * totEpsilon), 0.2, 1.0);
-
-        }
 
     }
 
