@@ -81,7 +81,7 @@ void main() {
     active_layers = 1;
 
 //    try_insert( toLinear(texture( CloudsSampler, texCoord )), CloudsDepthSampler);
-    try_insert((texture(TranslucentSampler, texCoord)), TranslucentDepthSampler);
+    try_insert((sample_biquadratic_exact(TranslucentSampler, texCoord)), TranslucentDepthSampler);
     try_insert((texture(ParticlesSampler, texCoord)), ParticlesDepthSampler);
     try_insert(toLinear(texture(WeatherSampler, texCoord)), WeatherDepthSampler);
     try_insert(toLinear(texture(ItemEntitySampler, texCoord)), ItemEntityDepthSampler);

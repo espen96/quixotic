@@ -244,6 +244,7 @@ void main() {
     float lum = luma(fogcol.rgb);
     vec3 diff = fogcol.rgb - lum;
     vec3 test = clamp(vec3(0.0) + diff * (-lum * 1.0 + 2), 0, 1);
+    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
     int isEyeInWater = 0;
     int isEyeInLava = 0;
     if(fogcol.a > 0.078 && fogcol.a < 0.079)
@@ -278,7 +279,7 @@ void main() {
 
         float df = length(fragpos);
 
-        if(isEyeInWater == 1 && overworld == 1) {
+        if(isEyeInWater == 1 && overworld == 1 || isWater) {
 
             float dirtAmount = Dirt_Amount;
             vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B) * fogcol.rgb;
@@ -293,9 +294,11 @@ void main() {
             waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
 
             fragColor.rgb += vl;
+            if(isWater)fragColor.rgb = ((vl*0.75)+OutTexel)*0.75;
+            
             if(depth >= 1.0)
                 fragColor.rgb = vl;
-        } else if(isEyeInWater == 0) {
+        }if(isEyeInWater == 0 ) {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation);
             fragColor.rgb *= vl[1];
             fragColor.rgb += vl[0];

@@ -41,13 +41,15 @@ vec3 rnd = clamp(vec3(fract(dither5x3() - dither64)),0,1)/8;
 
 discardControlGLPos(gl_FragCoord.xy, glpos);
 
-vec4 albedo = textureLod(Sampler0, texCoord0, 0);
+vec4 albedo = texture(Sampler0, texCoord0);
+
+float atest = textureLod(Sampler0, texCoord0, 100).r;
 float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
 
-albedo.rgb = mix(albedo.rgb, test.rgb, clamp(mipmapLevel, 0, 1));
+//albedo.rgb = mix(albedo.rgb, test.rgb, clamp(mipmapLevel, 0, 1));
 
-if(albedo.a > 0.5) albedo = texture(Sampler0, texCoord0);
-
+if(atest < 0.01) albedo =textureLod(Sampler0, texCoord0, 0); 
+albedo.a = textureLod(Sampler0, texCoord0, 0).a;
 //  float avgBlockLum = luma4(test*vertexColor.rgb * ColorModulator.rgb);
 vec4 color = albedo * vertexColor * ColorModulator;
 //  color.rgb = clamp(color.rgb*clamp(pow(avgBlockLum,-0.33)*0.85,-0.2,1.2),0.0,1.0);
