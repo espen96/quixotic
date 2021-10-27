@@ -13,6 +13,7 @@ in vec3 sc;
 in mat4 gbufferModelViewInverse;
 in float sunElevation;
 in float rainStrength;
+in float cloudy;
 in vec3 sunVec;
 
 out vec4 fragColor;
@@ -23,7 +24,7 @@ out vec4 fragColor;
 float frameTimeCounter = sunElevation * 1000;
 
 const float PI = 3.141592;
-const vec3 cameraPosition = vec3(0);
+vec3 cameraPosition = vec3(0,abs((cloudy)),0);
 const float cloud_height = 1500.;
 const float maxHeight = 1650.;
 int maxIT_clouds = 15;

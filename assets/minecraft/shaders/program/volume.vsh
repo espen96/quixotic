@@ -5,6 +5,7 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D clouds;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -26,6 +27,7 @@ out vec3 ambientDown;
 flat out float near;
 flat out float far;
 flat out float end;
+flat out float cloudy;
 flat out float overworld;
 flat out vec3 currChunkOffset;
 
@@ -168,6 +170,7 @@ void main() {
     gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);
+    cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
 
 
 

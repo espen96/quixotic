@@ -16,7 +16,7 @@
         { "name": "TranslucentDepthSampler" },
         { "name": "shading" },
         { "name": "noisetex" },
-        { "name": "PartialCompositeSampler" },
+        { "name": "clouds" },
         { "name": "WeatherDepthSampler" },
         { "name": "FontSampler" },
         { "name": "NumberSampler" },

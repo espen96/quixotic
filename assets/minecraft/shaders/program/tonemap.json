@@ -13,7 +13,9 @@
         { "name": "blursampler" },
         { "name": "volume" },
         { "name": "BloomSampler" },
-        { "name": "DiffuseDepthSampler" }
+        { "name": "clouds" },
+        { "name": "DiffuseDepthSampler" },
+        { "name": "FontSampler" }
     ],
     "uniforms": [
         { "name": "Time",       "type": "float",     "count": 1,  "values": [ 0.0 ] },

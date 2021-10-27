@@ -14,7 +14,9 @@ uniform vec4 FogColor;
 
 in float vertexDistance;
 in vec4 vertexColor;
-in vec3 pos;
+in vec3 pos1;
+in vec3 pos2;
+in vec3 pos3;
 in vec2 texCoord0;
 in vec2 texCoord1;
 in vec4 normal;
@@ -81,19 +83,20 @@ void main() {
     }
 
     fragColor = texture(Sampler0, vec2((gl_FragCoord.xy / ScreenSize) / vec2(1, aspectRatio)));    
-    /*
+    
 //    fragColor.a =  0.1;
         int index = inControl(gl_FragCoord.xy, ScreenSize.x);
     // currently in a control/message pixel
     if(index != -1) {
         vec3 position = vec3(0.0);
-        if(pos.y > 0) position.x = abs(pos.y)/128;    
-        if(pos.y < 0) position.z = abs(pos.y)/128;    
-        if (index == 50 ) fragColor = vec4( encodeFloat24(pos.y-125),1);
 
+        //if (index == 50 ) fragColor = vec4( encodeFloat24( pos.y-125 ),1);
+        if (index == 50 ) fragColor = vec4( pos1,1);
+        if (index == 51 ) fragColor = vec4( pos2,1);
+        if (index == 53 ) fragColor = vec4( pos3,1);
 
     }
-*/
+
 
 //    fragColor.a *= (luma(FogColor.rgb)*luma(FogColor.rgb));
  //   fragColor.a *=  1-(fogValue*0.25);

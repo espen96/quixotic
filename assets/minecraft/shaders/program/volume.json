@@ -16,7 +16,7 @@
         { "name": "TranslucentSpecSampler" },
         { "name": "TranslucentDepthSampler" },
         { "name": "shading" },
-        { "name": "ParticlesDepthSampler" },
+        { "name": "clouds" },
         { "name": "PartialCompositeSampler" },
         { "name": "ItemEntityDepthSampler" },
         { "name": "WeatherDepthSampler" },

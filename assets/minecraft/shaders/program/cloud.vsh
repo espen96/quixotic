@@ -6,6 +6,7 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D temporals3Sampler;
+uniform sampler2D clouds;
 
 out vec2 texCoord;
 out vec2 oneTexel;
@@ -20,6 +21,8 @@ out vec3 sc;
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
 
+out float cloudy;
+out float pos2;
 out float sunElevation;
 out float rainStrength;
 out vec3 sunVec;
@@ -130,6 +133,8 @@ void main() {
 
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelView = (ProjMat * ModeViewMat);
+     cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
+
 
 ////////////////////////
 

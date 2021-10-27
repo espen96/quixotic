@@ -3,6 +3,7 @@
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D MainSampler;
+uniform sampler2D clouds;
 uniform sampler2D BloomSampler;
 uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
@@ -147,6 +148,126 @@ vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
         return texture(inSampler, coords);
     }
 }
+vec3 encodeFloat24(float val) {
+    uint sign = val > 0.0 ? 0u : 1u;
+    uint exponent = uint(log2(abs(val)));
+    uint mantissa = uint((abs(val) / exp2(float(exponent)) - 1.0) * 131072.0);
+    return vec3((sign << 7u) | ((exponent + 31u) << 1u) | (mantissa >> 16u), (mantissa >> 8u) & 255u, mantissa & 255u) / 255.0;
+}
+
+float decodeFloat24(vec3 raw) {
+    uvec3 scaled = uvec3(raw * 255.0);
+    uint sign = scaled.r >> 7;
+    uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
+    uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
+    return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
+}
+uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
+
+
+        const float FXS = 0.015;         // font/screen resolution ratio
+        const float FYS = 0.015;         // font/screen resolution ratio
+
+        const int TEXT_BUFFER_LENGTH = 32;
+        int text[TEXT_BUFFER_LENGTH];
+        int textIndex;
+        vec4 colour;                    // color interface for printTextAt()
+
+        void floatToDigits(float x) {
+            float y, a;
+            const float base = 10.0;
+
+            // Handle sign
+            if (x < 0.0) { 
+                text[textIndex] = '-'; textIndex++; x = -x; 
+            } else { 
+                text[textIndex] = '+'; textIndex++; 
+            }
+
+            // Get integer (x) and fractional (y) part of number
+            y = x; 
+            x = floor(x); 
+            y -= x;
+
+            // Handle integer part
+            int i = textIndex;  // Start of integer part
+            while (textIndex < TEXT_BUFFER_LENGTH) {
+                // Get last digit, scale x down by 10 (or other base)
+                a = x;
+                x = floor(x / base);
+                a -= base * x;
+                // Add last digit to text array (results in reverse order)
+                text[textIndex] = int(a) + '0'; textIndex++;
+                if (x <= 0.0) break;
+            }
+            int j = textIndex - 1;  // End of integer part
+
+            // In-place reverse integer digits
+            while (i < j) {
+                int chr = text[i]; 
+                text[i] = text[j];
+                text[j] = chr;
+                i++; j--;
+            }
+
+            text[textIndex] = '.'; textIndex++;
+
+            // Handle fractional part
+            while (textIndex < TEXT_BUFFER_LENGTH) {
+                // Get first digit, scale y up by 10 (or other base)
+                y *= base;
+                a = floor(y);
+                y -= a;
+                // Add first digit to text array
+                text[textIndex] = int(a) + '0'; textIndex++;
+                if (y <= 0.0) break;
+            }
+
+            // Terminante string
+            text[textIndex] = 0;
+        }
+
+        void printTextAt(float x0, float y0) {
+            // Fragment position **in char-units**, relative to x0, y0
+            float x = texCoord.x/FXS; x -= x0;
+            float y = 0.5*(1.0 - texCoord.y)/FYS; y -= y0;
+
+            // Stop if not inside bbox
+            if ((x < 0.0) || (x > float(textIndex)) || (y < 0.0) || (y > 1.0)) return;
+            
+            int i = int(x); // Char index of this fragment in text
+            x -= float(i); // Fraction into this char
+
+            // Grab pixel from correct char texture
+            i = text[i];
+            x += float(int(i - ((i/16)*16)));
+            y += float(int(i/16));
+            x /= 16.0; y /= 16.0; // Divide by character-sheet size (in chars)
+
+            vec4 fontPixel = texture(FontSampler, vec2(x,y));
+
+            colour = vec4(fontPixel.rgb*fontPixel.a + colour.rgb*colour.a*(1 - fontPixel.a), 1.0);
+        }
+
+        void clearTextBuffer() {
+            for (int i = 0; i < TEXT_BUFFER_LENGTH; i++) {
+                text[i] = 0;
+            }
+            textIndex = 0;
+        }
+
+        void c(int character) {
+            // Adds character to text buffer, increments index for next character
+            // Short name for convenience
+            text[textIndex] = character; 
+            textIndex++;
+        }
+
+vec2 getControl(int index, vec2 screenSize) {
+    return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
+}
+
+
 void main() {
 
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
@@ -192,8 +313,30 @@ void main() {
     float lumC = luma(color);
     vec3 diff = color - lumC;
     color = color + diff * (-lumC * CROSSTALK + SATURATION);
+        vec2 start = getControl(0, OutSize);
+    vec2 inc = vec2(2.0 / OutSize.x, 0.0);
   //  color.rgb = vec3(VL_abs);
-
+    float cloudx = decodeFloat24((texture(clouds, start + 50.0 * inc).rgb));
+    float cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
+    float cloudz = decodeFloat24((texture(clouds, start + 52.0 * inc).rgb));
     fragColor = vec4((vec3(color.rgb)), 1.0);
+	vec4 numToPrint = vec4(cloudx,abs((cloudy)),cloudz,0);
+	// Define text to draw
+    clearTextBuffer();
+    c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
+    printTextAt(1.0, 1.0);
 
+    clearTextBuffer();
+    c('G'); c(':'); c(' '); floatToDigits(numToPrint.g);
+    printTextAt(1.0, 2.0);
+
+    clearTextBuffer();
+    c('B'); c(':'); c(' '); floatToDigits(numToPrint.b);
+    printTextAt(1.0, 3.0);
+
+    clearTextBuffer();
+    c('A'); c(':'); c(' '); floatToDigits(numToPrint.a);
+    printTextAt(1.0, 4.0);
+
+    fragColor += colour;
 }

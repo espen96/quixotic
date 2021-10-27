@@ -80,6 +80,10 @@
             "id":"shading"
           },
           {
+            "name":"clouds",
+            "id":"clouds"
+          },
+          {
             "name":"noisetex",
             "id":"clouds"
           }
@@ -313,6 +317,10 @@
             "id":"translucent"
           },
           {
+            "name":"clouds",
+            "id":"clouds"
+          },
+          {
             "name":"TranslucentDepthSampler",
             "id":"translucent:depth"
           }
@@ -404,12 +412,23 @@
             "id":"minecraft:main"
           },
           {
+            "name":"clouds",
+            "id":"clouds"
+          },
+          {
             "name":"blursampler",
             "id":"swap2"
           },
           {
             "name":"BloomSampler",
             "id":"volume"
+          },
+          {
+            "name":"FontSampler",
+            "id":"shader_font",
+            "width":1,
+            "height":1,
+            "bilinear":false
           }
         ]
       },

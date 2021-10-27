@@ -22,6 +22,7 @@ in mat4 gbufferModelViewInverse;
 flat in float near;
 flat in float far;
 flat in float overworld;
+flat in float cloudy;
 flat in vec3 currChunkOffset;
 
 flat in float sunElevation;
@@ -58,6 +59,7 @@ in vec3 suncol;
 #define Water_Absorb_B 0.01150  //How much water absorbs blue
 
 #define Dirt_Mie_Phase 0.4  //Values close to 1 will create a strong peak around the sun and weak elsewhere, values close to 0 means uniform fog.
+vec3 cameraPosition = vec3(0,abs((cloudy)),0);
 
 out vec4 fragColor;
 const float pi = 3.141592653589793238462643383279502884197169;
@@ -125,7 +127,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     float maxLength = min(length(dVWorld), far) / length(dVWorld);
     dVWorld *= maxLength;
 
-    vec3 progressW = gbufferModelViewInverse[3].xyz + currChunkOffset;
+	vec3 progressW = gbufferModelViewInverse[3].xyz+cameraPosition;
     vec3 vL = vec3(0.);
 
     float SdotV = dot(sunPosition, normalize(fragpos)) * lightCol.a;
@@ -154,7 +156,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv)
     for(int i = 0; i < VL_SAMPLES; i++) {
         float d = (pow(expFactor, float(i + dither) / float(VL_SAMPLES)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);
         float dd = pow(expFactor, float(i + dither) / float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES) / (expFactor - 1.0);
-        progressW = gbufferModelViewInverse[3].xyz + 0 + d * dVWorld;
+        progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
         float density = cloudVol(progressW) * 1.5 * ATMOSPHERIC_DENSITY * 400.;
 		//Just air
         vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * 8.0) * 8.0;
@@ -290,11 +292,12 @@ void main() {
 
             float estEyeDepth = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0., 1.0);
             estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
+			estEyeDepth = max(62.90 - cameraPosition.y,0.0);
 
             waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
 
             fragColor.rgb += vl;
-            if(isWater)fragColor.rgb = ((vl*0.75)+OutTexel)*0.75;
+            if(isWater && isEyeInWater == 0)fragColor.rgb = ((vl*0.75)+OutTexel)*0.75;
             
             if(depth >= 1.0)
                 fragColor.rgb = vl;
