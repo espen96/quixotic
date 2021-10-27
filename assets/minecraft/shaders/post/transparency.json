@@ -186,7 +186,11 @@
           {
             "name":"shadow",
             "id":"shadow"
-          },              
+          },
+          {
+            "name":"DiffuseDepthSampler",
+            "id":"minecraft:main:depth"
+          },                
           {
             "name":"PreviousFrameSampler",
             "id":"previousFrame"

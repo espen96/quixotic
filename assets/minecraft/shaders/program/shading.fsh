@@ -1,6 +1,7 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D DiffuseSampler;
+uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
 uniform sampler2D shadow;

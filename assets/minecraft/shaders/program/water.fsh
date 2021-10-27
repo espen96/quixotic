@@ -394,7 +394,7 @@ void main() {
 
 
         reflection = vec4(SSR(viewPos.xyz, normal, noisev3));
-        reflection.rgb = mix(sky_c.rgb, reflection.rgb*1.75, reflection.a);
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.75;
         vec3 reflected = reflection.rgb * fresnel;
 
         float alpha0 = color2.a;

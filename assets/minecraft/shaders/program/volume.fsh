@@ -297,11 +297,13 @@ void main() {
             waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
 
             fragColor.rgb += vl;
-            if(isWater && isEyeInWater == 0)fragColor.rgb = ((vl*0.75)+OutTexel)*0.75;
+            if(isWater && isEyeInWater == 0)fragColor.rgb = ((vl*0.25)+OutTexel);
             
             if(depth >= 1.0)
                 fragColor.rgb = vl;
-        }if(isEyeInWater == 0 ) {
+        }
+        
+        if(isEyeInWater == 0 ) {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation);
             fragColor.rgb *= vl[1];
             fragColor.rgb += vl[0];

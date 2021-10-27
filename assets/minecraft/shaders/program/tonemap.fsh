@@ -316,27 +316,8 @@ void main() {
         vec2 start = getControl(0, OutSize);
     vec2 inc = vec2(2.0 / OutSize.x, 0.0);
   //  color.rgb = vec3(VL_abs);
-    float cloudx = decodeFloat24((texture(clouds, start + 50.0 * inc).rgb));
-    float cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
-    float cloudz = decodeFloat24((texture(clouds, start + 52.0 * inc).rgb));
+ 
+
     fragColor = vec4((vec3(color.rgb)), 1.0);
-	vec4 numToPrint = vec4(cloudx,abs((cloudy)),cloudz,0);
-	// Define text to draw
-    clearTextBuffer();
-    c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
-    printTextAt(1.0, 1.0);
 
-    clearTextBuffer();
-    c('G'); c(':'); c(' '); floatToDigits(numToPrint.g);
-    printTextAt(1.0, 2.0);
-
-    clearTextBuffer();
-    c('B'); c(':'); c(' '); floatToDigits(numToPrint.b);
-    printTextAt(1.0, 3.0);
-
-    clearTextBuffer();
-    c('A'); c(':'); c(' '); floatToDigits(numToPrint.a);
-    printTextAt(1.0, 4.0);
-
-    fragColor += colour;
 }
