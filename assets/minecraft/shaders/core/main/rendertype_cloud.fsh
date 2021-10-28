@@ -16,6 +16,7 @@ in float vertexDistance;
 in vec4 vertexColor;
 in vec3 pos1;
 in vec3 pos2;
+in vec3 gtime;
 in vec3 pos3;
 in vec2 texCoord0;
 in vec2 texCoord1;
@@ -94,6 +95,7 @@ void main() {
         if (index == 50 ) fragColor = vec4( pos1,1);
         if (index == 51 ) fragColor = vec4( pos2,1);
         if (index == 53 ) fragColor = vec4( pos3,1);
+        if (index == 54 ) fragColor = vec4( gtime,1);
 
     }
 

@@ -3,7 +3,7 @@
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D MainSampler;
-uniform sampler2D clouds;
+uniform sampler2D previousFrame;
 uniform sampler2D BloomSampler;
 uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
@@ -281,7 +281,8 @@ void main() {
 
 
     vec3 color = texture(DiffuseSampler, texCoord).rgb;
-
+    vec3 colorprev = texture(previousFrame, texCoord).rgb;
+    //color = mix(color,colorprev,0.1);
     vec2 uv = gl_FragCoord.xy / ScreenSize.xy / 2. + .25;
 
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);

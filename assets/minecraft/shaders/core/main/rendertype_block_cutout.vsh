@@ -84,7 +84,7 @@ lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
 
 
-gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter() * 0, 0, 0));
+gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter()*0.25, 0, 0));
 glpos = gl_Position;
 
 }

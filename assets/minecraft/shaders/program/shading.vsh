@@ -7,6 +7,7 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D temporals3Sampler;
+uniform sampler2D clouds;
 
 out vec3 ambientUp;
 out vec3 ambientLeft;
@@ -15,6 +16,7 @@ out vec3 ambientB;
 out vec3 ambientF;
 out vec3 ambientDown;
 out vec3 suncol;
+out float gtime;
 flat out vec3 zMults;
 
 out vec2 oneTexel;
@@ -117,7 +119,13 @@ vec4 encodeColor(vec3 color) {
     uint encoded = (r << 21) | (g << 10) | b;
     return vec4(encoded >> 24, (encoded >> 16) & 255u, (encoded >> 8) & 255u, encoded & 255u) / 255.0;
 }
-
+float decodeFloat24(vec3 raw) {
+    uvec3 scaled = uvec3(raw * 255.0);
+    uint sign = scaled.r >> 7;
+    uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
+    uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
+    return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
+}
 void main() {
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
@@ -156,6 +164,7 @@ void main() {
 
     gbufferProjection = ProjMat;
     //gbufferProjectionInverse = inverse(ProjMat);
+    gtime = decodeFloat24((texture(clouds, start + 54.0 * inc).rgb));
 
 ////////////////////////////////////////////////
 

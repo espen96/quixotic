@@ -16,8 +16,10 @@
         { "name": "normal" },
         { "name": "TranslucentDepthSampler" },
         { "name": "DiffuseDepthSampler" },
+        { "name": "noisetex" },
         { "name": "cloudsample" },
-        { "name": "FontSampler" }
+        { "name": "FontSampler" },
+        { "name": "clouds" }
     ],
     "uniforms": [
         { "name": "Time",       "type": "float",     "count": 1,  "values": [ 0.0 ] },

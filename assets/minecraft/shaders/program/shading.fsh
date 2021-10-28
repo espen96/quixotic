@@ -4,6 +4,7 @@ uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
+uniform sampler2D noisetex;
 uniform sampler2D shadow;
 uniform sampler2D normal;
 uniform sampler2D TranslucentDepthSampler;
@@ -19,6 +20,7 @@ in vec3 ambientRight;
 in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
+in float gtime;
 in vec3 suncol;
 flat in vec3 zMults;
 
@@ -178,7 +180,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test) {
         if(test.r < 0.05)
             test *= 2.0;
         test = clamp(test * 1.5 - 0.1, 0, 1);
-        pbr.b = clamp(test.r, 0, 1);
+        pbr.b = clamp(test.r * 2 - 0.5, 0, 1);
     }
 
     return pbr;
@@ -575,13 +577,14 @@ float dbao(sampler2D depth) {
 }
 
 float rayTraceShadow(vec3 dir, vec3 position, float dither) {
-    float stepSize = map(100 * dither, 0, 100, 25, 75);
-    int maxSteps = 11;
+    float stepSize = clamp(linZ(texture(TranslucentDepthSampler, texCoord).r) * 10.0, 15, 200);
+    int maxSteps = int(clamp(invLinZ(texture(TranslucentDepthSampler, texCoord).r) * 10.0, 15, 50));
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
     float rayLength = ((position.z + dir.z * sqrt(3.0) * far) > -sqrt(3.0) * near) ? (-sqrt(3.0) * near - position.z) / dir.z : sqrt(3.0) * far;
 
     vec3 end = toClipSpace3(position + dir * rayLength);
+    //vec3 end = nvec3(gbufferProjection * nvec4(position + dir * rayLength)) * 0.5 + 0.5;
     vec3 direction = end - clipPosition;
 
     float len = max(abs(direction.x) / oneTexel.x, abs(direction.y) / oneTexel.y) / stepSize;
@@ -593,37 +596,23 @@ float rayTraceShadow(vec3 dir, vec3 position, float dither) {
     int iterations = min(int(min(len, mult * len) - 2), maxSteps);
 
     vec3 spos = clipPosition + stepv / stepSize;
-    float sp = linZ(texture2D(TranslucentDepthSampler, spos.xy).x);
-
-    if(sp < spos.z + 0.000001) {
-        float dist = abs(linZ(sp) - linZ(spos.z)) / linZ(spos.z);
-
-        if(dist <= 0.05)
-            return 0.0;
-    }
 
     for(int i = 0; i < int(iterations); i++) {
         spos += stepv * dither;
-        if(spos.x < 0.0 || spos.y < 0.0 || spos.z < 0.0 || spos.x > 1.0 || spos.y > 1.0 || spos.z > 1.0 || clamp(clipPosition.xy, 0, 1) != clipPosition.xy)
-            break;
-
         float sp = texture(TranslucentDepthSampler, spos.xy).x;
 
-        if(sp >= 1.0)
-            break;
         if(sp < spos.z + 0.000001) {
 
             float dist = abs(linZ(sp) - linZ(spos.z)) / linZ(spos.z);
 
             if(dist < 0.05)
-                return 0.0;
+                return exp2(position.z / 8.);
 
         }
 
     }
     return 1.0;
 }
-
 // simplified version of joeedh's https://www.shadertoy.com/view/Md3GWf
 // see also https://www.shadertoy.com/view/MdtGD7
 
@@ -680,80 +669,80 @@ vec4 textureGood2(sampler2D sam, vec2 uv) {
 }
 vec4 BilateralUpscale(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
 
-  vec4 vl = vec4(0.0);
-  float sum = 0.0;
-  mat3x3 weights;
-  ivec2 posD = ivec2(coord/2.0)*2;
-  ivec2 posVl = ivec2(coord/2.0);
-  float dz = zMults.x;
-  ivec2 pos = (ivec2(gl_FragCoord.xy+(Time*1000)) % 2 )*2;
+    vec4 vl = vec4(0.0);
+    float sum = 0.0;
+    mat3x3 weights;
+    ivec2 posD = ivec2(coord / 2.0) * 2;
+    ivec2 posVl = ivec2(coord / 2.0);
+    float dz = zMults.x;
+    ivec2 pos = (ivec2(gl_FragCoord.xy + (Time * 1000)) % 2) * 2;
 	//pos = ivec2(1,-1);
 
-  ivec2 tcDepth =  posD + ivec2(-4,-4) + pos*2;
-  float dsample = ld(texelFetch(depth,tcDepth,0).r);
-  float w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(-2)+pos,0)*w;
-  sum += w;
+    ivec2 tcDepth = posD + ivec2(-4, -4) + pos * 2;
+    float dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    float w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(-4,0) + pos*2;
-  dsample = ld(texelFetch(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(-2,0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(-4, 0) + pos * 2;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(-2, 0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0) + pos*2;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0) + pos * 2;
+    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch2D(tex, posVl + ivec2(0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0,-4) + pos*2;
-  dsample = ld(texelFetch(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch(tex,posVl+ivec2(0,-2)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0, -4) + pos * 2;
+    dsample = ld(texelFetch(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch(tex, posVl + ivec2(0, -2) + pos, 0) * w;
+    sum += w;
 
-  return vl/sum;
+    return vl / sum;
 }
 vec4 BilateralUpscale2(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
 
-  vec4 vl = vec4(0.0);
-  float sum = 0.0;
-  mat3x3 weights;
-    const ivec2 scaling = ivec2(1.0/1);
+    vec4 vl = vec4(0.0);
+    float sum = 0.0;
+    mat3x3 weights;
+    const ivec2 scaling = ivec2(1.0 / 1);
 
-  ivec2 posD = ivec2(coord/1.0)*scaling;
-  ivec2 posVl = ivec2(coord/1.0);
+    ivec2 posD = ivec2(coord / 1.0) * scaling;
+    ivec2 posVl = ivec2(coord / 1.0);
 
-  float dz = zMults.x;
-  ivec2 pos = (ivec2(gl_FragCoord.xy+(Time*1000)) % 2 )*2;
+    float dz = zMults.x;
+    ivec2 pos = (ivec2(gl_FragCoord.xy + (Time * 1000)) % 2) * 2;
 	//pos = ivec2(1,-1);
 
-  ivec2 tcDepth =  posD + ivec2(-4,-4) * scaling + pos * scaling;
-  float dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  float w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(-2)+pos,0)*w;
-  sum += w;
+    ivec2 tcDepth = posD + ivec2(-4, -4) * scaling + pos * scaling;
+    float dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
+    float w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch2D(tex, posVl + ivec2(-2) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(-10,0) * scaling + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(-2,0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(-10, 0) * scaling + pos * scaling;
+    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch2D(tex, posVl + ivec2(-2, 0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0) + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0) + pos * scaling;
+    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch2D(tex, posVl + ivec2(0) + pos, 0) * w;
+    sum += w;
 
-	tcDepth =  posD + ivec2(0,-4) * scaling + pos * scaling;
-  dsample = ld(texelFetch2D(depth,tcDepth,0).r);
-  w = abs(dsample-frDepth) < dz ? 1.0 : 1e-5;
-  vl += texelFetch2D(tex,posVl+ivec2(0,-2)+pos,0)*w;
-  sum += w;
+    tcDepth = posD + ivec2(0, -4) * scaling + pos * scaling;
+    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
+    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
+    vl += texelFetch2D(tex, posVl + ivec2(0, -2) + pos, 0) * w;
+    sum += w;
 
-  return vl/sum;
+    return vl / sum;
 }
 // avoid hardware interpolation
 vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
@@ -809,6 +798,43 @@ float getHorizonAngle(ivec2 iuv, vec2 offset, vec3 vpos, vec3 nvpos, out float l
 
     return dot(nvpos, ws);
 }
+//Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
+float cloudCov(in vec3 pos, vec3 samplePos) {
+    float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
+    float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
+    float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
+    float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
+    return max(cloud, 0.0);
+}
+//Erode cloud with 3d Perlin-worley noise, actual cloud value
+
+float cloudVol(in vec3 pos, in vec3 samplePos, in float cov) {
+    float mult2 = (pos.y - 1500) / 2500 + rainStrength * 0.4;
+
+    float cloud = clamp(cov - 0.11 * (0.2 + mult2), 0.0, 1.0);
+    return cloud;
+
+}
+	//Low quality cloud, noise is replaced by the average noise value, used for shadowing
+float cloudVolLQ(in vec3 pos) {
+    float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
+    float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
+    vec3 samplePos = pos * vec3(1.0, 1. / 32., 1.0) / 4 + 0;
+    float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
+    float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
+    return max(cloud, 0.0);
+}
+
+float getCloudDensity(in vec3 pos, in int LoD) {
+    vec3 samplePos = pos * vec3(1.0, 1.0 / 32.0, 1.0) / 4 + 0;
+    float coverageSP = cloudCov(pos, samplePos);
+    if(coverageSP > 0.001) {
+        if(LoD < 0)
+            return max(coverageSP - 0.27 * (1 + 0), 0.0);
+        return cloudVol(pos, samplePos, coverageSP);
+    } else
+        return 0.0;
+}
 
 float getAO(ivec2 iuv, vec3 vpos, vec3 vnorm, float noise) {
     float aspectRatio = ScreenSize.x / ScreenSize.y;
@@ -819,7 +845,7 @@ float getAO(ivec2 iuv, vec3 vpos, vec3 vnorm, float noise) {
     float rand2 = (1.0 / 4.0) * float((iuv.y - iuv.x) & 0x3);
 
     float radius = 2.0 / -vpos.z * gbufferProjection[0][0];
-    int frameCounter = int(Time * 100);
+    int frameCounter = int((gtime + Time) * 100000);
     const float rotations[] = float[] (60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f);
     float rotation = rotations[frameCounter % 6] / 360.0f;
     float angle = (dither + rotation) * 3.1415926;
@@ -839,11 +865,11 @@ float getAO(ivec2 iuv, vec3 vpos, vec3 vnorm, float noise) {
 
         float l1;
         float h1 = getHorizonAngle(iuv, t * r * vec2(1.0, aspectRatio), vpos, wo_norm, l1);
-        float theta1_p = mix(h1, theta1, clamp((l1 - 4) * 0.3, 0.0, 1.0));
+        float theta1_p = mix(h1, theta1, clamp((l1 - 1) * 0.5, 0.0, 1.0));
         theta1 = theta1_p > theta1 ? theta1_p : mix(theta1_p, theta1, 0.7);
         float l2;
         float h2 = getHorizonAngle(iuv, -t * r * vec2(1.0, aspectRatio), vpos, wo_norm, l2);
-        float theta2_p = mix(h2, theta2, clamp((l2 - 4) * 0.3, 0.0, 1.0));
+        float theta2_p = mix(h2, theta2, clamp((l2 - 1) * 0.5, 0.0, 1.0));
         theta2 = theta2_p > theta2 ? theta2_p : mix(theta2_p, theta2, 0.7);
     }
 
@@ -983,16 +1009,112 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
     return normalize(normal);
 }
 
+vec2 R2_samples(int n) {
+    vec2 alpha = vec2(0.75487765, 0.56984026);
+    return fract(alpha * n);
+}
+vec3 RT(vec3 dir, vec3 position, float noise) {
+
+    float ssptbias = 0.05;
+    float stepSize = 10;
+    int maxSteps = 16;
+    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
+
+    float rayLength = ((position.z + dir.z * sqrt(3.0) * far) > -sqrt(3.0) * near) ? (-sqrt(3.0) * near - position.z) / dir.z : sqrt(3.0) * far;
+
+    vec3 end = toClipSpace3(position + dir * rayLength);
+    vec3 direction = end - clipPosition;  //convert to clip space
+
+    float len = max(abs(direction.x) / oneTexel.x, abs(direction.y) / oneTexel.y) / stepSize;
+
+                //get at which length the ray intersects with the edge of the screen
+    vec3 maxLengths = (step(0., direction) - clipPosition) / direction;
+    float mult = min(min(maxLengths.x, maxLengths.y), maxLengths.z);
+    vec3 stepv = direction / len;
+
+    int iterations = min(int(min(len, mult * len) - 2), maxSteps);
+
+                //Do one iteration for closest texel (good contact shadows)
+    vec3 spos = clipPosition + stepv / stepSize * 6.0;;
+
+    float sp = linZ(texture2D(DiffuseDepthSampler, spos.xy).x);
+    float currZ = linZ(spos.z);
+
+    if(sp < currZ) {
+        float dist = abs(sp - currZ) / currZ;
+
+        if(dist <= 0.05)
+            return vec3(spos.xy, invLinZ(sp));
+    }
+
+    spos += stepv * noise;
+
+    for(int i = 0; i < iterations; i++) {
+        float sp = linZ(texture2D(DiffuseDepthSampler, spos.xy).x);
+
+        float currZ = linZ(spos.z);
+        if(sp < currZ) {
+            float dist = abs(sp - currZ) / currZ;
+
+            if(dist <= ssptbias)
+                return vec3(spos.xy, invLinZ(sp));
+        }
+        spos += stepv;
+    }
+
+    return vec3(1.1);
+
+}
+vec3 cosineHemisphereSample(vec2 a) {
+    float phi = a.y * 2.0 * 3.14159265359;
+    float cosTheta = 1.0 - a.x;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+vec3 TangentToWorld(vec3 N, vec3 H) {
+    vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 T = normalize(cross(UpVector, N));
+    vec3 B = cross(N, T);
+
+    return vec3((T * H.x) + (B * H.y) + (N * H.z));
+}
+float rtAO(vec3 normal, vec3 normal2, vec4 noise, vec3 fragpos) {
+    int nrays = 4;
+    int frameCounter = int((gtime + Time) * 100000);
+
+    float occlusion = 0.0;
+    for(int i = 0; i < nrays; i++) {
+
+        int seed = (int(frameCounter) % 40000) * nrays + i;
+        vec2 ij = fract(R2_samples(seed) + noise.rg);
+        vec3 rayDir = normalize(cosineHemisphereSample(ij));
+
+        rayDir = TangentToWorld(normal, rayDir);
+        rayDir = mat3(gbufferModelView) * rayDir;
+ 
+        vec3 rayHit = RT(rayDir, fragpos, fract(seed / 1.6180339887 + noise.b));
+
+        if(rayHit.z < 1.0) {
+
+            occlusion += 1.0;
+        }
+    }
+
+    return 1 * (1.0 - (occlusion) / nrays);
+
+}
 void main() {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    float depth2 = texture(TranslucentDepthSampler, gl_FragCoord.xy*oneTexel).r;    
+    float depth2 = texture(TranslucentDepthSampler, gl_FragCoord.xy * oneTexel).r;
     bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
     vec3 wnormal = vec3(0.0);
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
 
-    if(isWater) wnormal =  normalize(viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler))*1.5-0.1);
-    vec2 texCoord = texCoord;    
+    if(isWater)
+        wnormal = normalize(viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler)) * 1.5 - 0.1);
+    vec2 texCoord = texCoord;
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
@@ -1000,20 +1122,19 @@ void main() {
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
 
-    if(isWater) { 
-    float displ = wnormal.z/(length(viewPos)/far)/2000. * (1.0 + 0.0*2.0);
-    vec2 refractedCoord = texCoord+ displ;
+    if(isWater) {
+        float displ = wnormal.z / (length(viewPos) / far) / 2000. * (1.0 + 0.0 * 2.0);
+        vec2 refractedCoord = texCoord + displ;
 
-    if (texture(TranslucentSampler,refractedCoord).r <= 0.0)
-      refractedCoord = texCoord;
-      texCoord = refractedCoord;
-    
+        if(texture(TranslucentSampler, refractedCoord).r <= 0.0)
+            refractedCoord = texCoord;
+        texCoord = refractedCoord;
+
     }
-
 
     vec4 lmnormal = texture(normal, texCoord);
     float frDepth = ld(depth2);
-    lmnormal.zw = mix( lmnormal.zw,BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw,0.5);
+    lmnormal.zw = mix(lmnormal.zw, BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw, 0.5);
 
     vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
     vec3 OutTexel = toLinear(OutTexel3.rgb);
@@ -1048,8 +1169,6 @@ void main() {
         float lmx = lmnormal.z;
 
         if(overworld == 1.0) {
-            vec2 screenShadow = BilateralUpscale(shadow, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).xy;
-
 
             float postlight = 1;
 
@@ -1058,6 +1177,16 @@ void main() {
                 lmy = 0.1;
                 postlight = 0.0;
             }
+            vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+
+            float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
+            if(screenShadow > 0.0 && lmy < 0.9)
+                screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise) + lmy;
+
+            vec3 pos = p3 + 0 + gbufferModelViewInverse[3].xyz;
+            vec3 cloudPos = pos + sunPosition3 / abs(sunPosition3.y) * (2500.0 - 0);
+            float cloudShadow = mix(1.0, exp(-20. * cloudVolLQ(cloudPos)), mix(0.5, 1.0, rainStrength));
+            screenShadow *= cloudShadow;
 
             vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
 
@@ -1074,6 +1203,7 @@ void main() {
             ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= (1.0 + rainStrength * 0.2);
+
             ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
 
             vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel3.rgb);
@@ -1104,27 +1234,24 @@ void main() {
             }
             OutTexel *= mix(vec3(1.0), lightmap, postlight);
             float ao = 1.0;
-            //ao = jaao(texCoord, normal3, noise, depth, 1.3);dbao(TranslucentDepthSampler)
-            //ao = dbao(TranslucentDepthSampler);
-            //vec2 invWidthHeight = vec2(1.0 / ScreenSize.x, 1.0 / ScreenSize.y);
+            //ao = jaao(texCoord, normal3, noise, depth, 1.3);dbao(TranslucentDepthSampler);
+            ao = dbao(TranslucentDepthSampler);
 
-            //ivec2 iuv = ivec2(gl_FragCoord.st);
-            //ao = getAO(iuv, viewPos, normal3, noise);
-            ao = screenShadow.y;
+            //ao *= clamp(getAO(ivec2(gl_FragCoord.st), viewPos, normal3, noise),0.5,1.0);
+            //ao = rtAO(normal, normal3, vec4(noise), viewPos);
 
             vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
             float shadeDir = max(0.0, dot(normal, sunPosition2));
 
-            screenShadow.x = clamp(((screenShadow.x + lmy) * clamp((pow32(lmx)) * 100, 0.1, 1.0)), 0.1, 1.0) * lmx;
-            shadeDir *= screenShadow.x;
-            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0, phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6) * float(sssa) * lmx) * (max(0.1, (screenShadow.x * ao) * 2 - 1));
-            shadeDir = clamp(shadeDir, 0, 1);
+            shadeDir *= screenShadow;
+            shadeDir += max(0.0, (max(phaseg(dot(view, sunPosition2), 0.5) * 2.0, phaseg(dot(view, sunPosition2), 0.1)) * pi * 1.6) * float(sssa) * lmx) * (max(0.1, (screenShadow * ao) * 2 - 1));
+            shadeDir = clamp(shadeDir * ao, 0, 1);
 
             float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));
 
             vec3 shading = vec3(0.0);
 
-            shading = (suncol * shadeDir) + ambientLight;
+            shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 
             shading += lightmap * 0.1;
@@ -1133,7 +1260,6 @@ void main() {
             if(light > 0.001)
                 shading.rgb = vec3(light * 2.0);
             shading = max(vec3(0.1), shading);
-            shading *= ao;
 
             vec3 dlight = (OutTexel * shading) + reflections;
 
@@ -1142,7 +1268,7 @@ void main() {
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(wnormal), 0.01, 1);
+            //outcol.rgb = clamp(vec3(shading), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {
@@ -1176,5 +1302,4 @@ void main() {
     }
 
     fragColor = outcol;
-
 }

@@ -98,14 +98,44 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 
 	return textureGood(lut, vec2(x, y)).rgb;
 }
+
+vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
+	#define SKY_BRIGHTNESS_DAY 0.4
+	#define SKY_BRIGHTNESS_NIGHT 2.0	
+	float mCosT = clamp(cosT, 0.0, 1.0);
+	float cosY = dot(sunVec, sVector);
+	float Y = facos(cosY);
+	const float a = -0.8;
+	const float b = -0.1;
+	const float c = 3.0;
+	const float d = -7.;
+	const float e = 0.35;
+
+  //luminance (cie model)
+	vec3 daySky = vec3(0.0);
+	vec3 moonSky = vec3(0.0);
+	// Day
+	if(skyIntensity > 0.00001) {
+		float L0 = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * Y) - exp(d * 3.1415 / 2.)) + e * cosY * cosY);
+		vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength);
+		vec3 normalizedSunColor = nsunColor;
+		vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength);
+		daySky = pow(L0, 1.0 - rainStrength) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * SKY_BRIGHTNESS_DAY;
+	}
+	// Night
+	else if(skyIntensityNight > 0.00001) {
+		float L0Moon = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * (PI - Y)) - exp(d * 3.1415 / 2.)) + e * cosY * cosY);
+		moonSky = pow(L0Moon, 1.0 - rainStrength) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
+	}
+	return (daySky + moonSky);
+}
 void main() {
 	vec2 oneTexel = 1.0 / OutSize;
 
 	vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 	gl_Position = vec4(outPos.xy, 0.2, 1.0);
-	gl_Position.xy = gl_Position.xy*vec2(18.+258*2,258.)*oneTexel;
-	gl_Position.xy = gl_Position.xy*2.-1.0;
-
+	gl_Position.xy = gl_Position.xy * vec2(18. + 258 * 2, 258.) * oneTexel;
+	gl_Position.xy = gl_Position.xy * 2. - 1.0;
 
 	texCoord = Position.xy / OutSize;
 
@@ -186,7 +216,7 @@ void main() {
 	nsunColor = vec3(sunlightR, sunlightG, sunlightB);
 	float avgEyeIntensity = ((sunIntensity * 120. + moonIntensity * 4.) + skyIntensity * 230. + skyIntensityNight * 4.);
 	float exposure = 0.18 / log(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3 * log(2.0);
-	const float sunAmount = 27.0*2.0;
+	const float sunAmount = 27.0 * 2.0;
 	float lightSign = clamp(sunIntensity * pow(10., 35.), 0., 1.);
 	lightCol = vec4((sunlightR * 3. * sunAmount * sunIntensity + 0.16 / 5. - 0.16 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * 7.84 * exposure, 7.84 * (sunlightG * 3. * sunAmount * sunIntensity + 0.24 / 5. - 0.24 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, 7.84 * (sunlightB * 3. * sunAmount * sunIntensity + 0.36 / 5. - 0.36 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, lightSign * 2.0 - 1.0);
 	rainStrength = (1 - (rain.r)) * 0.75;
@@ -198,12 +228,12 @@ void main() {
 	ambientB = vec3(0.0);
 	ambientF = vec3(0.0);
 	avgSky = vec3(0.0);
-	int maxIT = 20;
+	int maxIT = 256;
 	for(int i = 0; i < maxIT; i++) {
-		vec2 ij = R2_samples((int(Time) % 1000) * maxIT + i);
+		vec2 ij = R2_samples((int(Time*100) % 1000) * maxIT + i);
 		vec3 pos = normalize(rodSample(ij));
 
-		vec3 samplee = 2.2 * skyLut(pos.xyz, sunDir2, pos.y, pre) / maxIT;
+		vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength) / maxIT;
 		avgSky += samplee / 2.2;
 
 		ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
@@ -214,6 +244,7 @@ void main() {
 		ambientDown += samplee * (clamp(pos.y / 6., 0.0, 1.0) + abs(pos.x) / 7. + abs(pos.z) / 7.);
 
 	}
+
 	vec3 lightSourceColor = lightCol.rgb;
 	float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
 	float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;

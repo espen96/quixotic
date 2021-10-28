@@ -13,7 +13,7 @@
         { "name": "blursampler" },
         { "name": "volume" },
         { "name": "BloomSampler" },
-        { "name": "clouds" },
+        { "name": "previousFrame" },
         { "name": "DiffuseDepthSampler" },
         { "name": "FontSampler" }
     ],
