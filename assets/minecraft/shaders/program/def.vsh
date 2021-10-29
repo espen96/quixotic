@@ -228,9 +228,9 @@ void main() {
 	ambientB = vec3(0.0);
 	ambientF = vec3(0.0);
 	avgSky = vec3(0.0);
-	int maxIT = 256;
+	int maxIT = 20;
 	for(int i = 0; i < maxIT; i++) {
-		vec2 ij = R2_samples((int(Time*100) % 1000) * maxIT + i);
+		vec2 ij = R2_samples((int(Time) % 1000) * maxIT + i);
 		vec3 pos = normalize(rodSample(ij));
 
 		vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength) / maxIT;

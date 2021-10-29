@@ -1,7 +1,6 @@
 {
     "targets":[
       "pre",
-      "shadow",
       "normal",
       "swap1",
       "swap2",
@@ -9,7 +8,6 @@
       "denoised",
       "denoised1",
       "previousFrame",
-      "previousData",
       "previousClouds",
       "shading",
       "translucent",
@@ -35,10 +33,6 @@
           {
             "name":"TranslucentDepthSampler",
             "id":"translucent:depth"
-          },
-          {
-            "name":"pre",
-            "id":"pre"
           },
           {
             "name":"noisetex",
@@ -94,15 +88,7 @@
           {
             "name":"clouds",
             "id":"clouds"
-          },
-          {
-            "name":"shadow",
-            "id":"shadow"
-          },              
-          {
-            "name":"PreviousFrameSampler",
-            "id":"previousFrame"
-          },
+          },            
           {
             "name":"cloudsample",
             "id":"swap1"
@@ -114,13 +100,6 @@
           {
             "name":"TranslucentDepthSampler",
             "id":"translucent:depth"
-          },
-          {
-            "name":"FontSampler",
-            "id":"shader_font",
-            "width":1,
-            "height":1,
-            "bilinear":false
           }
         ]
       },
@@ -140,10 +119,6 @@
             "id":"clouds"
           },
           {
-            "name":"clouds",
-            "id":"clouds"
-          },
-          {
             "name":"DiffuseDepthSampler",
             "id":"minecraft:main:depth"
           },                
@@ -154,10 +129,6 @@
           {
             "name":"normal",
             "id":"normal"
-          },
-          {
-            "name":"noisetex",
-            "id":"clouds"
           },
           {
             "name":"cloudsample",
@@ -337,7 +308,7 @@
             },
             {
                 "name": "PreviousFrameDataSampler",
-                "id": "previousData"
+                "id": "previousFrame"
             },
             {
                 "name": "PreviousFrameDepthSampler",
@@ -355,16 +326,15 @@
               "id": "minecraft:main:depth"
           },
           {
+            "name":"clouds",
+            "id":"clouds"
+          },
+          {
               "name": "MainSampler",
               "id": "minecraft:main"
           }
       ]
   },    
-    {
-      "name": "blit",
-      "intarget": "minecraft:main",
-      "outtarget": "previousData"
-  },
   {
     "name": "blit",
     "intarget": "clouds",

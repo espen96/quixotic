@@ -28,7 +28,7 @@ void main() {
   vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
   discardControlGLPos(gl_FragCoord.xy, glpos);
   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
-
+discard;
   if(color.a * 255 <= 17.0) {
     discard;
   }

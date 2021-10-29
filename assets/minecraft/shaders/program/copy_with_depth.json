@@ -10,6 +10,7 @@
   "samplers": [
     { "name": "DiffuseSampler" },
     { "name": "DepthSampler" },
+    { "name": "clouds" },
     { "name": "PreviousFrameSampler" },
     { "name": "MainSampler" }
   ],

@@ -39,6 +39,7 @@ out float overworld;
 out float rainStrength;
 out vec3 sunVec;
 
+out vec3 sunPosition2;
 out vec3 sunPosition3;
 out float skyIntensityNight;
 
@@ -194,6 +195,7 @@ void main() {
     vec3 sunDir2 = sunDir;
     vec3 sunPosition = mat3(gbufferModelView) * sunDir2;
     sunPosition3 = sunDir2;
+
     vec3 upPosition = vec3(gbufferModelView[1].xyz);
     const vec3 cameraPosition = vec3(0.0);
 
@@ -216,6 +218,7 @@ void main() {
     float fading2 = clamp(-sunElevation + 0.095, 0.0, 0.08) / 0.08;
     skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
     sunVec = mix(sunVec2, -sunVec2, clamp(skyIntensityNight * 3, 0, 1));
+    sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
 
 ///////////////////////////
     suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));

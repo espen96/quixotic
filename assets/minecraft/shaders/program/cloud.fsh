@@ -76,7 +76,7 @@ float cloudVol(in vec3 pos, in vec3 samplePos, in float cov) {
 vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3 moonColor, vec3 avgAmbient) {
 
 	vec4 fragposition = vec4(fragpositi, 1.0);
-
+	
 	vec3 worldV = normalize(fragposition.rgb);
 	float VdotU = worldV.y;
 	maxIT_clouds = int(clamp(maxIT_clouds / sqrt(VdotU), 0.0, maxIT_clouds));
@@ -195,7 +195,7 @@ float mask(vec2 p) {
 void main() {
 
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-	float noise = clamp(mask(gl_FragCoord.xy + (Time * 4000)), 0, 1);
+	float noise = mask(gl_FragCoord.xy + (Time * 4000));
 
 	float depth = texture(DiffuseDepthSampler, texCoord).r;
 

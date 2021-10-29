@@ -4,8 +4,6 @@ uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D temporals3Sampler;
 uniform sampler2D cloudsample;
-uniform sampler2D noisetex;
-uniform sampler2D shadow;
 uniform sampler2D normal;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
@@ -42,6 +40,7 @@ in float overworld;
 in float rainStrength;
 in vec3 sunVec;
 
+in vec3 sunPosition2;
 in vec3 sunPosition3;
 in float skyIntensityNight;
 
@@ -459,35 +458,29 @@ vec2 circlemap(vec2 p) {
 }
 float jaao(vec2 p, vec3 normal, float noise, float depth, float radius) {
 
-		// By Jodie. With some modifications
+    int x = int(p.x * ScreenSize.x) % 4;
+    int y = int(p.y * ScreenSize.y) % 4;
+    int index = x * 4 + y;//bayer4x4(ivec2(x,y));
 
     vec3 p3 = toScreenSpace(p);
-    vec2 clipRadius = radius * vec2(ScreenSize.x / ScreenSize.y, 1.0) / length(p3);
+    vec2 clipRadius = vec2(ScreenSize.y / ScreenSize.x, 1.) / length(p3);
 
-    float rInv = 1.0 / radius;
-    float nvisibility = 0.0;
-    int x = int(gl_FragCoord.x) % 4;
-    int y = int(gl_FragCoord.y) % 4;
-    int index = (x << 2) + y + 1;
+    float totalAmbient = (0.);
 
-    for(int i = 0; i < steps; i++) {
-        vec2 circlePoint = circlemap(hammersley(i * 15 + index, 16 * steps)) * clipRadius;
-
-        circlePoint *= noise + 0.1;
+    for(int i = 0; i < 8; i++) {
+        vec2 circlePoint = circlemap(hammersley(i * 15 + index + 1, 16 * 8)) * clipRadius;
 
         vec3 o = toScreenSpace(circlePoint + p) - p3;
-        vec3 o2 = toScreenSpace(circlePoint * .25 + p) - p3;
-        vec2 len = vec2(length(o), length(o2));
+        float l = length(o);
 
-        vec2 ratio = clamp(len * rInv - 1.0, 0, 1); // (len - r) / r
+        float NoL = clamp(dot(o / l, normal) - step(1., l), 0., 1.);
 
-        nvisibility += clamp(1.0 - max(dot(o, normal) / len.x - ratio.x, dot(o2, normal) / len.y - ratio.y), 0, 1);
+        totalAmbient += 1. - NoL * NoL;//integral
     }
 
-    nvisibility /= float(steps);
+    totalAmbient = totalAmbient / float(8);
 
-    return clamp(mix(1.0, nvisibility, 1), 0, 1);
-
+    return totalAmbient * totalAmbient;
 }
 #define AOQuality 0   //[0 1 2] Increases the quality of Ambient Occlusion from 0 to 2, 0 is default
 #define AORadius 2.0 //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0] //Changes the radius of Ambient Occlusion to be larger or smaller, 1.0 is default
@@ -798,43 +791,6 @@ float getHorizonAngle(ivec2 iuv, vec2 offset, vec3 vpos, vec3 nvpos, out float l
 
     return dot(nvpos, ws);
 }
-//Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
-float cloudCov(in vec3 pos, vec3 samplePos) {
-    float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
-    float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-    float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
-    float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
-    return max(cloud, 0.0);
-}
-//Erode cloud with 3d Perlin-worley noise, actual cloud value
-
-float cloudVol(in vec3 pos, in vec3 samplePos, in float cov) {
-    float mult2 = (pos.y - 1500) / 2500 + rainStrength * 0.4;
-
-    float cloud = clamp(cov - 0.11 * (0.2 + mult2), 0.0, 1.0);
-    return cloud;
-
-}
-	//Low quality cloud, noise is replaced by the average noise value, used for shadowing
-float cloudVolLQ(in vec3 pos) {
-    float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
-    float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-    vec3 samplePos = pos * vec3(1.0, 1. / 32., 1.0) / 4 + 0;
-    float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
-    float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
-    return max(cloud, 0.0);
-}
-
-float getCloudDensity(in vec3 pos, in int LoD) {
-    vec3 samplePos = pos * vec3(1.0, 1.0 / 32.0, 1.0) / 4 + 0;
-    float coverageSP = cloudCov(pos, samplePos);
-    if(coverageSP > 0.001) {
-        if(LoD < 0)
-            return max(coverageSP - 0.27 * (1 + 0), 0.0);
-        return cloudVol(pos, samplePos, coverageSP);
-    } else
-        return 0.0;
-}
 
 float getAO(ivec2 iuv, vec3 vpos, vec3 vnorm, float noise) {
     float aspectRatio = ScreenSize.x / ScreenSize.y;
@@ -1009,101 +965,6 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
     return normalize(normal);
 }
 
-vec2 R2_samples(int n) {
-    vec2 alpha = vec2(0.75487765, 0.56984026);
-    return fract(alpha * n);
-}
-vec3 RT(vec3 dir, vec3 position, float noise) {
-
-    float ssptbias = 0.05;
-    float stepSize = 10;
-    int maxSteps = 16;
-    vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
-
-    float rayLength = ((position.z + dir.z * sqrt(3.0) * far) > -sqrt(3.0) * near) ? (-sqrt(3.0) * near - position.z) / dir.z : sqrt(3.0) * far;
-
-    vec3 end = toClipSpace3(position + dir * rayLength);
-    vec3 direction = end - clipPosition;  //convert to clip space
-
-    float len = max(abs(direction.x) / oneTexel.x, abs(direction.y) / oneTexel.y) / stepSize;
-
-                //get at which length the ray intersects with the edge of the screen
-    vec3 maxLengths = (step(0., direction) - clipPosition) / direction;
-    float mult = min(min(maxLengths.x, maxLengths.y), maxLengths.z);
-    vec3 stepv = direction / len;
-
-    int iterations = min(int(min(len, mult * len) - 2), maxSteps);
-
-                //Do one iteration for closest texel (good contact shadows)
-    vec3 spos = clipPosition + stepv / stepSize * 6.0;;
-
-    float sp = linZ(texture2D(DiffuseDepthSampler, spos.xy).x);
-    float currZ = linZ(spos.z);
-
-    if(sp < currZ) {
-        float dist = abs(sp - currZ) / currZ;
-
-        if(dist <= 0.05)
-            return vec3(spos.xy, invLinZ(sp));
-    }
-
-    spos += stepv * noise;
-
-    for(int i = 0; i < iterations; i++) {
-        float sp = linZ(texture2D(DiffuseDepthSampler, spos.xy).x);
-
-        float currZ = linZ(spos.z);
-        if(sp < currZ) {
-            float dist = abs(sp - currZ) / currZ;
-
-            if(dist <= ssptbias)
-                return vec3(spos.xy, invLinZ(sp));
-        }
-        spos += stepv;
-    }
-
-    return vec3(1.1);
-
-}
-vec3 cosineHemisphereSample(vec2 a) {
-    float phi = a.y * 2.0 * 3.14159265359;
-    float cosTheta = 1.0 - a.x;
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-
-    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-}
-vec3 TangentToWorld(vec3 N, vec3 H) {
-    vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-    vec3 T = normalize(cross(UpVector, N));
-    vec3 B = cross(N, T);
-
-    return vec3((T * H.x) + (B * H.y) + (N * H.z));
-}
-float rtAO(vec3 normal, vec3 normal2, vec4 noise, vec3 fragpos) {
-    int nrays = 4;
-    int frameCounter = int((gtime + Time) * 100000);
-
-    float occlusion = 0.0;
-    for(int i = 0; i < nrays; i++) {
-
-        int seed = (int(frameCounter) % 40000) * nrays + i;
-        vec2 ij = fract(R2_samples(seed) + noise.rg);
-        vec3 rayDir = normalize(cosineHemisphereSample(ij));
-
-        rayDir = TangentToWorld(normal, rayDir);
-        rayDir = mat3(gbufferModelView) * rayDir;
- 
-        vec3 rayHit = RT(rayDir, fragpos, fract(seed / 1.6180339887 + noise.b));
-
-        if(rayHit.z < 1.0) {
-
-            occlusion += 1.0;
-        }
-    }
-
-    return 1 * (1.0 - (occlusion) / nrays);
-
-}
 void main() {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
@@ -1111,9 +972,10 @@ void main() {
     bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
     vec3 wnormal = vec3(0.0);
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
+    vec4 lmnormal = texture(normal, texCoord);
 
     if(isWater)
-        wnormal = normalize(viewToWorld(constructNormal(depth, texCoord, TranslucentDepthSampler)) * 1.5 - 0.1);
+        wnormal = normalize(viewToWorld(DecodeNormal(lmnormal.rg)));
     vec2 texCoord = texCoord;
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
@@ -1121,22 +983,23 @@ void main() {
     vec3 viewPos = tmp.xyz / tmp.w;
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
-
+    vec2 texCoord2 = texCoord;
     if(isWater) {
-        float displ = wnormal.z / (length(viewPos) / far) / 2000. * (1.0 + 0.0 * 2.0);
+        float displ = (wnormal.z / (length(viewPos) / far) / 2000.);
+
         vec2 refractedCoord = texCoord + displ;
 
         if(texture(TranslucentSampler, refractedCoord).r <= 0.0)
             refractedCoord = texCoord;
-        texCoord = refractedCoord;
+        texCoord2 = refractedCoord;
 
     }
+    lmnormal = texture(normal, texCoord2);
 
-    vec4 lmnormal = texture(normal, texCoord);
     float frDepth = ld(depth2);
     lmnormal.zw = mix(lmnormal.zw, BilateralUpscale2(normal, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5).zw, 0.5);
 
-    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord).rgba);
+    vec4 OutTexel3 = (texture(DiffuseSampler, texCoord2).rgba);
     vec3 OutTexel = toLinear(OutTexel3.rgb);
 
     //float depthtest = (depth+depthb+depthc+depthd+depthe)/5;
@@ -1145,7 +1008,7 @@ void main() {
 
     if(sky && overworld == 1.0) {
 
-        vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler);
+        vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler)+(noise/12);
 
         if(view.y > 0.) {
             vec4 cloud = texture(cloudsample, texCoord * CLOUDS_QUALITY);
@@ -1182,11 +1045,6 @@ void main() {
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
             if(screenShadow > 0.0 && lmy < 0.9)
                 screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise) + lmy;
-
-            vec3 pos = p3 + 0 + gbufferModelViewInverse[3].xyz;
-            vec3 cloudPos = pos + sunPosition3 / abs(sunPosition3.y) * (2500.0 - 0);
-            float cloudShadow = mix(1.0, exp(-20. * cloudVolLQ(cloudPos)), mix(0.5, 1.0, rainStrength));
-            screenShadow *= cloudShadow;
 
             vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
 
@@ -1234,13 +1092,11 @@ void main() {
             }
             OutTexel *= mix(vec3(1.0), lightmap, postlight);
             float ao = 1.0;
-            //ao = jaao(texCoord, normal3, noise, depth, 1.3);dbao(TranslucentDepthSampler);
-            ao = dbao(TranslucentDepthSampler);
+            //ao = jaao(texCoord, normal3, noise, depth, 1.3);
+           // ao = dbao(TranslucentDepthSampler);
 
             //ao *= clamp(getAO(ivec2(gl_FragCoord.st), viewPos, normal3, noise),0.5,1.0);
-            //ao = rtAO(normal, normal3, vec4(noise), viewPos);
 
-            vec3 sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
             float shadeDir = max(0.0, dot(normal, sunPosition2));
 
             shadeDir *= screenShadow;
@@ -1249,9 +1105,7 @@ void main() {
 
             float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));
 
-            vec3 shading = vec3(0.0);
-
-            shading = (suncol * shadeDir) + ambientLight * ao;
+            vec3 shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 
             shading += lightmap * 0.1;
@@ -1268,7 +1122,7 @@ void main() {
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(shading), 0.01, 1);
+            //outcol.rgb = clamp(vec3(ambientLight), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {
@@ -1301,5 +1155,5 @@ void main() {
 
     }
 
-    fragColor = outcol;
+    fragColor = outcol+(noise/255);
 }

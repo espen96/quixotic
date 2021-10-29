@@ -69,8 +69,8 @@ c3 = vec4(0);
 vec4 viewPos = ModelViewMat * vec4(Position + ChunkOffset, 1.0);
 vertexColor = Color;
 
-mat4 mvm = ModelViewMat * 0;
-vec3 p = Position * 0;
+mat4 mvm = ModelViewMat ;
+vec3 p = Position ;
 if(gl_VertexID < 4) {
 if(gl_VertexID == 0) {
 c1 = viewPos;
@@ -86,11 +86,11 @@ projMat = ProjMat;
 chunkOffset = ChunkOffset;
 gl_Position = vertexPositions[gl_VertexID];
 
-p = Position;
-mvm = ModelViewMat;
+p = Position*0;
+mvm = ModelViewMat*0;
 
 } else {
-gl_Position = vec4(- 1);
+gl_Position = vec4(0);
 }
 pos1 = encodeFloat24((p.x + mvm[3].x));
 gtime = encodeFloat24(abs(

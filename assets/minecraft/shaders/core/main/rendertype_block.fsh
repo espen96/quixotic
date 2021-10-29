@@ -33,7 +33,7 @@ float dither64 = Bayer64(gl_FragCoord.xy);
 
 void main() {
 
-vec3 rnd = clamp(vec3(fract(dither5x3() - dither64)),0,1)/8;
+vec3 rnd = clamp((vec3(fract(dither5x3() - dither64)))/8,0,1);
 
 discardControlGLPos(gl_FragCoord.xy, glpos);
 
@@ -74,7 +74,7 @@ float test3 = floor(test2.r + test2.g + test2.b);
 
 }
 
-float noise = luma4(rnd) * 255;
+float noise = luma4(rnd) * 128;
 
 if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0 + 0, sssMin, sssMax)); // SSS
 

@@ -365,7 +365,7 @@ void main() {
          float noisev2 = mix(noisev3,noise,0.35);
 
         vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(noisev2 * 0.15) * oneTexel);
-        if(color.a*255 == 200) normal *= 2.0-0.5;
+
 ////////////////////
         vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
         vec3 screenPos2 = vec3(texCoord, depth);

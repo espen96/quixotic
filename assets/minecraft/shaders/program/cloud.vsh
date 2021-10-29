@@ -20,6 +20,7 @@ out vec3 sc;
 
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
+out mat4 gbufferProjectionInverse;
 
 out float cloudy;
 out float pos2;
@@ -135,7 +136,7 @@ void main() {
     gbufferModelView = (ProjMat * ModeViewMat);
      cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
 
-
+    gbufferProjectionInverse = inverse(ProjMat);
 ////////////////////////
 
 // 0     = +0.9765 +0.2154

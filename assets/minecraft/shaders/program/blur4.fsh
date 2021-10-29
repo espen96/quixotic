@@ -9,21 +9,19 @@ out vec4 fragColor;
 
 void main() {
 
-    vec2 uv = gl_FragCoord.xy / ScreenSize.xy / 2. + .25;
+    vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
+    vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
+    float offset = 20.0;
 
-    vec2 res = ScreenSize.xy;
-
-    float i = SAMPLE_OFFSET;
+    vec4 sum = texture(DiffuseSampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
     
-    vec3 col = texture(DiffuseSampler, uv + vec2(i, i) / res).rgb / 6.0;
-    col += texture(DiffuseSampler, uv + vec2(i, -i) / res).rgb / 6.0;
-    col += texture(DiffuseSampler, uv + vec2(-i, i) / res).rgb / 6.0;
-    col += texture(DiffuseSampler, uv + vec2(-i, -i) / res).rgb / 6.0;
+    sum += texture(DiffuseSampler, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture(DiffuseSampler, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
+    sum += texture(DiffuseSampler, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture(DiffuseSampler, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
+    sum += texture(DiffuseSampler, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
+    sum += texture(DiffuseSampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
+    sum += texture(DiffuseSampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
 
-    col += texture(DiffuseSampler, uv + vec2(0, i * 2.0) / res).rgb / 12.0;
-    col += texture(DiffuseSampler, uv + vec2(i * 2., 0) / res).rgb / 12.0;
-    col += texture(DiffuseSampler, uv + vec2(-i * 2., 0) / res).rgb / 12.0;
-    col += texture(DiffuseSampler, uv + vec2(0, -i * 2.) / res).rgb / 12.0;
-
-    fragColor = vec4((col), 1.0);
+    fragColor = sum / 12.0;
 }

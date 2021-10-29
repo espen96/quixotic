@@ -75,13 +75,12 @@ vec3 blend(vec3 dst, vec4 src) {
 }
 
 void main() {
-    float aspectRatio = ScreenSize.x / ScreenSize.y;
     color_layers[0] = vec4(texture(DiffuseSampler, texCoord).rgb, 1.0);
     depth_layers[0] = texture(DiffuseDepthSampler, texCoord).r;
     active_layers = 1;
 
 //    try_insert( toLinear(texture( CloudsSampler, texCoord )), CloudsDepthSampler);
-    try_insert((sample_biquadratic_exact(TranslucentSampler, texCoord)), TranslucentDepthSampler);
+    try_insert((texture(TranslucentSampler, texCoord)), TranslucentDepthSampler);
     try_insert((texture(ParticlesSampler, texCoord)), ParticlesDepthSampler);
     try_insert(toLinear(texture(WeatherSampler, texCoord)), WeatherDepthSampler);
     try_insert(toLinear(texture(ItemEntitySampler, texCoord)), ItemEntityDepthSampler);
@@ -90,6 +89,5 @@ void main() {
     for(int ii = 1; ii < active_layers; ++ii) {
         texelAccum = blend(texelAccum, color_layers[index_layers[ii]]);
     }
-//    if(texture( TranslucentSampler, texCoord ).a *255 == 200 &&  texture(DiffuseDepthSampler, texCoord ).r >=1) texelAccum.rgb = vec3(texture( TranslucentSampler, texCoord ).rgb);
     fragColor = vec4(texelAccum.rgb, texture(DiffuseSampler, texCoord).a);
 }

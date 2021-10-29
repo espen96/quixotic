@@ -21,11 +21,14 @@ out mat4 gbufferProjection;
 out mat4 gbufferProjectionInverse;
 out mat4 gbufferModelView;
 out mat4 gbufferModelViewInverse;
+out mat4 wgbufferModelViewInverse;
 out mat4 gbufferPreviousProjection;
 out mat4 gbufferPreviousModelView;
 out mat4 projInv;
 out mat4 projInv2;
 out vec3 rayDir;
+out float overworld;
+out float end;
 out float near;
 out float far;
 out vec3 prevPosition;
@@ -70,6 +73,7 @@ uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
 uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
 return (- float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
+
 void main() {
     vec4 outPos = ProjMat * vec4(Position.xy, 0, 1.0);
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
@@ -114,7 +118,7 @@ void main() {
     near = PROJNEAR;
     far = gbufferProjection[3][2] * PROJNEAR / (gbufferProjection[3][2] + 2.0 * PROJNEAR);
     
-
+    wgbufferModelViewInverse = inverse(ProjMat * gbufferModelView);
 
     float cloudx = decodeFloat24((texture(clouds, start + 50.0 * inc).rgb));
     float cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
@@ -122,13 +126,14 @@ void main() {
     float cloudxprev = decodeFloat24((texture(prevclouds, start + 50.0 * inc).rgb));
     float cloudyprev = decodeFloat24((texture(prevclouds, start + 51.0 * inc).rgb));
     float cloudzprev = decodeFloat24((texture(prevclouds, start + 52.0 * inc).rgb));
-
+    overworld = vec4((texture(CurrentFrameDataSampler, start + 28.0 * inc))).r;
+    end = vec4((texture(CurrentFrameDataSampler, start + 29.0 * inc))).r;
     float fov = atan(1 / gbufferProjection[1][1]);
     currChunkOffset = vec3(cloudx,cloudy,0);
     prevChunkOffset = vec3(cloudxprev,cloudyprev,0);
     projInv = inverse(gbufferProjection * gbufferModelView);
     projInv2 = inverse(gbufferPreviousProjection * gbufferPreviousModelView);
     rayDir = (projInv * vec4(outPos.xy * (far - near), far + near, far - near)).xyz;
-    prevPosition = mod(currChunkOffset - prevChunkOffset + 0.5, 1) - 0.5;
-
+    prevPosition = currChunkOffset - prevChunkOffset;
+    //prevPosition -= 16 * round(prevPosition / 16.0);
 }

@@ -48,6 +48,8 @@ return result;
 vec2 calculateJitter() {
 return (halton(int(mod((GameTime * 3.0) * 24000.0, 128))) - 0.5) / 1024.0;
 }
+//make it mod 16 or something like that
+//multiply gametime by pi, than it can be multipled with watever as long as it is an int
 vec3 wavingLeaves(vec3 viewPos) {
 float t = pi2wt;
 
@@ -84,7 +86,7 @@ lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
 
 
-gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter()*0.25, 0, 0));
+gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter(), 0, 0));
 glpos = gl_Position;
 
 }
