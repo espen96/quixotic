@@ -26,9 +26,9 @@ uniform sampler2D PreviousFrameDepthSampler;
 
 out vec4 fragColor;
 
-#define TAA_OFFCENTER_REJECTION 0.5 // [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
+#define TAA_OFFCENTER_REJECTION 0.9 // [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1]
 #define TAA_USE_CLOSEST_DEPTH
-#define TAA_HISTORY_WEIGHT 0.15 // [0.95 0.99]
+#define TAA_HISTORY_WEIGHT 0.5 // [0.95 0.99]
 vec3 calculateWorldPos(float depth, vec2 texCoord, mat4 projMat, mat4 modelViewMat) {
 
     vec4 clip = vec4(texCoord * 2 - 1, depth, 1);
@@ -284,9 +284,10 @@ void main() {
         history = ClipAABB(history, minRounded, avgRounded, maxRounded);
 
 		//--//
-        float test = distance(texture(DiffuseSampler, texCoord).rgb, texture(PreviousFrameSampler, reprojectedPosition.xy).rgb)*2.0;
+        float test = distance(texture(DiffuseSampler, texCoord).rgb, texture(PreviousFrameSampler, reprojectedPosition.xy).rgb);
+        test = mix(historyWeight,test,0.5);
 
-        vec3 color = (invTonemap(mix(tonemap(current), tonemap(history), clamp(test, 0.1, 1.0))));
+        vec3 color = (invTonemap(mix(tonemap(current), tonemap(history), clamp(test, 0.0, 0.5))));
         if(overworld != 1)
             color = current;
         fragColor.rgb = color;
