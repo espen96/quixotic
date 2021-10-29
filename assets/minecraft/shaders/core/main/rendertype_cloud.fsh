@@ -14,10 +14,10 @@ uniform vec4 FogColor;
 
 in float vertexDistance;
 in vec4 vertexColor;
-in vec3 pos1;
-in vec3 pos2;
+noperspective in vec3 pos1;
+noperspective in vec3 pos2;
 in vec3 gtime;
-in vec3 pos3;
+noperspective in vec3 pos3;
 in vec2 texCoord0;
 in vec2 texCoord1;
 in vec4 normal;

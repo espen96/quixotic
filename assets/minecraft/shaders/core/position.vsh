@@ -7,6 +7,7 @@ uniform mat4 ProjMat;
 uniform float FogEnd;
 uniform vec3 ChunkOffset;
 
+out vec3 test;
 out mat4 gbufferModelViewInverse;
 out float isSky;
 out float vertexDistance;
@@ -21,6 +22,7 @@ out vec3 chunkOffset;
 
 void main() {
    vec3 scaledPos = Position;
+    test = (ProjMat * ModelViewMat * vec4(Position,1)).xyz*0.1;
    isSky = 0.0;
 
     // the sky is transformed so that it always covers the entire camera view. Guarantees that we can write to control pixels in fsh.

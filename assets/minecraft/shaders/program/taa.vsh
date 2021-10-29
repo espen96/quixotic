@@ -120,20 +120,22 @@ void main() {
     
     wgbufferModelViewInverse = inverse(ProjMat * gbufferModelView);
 
+
     float cloudx = decodeFloat24((texture(clouds, start + 50.0 * inc).rgb));
     float cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
-    float cloudz = decodeFloat24((texture(clouds, start + 52.0 * inc).rgb));
+    float cloudz = decodeFloat24((texture(clouds, start + 53.0 * inc).rgb));
     float cloudxprev = decodeFloat24((texture(prevclouds, start + 50.0 * inc).rgb));
     float cloudyprev = decodeFloat24((texture(prevclouds, start + 51.0 * inc).rgb));
-    float cloudzprev = decodeFloat24((texture(prevclouds, start + 52.0 * inc).rgb));
+    float cloudzprev = decodeFloat24((texture(prevclouds, start + 53.0 * inc).rgb));
     overworld = vec4((texture(CurrentFrameDataSampler, start + 28.0 * inc))).r;
     end = vec4((texture(CurrentFrameDataSampler, start + 29.0 * inc))).r;
     float fov = atan(1 / gbufferProjection[1][1]);
-    currChunkOffset = vec3(cloudx,cloudy,0);
-    prevChunkOffset = vec3(cloudxprev,cloudyprev,0);
+    currChunkOffset = vec3(0,cloudy*0.0,0);
+    prevChunkOffset = vec3(0,cloudyprev*0.0,0);
     projInv = inverse(gbufferProjection * gbufferModelView);
     projInv2 = inverse(gbufferPreviousProjection * gbufferPreviousModelView);
     rayDir = (projInv * vec4(outPos.xy * (far - near), far + near, far - near)).xyz;
     prevPosition = currChunkOffset - prevChunkOffset;
     //prevPosition -= 16 * round(prevPosition / 16.0);
+
 }

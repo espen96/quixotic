@@ -14,7 +14,7 @@ uniform mat4 ProjMat;
 in mat4 gbufferModelViewInverse;
 in float isSky;
 in float vertexDistance;
-
+in vec3 test;
 out vec4 fragColor;
 
 // at this point, the entire sky is drawable: isSky for sky, stars and void plane for everything else.
@@ -64,7 +64,11 @@ void main() {
                 fragColor = vec4(vec3(0.5), 1);
             } else if(index == 28) {
                 fragColor = vec4(1.0);
-            }                             
+            
+            } else if(index == 52) {
+                fragColor = vec4(test,1);
+            }
+                                                            
             // blackout control pixels for sunDir so sun can write to them (by default, all pixels are FogColor)
             else {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);

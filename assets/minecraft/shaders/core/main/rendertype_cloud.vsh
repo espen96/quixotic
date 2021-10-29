@@ -69,8 +69,8 @@ c3 = vec4(0);
 vec4 viewPos = ModelViewMat * vec4(Position + ChunkOffset, 1.0);
 vertexColor = Color;
 
-mat4 mvm = ModelViewMat ;
-vec3 p = Position ;
+mat4 mvm = ModelViewMat*0 ;
+vec3 p = Position*0 ;
 if(gl_VertexID < 4) {
 if(gl_VertexID == 0) {
 c1 = viewPos;
@@ -86,13 +86,12 @@ projMat = ProjMat;
 chunkOffset = ChunkOffset;
 gl_Position = vertexPositions[gl_VertexID];
 
-p = Position*0;
-mvm = ModelViewMat*0;
+p = Position;
+mvm = ModelViewMat;
 
 } else {
 gl_Position = vec4(0);
 }
-pos1 = encodeFloat24((p.x + mvm[3].x));
 gtime = encodeFloat24(abs(
     mvm[3].x + mvm[3].y + mvm[3].z + mvm[3].w + 
     mvm[2].x + mvm[2].y + mvm[2].z + mvm[2].w + 
@@ -102,9 +101,27 @@ gtime = encodeFloat24(abs(
     Position.x + Position.y + Position.z
 
      ));
-float temp = (floor(p.y) - 125) + ((mvm[3].y));
 
-pos2 = encodeFloat24(temp);
-pos3 = encodeFloat24((p.z) + mvm[3].z);
+
+float tempx = ((p.x) - 125) + ((mvm[3].x));
+tempx *= 100;
+tempx = floor(tempx);
+tempx *= 0.001;
+
+
+float tempy = ((p.y) - 125) + ((mvm[3].y));
+tempy *= 10;
+tempy = floor(tempy);
+tempy *= 0.1;
+
+float tempz = ((p.z) - 125) + ((mvm[3].z));
+tempz *= 100;
+tempz = floor(tempz);
+tempz *= 0.01;
+
+
+pos1 = encodeFloat24(tempx);
+pos2 = encodeFloat24(tempy);
+pos3 = encodeFloat24(tempz);
 glpos = gl_Position;
 }

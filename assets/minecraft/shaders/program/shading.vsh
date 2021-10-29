@@ -16,7 +16,11 @@ out vec3 ambientB;
 out vec3 ambientF;
 out vec3 ambientDown;
 out vec3 suncol;
+out vec3 testpos;
 out float gtime;
+out float cloudx;
+out float cloudy;
+out float cloudz;
 flat out vec3 zMults;
 
 out vec2 oneTexel;
@@ -155,7 +159,7 @@ void main() {
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
     zMults = vec3(1.0 / (far * near), far + near, far - near);
 
-    vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
+     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
     gbufferModelViewInverse = inverse(mat4(ModeViewMat));
     wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
@@ -166,6 +170,10 @@ void main() {
     gbufferProjection = ProjMat;
     //gbufferProjectionInverse = inverse(ProjMat);
     gtime = decodeFloat24((texture(clouds, start + 54.0 * inc).rgb));
+    cloudx = decodeFloat24((texture(clouds, start + 50.0 * inc).rgb));
+    cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
+    cloudz = decodeFloat24((texture(clouds, start + 53.0 * inc).rgb));
+    testpos = ((texture(DiffuseSampler, start + 52.0 * inc).rgb));
 
 ////////////////////////////////////////////////
 

@@ -297,7 +297,7 @@ void main() {
     float contrast = 1.0 - luma(std)/5.0;
     color = color*(1.0+(SHARPENING)*contrast)
           - (SHARPENING)/(1.0-0.5/3.5)*contrast*(m1 - 0.5/3.5*color);
-*/
+    */
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
 
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy));
