@@ -9,7 +9,8 @@
     "attributes": [ "Position" ],
     "samplers": [
         { "name": "DiffuseSampler" },
-        { "name": "DiffuseDepthSampler" },
+        { "name": "PreviousFrameDepthSampler" },
+        { "name": "dofdepth"},
         { "name": "MainSampler" },
         { "name": "DepthSampler" }
         

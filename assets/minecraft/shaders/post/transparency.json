@@ -312,25 +312,49 @@
           }
         ]
       },
-    {
-      "name": "copy_with_depth",
-      "intarget": "denoised1",
-      "outtarget": "previousFrame",
-      "auxtargets": [
-          {
-              "name": "DepthSampler",
-              "id": "minecraft:main:depth"
+      {
+        "name": "dof",
+        "intarget": "denoised1",
+        "outtarget": "swap2",
+        "auxtargets": [
+            {
+                "name": "DepthSampler",
+                "id": "minecraft:main:depth"
+            },
+            {
+              "name":"clouds",
+              "id":"clouds"
+            },
+            {
+              "name": "PreviousFrameDepthSampler",
+              "id": "previousFrame:depth"
           },
-          {
-            "name":"clouds",
-            "id":"clouds"
-          },
-          {
-              "name": "MainSampler",
-              "id": "minecraft:main"
-          }
-      ]
-  },    
+            {
+                "name": "MainSampler",
+                "id": "minecraft:main"
+            }
+        ]
+    },
+     
+      {
+        "name": "copy_with_depth",
+        "intarget": "swap2",
+        "outtarget": "previousFrame",
+        "auxtargets": [
+            {
+                "name": "DepthSampler",
+                "id": "minecraft:main:depth"
+            },
+            {
+              "name":"clouds",
+              "id":"clouds"
+            },
+            {
+                "name": "MainSampler",
+                "id": "minecraft:main"
+            }
+        ]
+    }, 
   {
     "name": "aa",
     "intarget": "previousFrame",
@@ -394,6 +418,7 @@
           }
         ]
       },
+      
       {
         "name":"tonemap",
         "intarget":"denoised1",

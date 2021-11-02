@@ -362,7 +362,7 @@ void main() {
         float depth = texture(TranslucentDepthSampler, texCoord).r;
         float noise = mask(gl_FragCoord.xy + (Time * 100));
         float noisev3 = clamp((fract(dither5x3() - dither64)),0,1);
-         float noisev2 = mix(noisev3,noise,0.35);
+         float noisev2 = mix(noisev3,noise,0.5);
 
         vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(noisev2 * 0.15) * oneTexel);
 
@@ -393,13 +393,13 @@ void main() {
         vec4 reflection = vec4(sky_c.rgb, 0.);
 
 
-        reflection = vec4(SSR(viewPos.xyz, normal, noisev3));
+        reflection = vec4(SSR(viewPos.xyz, normal, noisev2));
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.75;
         vec3 reflected = reflection.rgb * fresnel;
 
         float alpha0 = color2.a;
         color.a = -color2.a * fresnel + color2.a + fresnel;
-        color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 10) / color.a * 0.1, 0.0, 1.0);
+        color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a * 0.1, 0.0, 1.0);
         //color.rgb = reflection.rgb;
 
     }        
