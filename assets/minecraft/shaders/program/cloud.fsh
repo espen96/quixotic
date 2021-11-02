@@ -2,7 +2,7 @@
 
 uniform sampler2D noisetex;
 uniform sampler2D DiffuseDepthSampler;
-
+uniform vec2 ScreenSize;
 uniform float Time;
 
 in vec2 texCoord;
@@ -191,11 +191,46 @@ float mask(vec2 p) {
 
 	return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
+float dither5x3() {
+    const int ditherPattern[15] = int[15] (9, 3, 7, 12, 0, 11, 5, 1, 14, 8, 2, 13, 10, 4, 6);
+
+    vec2 position = floor(mod(vec2(texCoord.s * ScreenSize.x, texCoord.t * ScreenSize.y), vec2(5.0, 3.0)));
+
+    int dither = ditherPattern[int(position.x) + int(position.y) * 5];
+
+    return float(dither) * 0.0666666666666667f;
+}
+#define g(a) (-4.*a.x*a.y+3.*a.x+a.y*2.)
+
+float bayer16x16(vec2 p) {
+
+    vec2 m0 = vec2(mod(floor(p * 0.125), 2.));
+    vec2 m1 = vec2(mod(floor(p * 0.25), 2.));
+    vec2 m2 = vec2(mod(floor(p * 0.5), 2.));
+    vec2 m3 = vec2(mod(floor(p), 2.));
+
+    return (g(m0) + g(m1) * 4.0 + g(m2) * 16.0 + g(m3) * 64.0) * 0.003921568627451;
+}
+//Dithering from Jodie
+float bayer2(vec2 a) {
+    a = floor(a);
+    return fract(dot(a, vec2(.5, a.y * .75)));
+}
+
+#define bayer4(a)   (bayer2( .5*(a))*.25+bayer2(a))
+#define bayer8(a)   (bayer4( .5*(a))*.25+bayer2(a))
+#define bayer16(a)  (bayer8( .5*(a))*.25+bayer2(a))
+#define bayer32(a)  (bayer16(.5*(a))*.25+bayer2(a))
+#define bayer64(a)  (bayer32(.5*(a))*.25+bayer2(a))
+#define bayer128(a) (bayer64(.5*(a))*.25+bayer2(a))
+
+float dither64 = bayer64(gl_FragCoord.xy);
 
 void main() {
 
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 	float noise = mask(gl_FragCoord.xy + (Time * 4000));
+    float dither2 = fract(dither5x3() - dither64);
 
 	float depth = texture(DiffuseDepthSampler, texCoord).r;
 

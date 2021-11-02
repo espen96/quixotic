@@ -54,15 +54,19 @@ xs = sin(position.x + animation);
 zs = cos(position.z + animation);
 }
 
-   // vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+if(vertexDistance > 64) {
+xs = 0;
+zs = 0;
+
+}
 vertexColor = Color;
 texCoord0 = UV0;
 
 lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
 
-
-gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0) + vec4(calculateJitter(), 0, 0));
+gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
 
 glpos = gl_Position;
 }

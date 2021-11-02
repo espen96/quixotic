@@ -10,7 +10,12 @@
   "samplers": [
     { "name": "DiffuseSampler" },
     { "name": "CurrentFrameDataSampler" },
-
+    { "name": "DiffuseDepthSampler" },
+    { "name": "CurrentFrameDepthSampler" },
+    { "name": "PreviousFrameDataSampler" },
+    { "name": "PreviousFrameDepthSampler" },
+    { "name": "clouds" },
+    { "name": "prevclouds" },
     { "name": "PreviousFrameSampler" }
   ],
   "uniforms": [

@@ -1,12 +1,20 @@
 #version 150
 
 in vec2 texCoord;
+uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D PreviousFrameSampler;
 uniform sampler2D DiffuseSampler;
 uniform vec2 ScreenSize;
-
-
+in vec2 oneTexel;
 out vec4 fragColor;
+
+in mat4 gbufferProjection;
+in mat4 gbufferProjectionInverse;
+in mat4 gbufferModelView;
+in mat4 gbufferModelViewInverse;
+in mat4 gbufferPreviousProjection;
+in mat4 gbufferPreviousModelView;
+in vec3 prevPosition;
 
 /*
     -- Vertex Engine X --
@@ -89,16 +97,42 @@ void VXAAUpsampleT4x(out vec4 vtex[4], vec4 current, vec4 history, vec4 currN[4]
     vtex[VXAA_SW] = VXAADifferentialBlend(n1, weights.xy);
     vtex[VXAA_SE] = current;
 }
-
+float MinDepth3x3(vec2 uv) {
+    float minDepth = texture(DiffuseDepthSampler, uv).x;
+    for(int x = -1; x <= 1; ++x) {
+        for(int y = -1; y <= 1; ++y) {
+            if(x == 0 && y == 0) {
+                continue;
+            }
+            minDepth = min(minDepth, texture(DiffuseDepthSampler, uv + oneTexel * vec2(x, y)).x);
+        }
+    }
+    return minDepth;
+}
 void main() {
+    float depth = texture(DiffuseDepthSampler, texCoord).r;
 
+    // We'll recreate the current world position from the texture coord and depth sampler
+    float currDepth = MinDepth3x3(texCoord);
+    vec4 clip = vec4(texCoord, currDepth, 1) * 2.0 - 1.0;
+    vec4 viewSpace = gbufferProjectionInverse * clip;
+    viewSpace /= viewSpace.w;
+    vec3 worldPos = (gbufferModelViewInverse * viewSpace).xyz;
+    // Then we offset this by the amount the player moved between the two frames
+    vec3 prevRelativeWorldPos = worldPos - prevPosition;
+
+    // We can then convert this into the texture coord of the fragment in the previous frame
+    vec4 prevClip = gbufferPreviousProjection * gbufferPreviousModelView * vec4(prevRelativeWorldPos, 1);
+    vec2 prevTexCoord = prevClip.xy / prevClip.w * 0.5 + 0.5;
+    vec2 texCoord2 = prevTexCoord;
     // Sample scene and neighbourhood.
 
     vec4 current = clamp(vec4(texture(VXAA_TEXTURE_CURRENT, texCoord).rgb, 1.0), vec4(0.0f), vec4(1.0f));
-    vec4 history = clamp(vec4(texture(VXAA_TEXTURE_PREV, texCoord).rgb, 1.0), vec4(0.0f), vec4(1.0f));
+    vec4 history = clamp(vec4(texture(VXAA_TEXTURE_PREV, texCoord2).rgb, 1.0), vec4(0.0f), vec4(1.0f));
     current.a = VXAALuma(current.rgb);
     history.a = VXAALuma(history.rgb);
-    const float offset = 1.1;
+    float offset = 1.45;
+    //if(depth >= 1.0) offset = 1.5;
     vec4 currN[4];
     currN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
     currN[VXAA_E].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
@@ -110,11 +144,11 @@ void main() {
     currN[VXAA_S].a = VXAALuma(currN[VXAA_S].rgb);
 
     vec4 histN[4];
-    
-    histN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
-    histN[VXAA_E].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
-    histN[VXAA_N].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
-    histN[VXAA_S].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+
+    histN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord2 + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_E].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord2 + vec2(offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_N].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord2 + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
+    histN[VXAA_S].rgb = clamp(texture(VXAA_TEXTURE_PREV, texCoord2 + vec2(0.0f, -offset) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
     histN[VXAA_W].a = VXAALuma(histN[VXAA_W].rgb);
     histN[VXAA_E].a = VXAALuma(histN[VXAA_E].rgb);
     histN[VXAA_N].a = VXAALuma(histN[VXAA_N].rgb);
@@ -126,7 +160,8 @@ void main() {
     VXAAUpsampleT4x(vtex, current, history, currN, histN);
 
     // Average all samples.
-    fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f,0,1);
+    fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
+    //if(depth >= 1.0) fragColor = mix(texture(VXAA_TEXTURE_CURRENT, texCoord), texture(VXAA_TEXTURE_PREV, texCoord2), 0.9);
     //fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
 
 }

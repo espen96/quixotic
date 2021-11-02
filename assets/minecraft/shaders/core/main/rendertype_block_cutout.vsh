@@ -15,7 +15,6 @@ uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
 
-
 out float lmx;
 out float lmy;
 out vec4 vertexColor;
@@ -84,9 +83,13 @@ texCoord0 = UV0;
 
 lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
+float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+if(vertexDistance > 64) {
+wave = vec3(0.0);
 
+}
 
-gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter(), 0, 0));
+gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
 glpos = gl_Position;
 
 }
