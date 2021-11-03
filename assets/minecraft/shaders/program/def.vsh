@@ -101,7 +101,7 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
 	#define SKY_BRIGHTNESS_DAY 0.4
-	#define SKY_BRIGHTNESS_NIGHT 2.0	
+	#define SKY_BRIGHTNESS_NIGHT 2.0;	
 	float mCosT = clamp(cosT, 0.0, 1.0);
 	float cosY = dot(sunVec, sVector);
 	float Y = facos(cosY);
@@ -233,8 +233,8 @@ void main() {
 		vec2 ij = R2_samples((int(Time) % 1000) * maxIT + i);
 		vec3 pos = normalize(rodSample(ij));
 
-		vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength) / maxIT;
-		avgSky += samplee / 2.2;
+		vec3 samplee = 2.2*skyLut2(pos.xyz, sunDir2, pos.y, rainStrength) / maxIT;
+		avgSky += samplee/2.2 ;
 
 		ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
 		ambientLeft += samplee * (clamp(-pos.x, 0.0, 1.0) + clamp(pos.y / 7., 0.0, 1.0) + abs(pos.z) / 7.);

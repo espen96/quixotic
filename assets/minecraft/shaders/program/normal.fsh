@@ -923,13 +923,13 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex) {
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthC = textureGood(depthtex, texcoords + offsetC).r;
     vec3 A = getDepthPoint(texcoords, depthA);
-    A += pow4(texture(DiffuseSampler, texCoord).g)*0.01;
+    A += pow4(texture(DiffuseSampler, texCoord).g) * 0.01;
 
     vec3 B = getDepthPoint(texcoords + offsetB, depthB);
-    B += pow4(texture(DiffuseSampler, texCoord+ offsetB*3.0).g)*0.01;
+    B += pow4(texture(DiffuseSampler, texCoord + offsetB * 3.0).g) * 0.01;
 
     vec3 C = getDepthPoint(texcoords + offsetC, depthC);
-    C +=pow4(texture(DiffuseSampler, texCoord+ offsetC*3.0).g)*0.01;
+    C += pow4(texture(DiffuseSampler, texCoord + offsetC * 3.0).g) * 0.01;
 
     vec3 AB = normalize(B - A);
     vec3 AC = normalize(C - A);
@@ -961,25 +961,23 @@ void main() {
 
         vec2 lmtrans2 = unpackUnorm2x4(lmgather.z);
         float depthb = depthgather.z;
-        lmtrans2 *= 1.0 - (depthb - depth);
+        lmtrans2 *= 1.0 - clamp((depthb - depth) * 10, 0, 1);
 
         vec2 lmtrans3 = unpackUnorm2x4(lmgather.x);
         float depthc = depthgather.x;
-        lmtrans3 *= 1.0 - (depthc - depth);
+        lmtrans3 *= 1.0 - clamp((depthc - depth) * 10, 0, 1);
 
         vec2 lmtrans4 = unpackUnorm2x4(lmgather.y);
         float depthd = depthgather.y;
-        lmtrans4 *= 1.0 - (depthd - depth);
+        lmtrans4 *= 1.0 - clamp((depthd - depth) * 10, 0, 1);
 
         vec2 lmtrans5 = unpackUnorm2x4(lmgather.w);
         float depthe = depthgather.w;
-        lmtrans5 *= 1.0 - (depthe - depth);
-
-        float lmy = clamp(mix(lmtrans.y, (lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, res),0.01,1);
-        float lmx = clamp(mix((lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, lmtrans.y, res),0.01,1);
+        lmtrans5 *= 1.0 - clamp((depthe - depth) * 10, 0, 1);
+        float lmy = clamp(mix(lmtrans.y, (lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, res), 0.0, 1);
+        float lmx = clamp(mix((lmtrans2.y + lmtrans3.y + lmtrans4.y + lmtrans5.y) / 4, lmtrans.y, res), 0.0, 1);
 
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler));
-
 
         ///---------------------------------------------
         outcol = clamp(vec4(EncodeNormal(normal), lmx, lmy), 0.0, 1);

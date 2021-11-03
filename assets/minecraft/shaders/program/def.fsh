@@ -148,6 +148,7 @@ void main() {
 
   vec3 avgAmbient = (ambientUp + ambientLeft + ambientRight + ambientB + ambientF + ambientDown) / 6. * (1.0 + rainStrength * 0.2);
   vec4 outcol = vec4(0.0);
+  /*
   if(gl_FragCoord.x < 17. && gl_FragCoord.y < 17.) {
 
     //vec3 avgAmbient = ds + ms;
@@ -168,6 +169,7 @@ void main() {
     outcol = vec4(reinhard_jodie(ambient * 10.0), 1.0);
 
   }
+  */
 //Save light values
   if(gl_FragCoord.x < 1. && gl_FragCoord.y > 19. + 18. && gl_FragCoord.y < 19. + 18. + 1)
     outcol = vec4(ambientUp, 1.0);

@@ -47,6 +47,7 @@ in vec3 sunVec;
 in vec3 sunPosition2;
 in vec3 sunPosition3;
 in float skyIntensityNight;
+in float skyIntensity;
 
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);
 
@@ -673,7 +674,6 @@ vec4 BilateralUpscale(sampler2D tex, sampler2D depth, vec2 coord, float frDepth,
 
     ivec2 pos = (ivec2(gl_FragCoord.xy + (Time * 1000)) % 2) * 1;
 
-
     float w = 1e-5;
     vl += texelFetch(tex, posVl + ivec2(-0.5) + pos, 0) * w;
     sum += w;
@@ -1038,8 +1038,9 @@ void main() {
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
             if(screenShadow > 0.0 && lmy < 0.9 && !isWater)
                 screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
+                screenShadow = clamp(screenShadow,0.1,1.0);
 
-            vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
+            //vec3 lightmap = texture(temporals3Sampler, vec2(lmy, lmx) * (oneTexel * 17)).xyz;
 
             vec3 normal = (DecodeNormal(lmnormal.rg));
 
@@ -1055,7 +1056,7 @@ void main() {
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= (1.0 + rainStrength * 0.2);
 
-            ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + lmy * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
+            ambientLight = clamp(ambientLight * (pow(lmx, 8.0) * 1.5) + pow(lmy,2.2) * vec3(TORCH_R, TORCH_G, TORCH_B), 0, 2.0);
 
             vec4 pbr = pbr(lmtrans, unpackUnorm2x4((texture(DiffuseSampler, texCoord + vec2(oneTexel.y)).a)), OutTexel3.rgb);
 
@@ -1069,7 +1070,7 @@ void main() {
             if(pbr.a * 255 > 1.0) {
                 vec3 normal2 = normal3 + (noise * (1 - smoothness));
 
-                vec3 avgSky = mix(lightmap * 0.5, ambientLight, lmx);
+                vec3 avgSky = mix(vec3(0.0), ambientLight, lmx);
                 vec4 reflection = vec4(SSR(viewPos.xyz, depth, normal2, noise));
 
                 float normalDotEye = dot(normal, normalize(viewPos));
@@ -1083,10 +1084,10 @@ void main() {
                 OutTexel *= 0.075;
                 reflections = max(vec3(0.0), reflections);
             }
-            OutTexel *= mix(vec3(1.0), lightmap, postlight);
+            //OutTexel *= mix(vec3(1.0), lightmap, postlight);
             float ao = 1.0;
             //ao = jaao(texCoord, normal3, noise, depth, 1.3);
-            ao = dbao(TranslucentDepthSampler);
+            //ao = dbao(TranslucentDepthSampler);
 
             //ao *= clamp(getAO(ivec2(gl_FragCoord.st), viewPos, normal3, noise),0.5,1.0);
 
@@ -1097,25 +1098,25 @@ void main() {
             shadeDir = clamp(shadeDir * ao, 0, 1);
 
             float sunSpec = ((GGX(normal, -normalize(view), sunPosition2, 1 - smoothness, f0.x)));
-
+            vec3 suncol = suncol * clamp(skyIntensity*3.0,0.15,1);
             vec3 shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 
-            shading += lightmap * 0.1;
+            //shading += lightmap * 0.1;
 
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if(light > 0.001)
                 shading.rgb = vec3(light * 2.0);
-            shading = max(vec3(0.1), shading);
-
+            shading = max(vec3(0.01), shading);
+            if(postlight != 1.0) shading = mix(vec3(1.0),shading,0.5);
             vec3 dlight = (OutTexel * shading) + reflections;
-
+            //dlight = clamp(vec3(shading), 0.0, 1);
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(screenShadow), 0.01, 1);
+            //outcol.rgb = clamp(vec3(1-postlight), 0.01, 1);
         ///---------------------------------------------
         } else {
             if(end != 1.0) {

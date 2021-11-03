@@ -109,6 +109,53 @@ float MinDepth3x3(vec2 uv) {
     }
     return minDepth;
 }
+vec3 GetHistory(sampler2D historySampler, vec2 reprojectedPosition, inout float historyWeight) {
+    if(clamp(reprojectedPosition.xy, 0, 1) != reprojectedPosition.xy) {
+        historyWeight = 0.001;
+        return vec3(0.0);
+    }
+
+    vec2 pixelCenterDist = 2.0 * fract(reprojectedPosition.xy * ScreenSize) - 1.0;
+    vec2 tmp = 1.0 - pixelCenterDist * pixelCenterDist;
+    historyWeight *= tmp.x * tmp.y * 0.5 + (1.0 - 0.5);
+
+    return texture(historySampler, reprojectedPosition.xy).rgb;
+}
+
+float MaxOf(vec2 v) {
+    return max(v.x, v.y);
+}
+
+vec3 ClipAABB(vec3 col, vec3 minCol, vec3 avgCol, vec3 maxCol) {
+    vec3 clampedCol = clamp(col, minCol, maxCol);
+
+    if(clampedCol != col) {
+        vec3 cvec = avgCol - col;
+
+        vec3 dists = mix(maxCol - col, minCol - col, step(0.0, cvec));
+        dists = clamp(dists / cvec, 0, 1);
+
+        if(clampedCol.x == col.x) { // ignore x
+            if(clampedCol.y == col.y) { // ignore x+y
+                col += cvec * dists.z;
+            } else if(clampedCol.z == col.z) { // ignore x+z
+                col += cvec * dists.y;
+            } else { // ignore x
+                col += cvec * MaxOf(dists.yz);
+            }
+        } else if(clampedCol.y == col.y) { // ignore y
+            if(clampedCol.z == col.z) { // ignore y+z
+                col += cvec * dists.x;
+            } else { // ignore y
+                col += cvec * MaxOf(dists.xz);
+            }
+        } else { // ignore z
+            col += cvec * MaxOf(dists.xy);
+        }
+    }
+
+    return col;
+}
 void main() {
     float depth = texture(DiffuseDepthSampler, texCoord).r;
 
@@ -159,9 +206,38 @@ void main() {
     vec4 vtex[4];
     VXAAUpsampleT4x(vtex, current, history, currN, histN);
 
+        float hweight = 0.9;
+        vec3 history2 = GetHistory(VXAA_TEXTURE_PREV, texCoord2, hweight);
+
+        vec3 mc = texture(VXAA_TEXTURE_CURRENT, texCoord).rgb;
+        vec3 tl = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(-1, -1)).rgb;
+        vec3 tc = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(0, -1)).rgb;
+        vec3 tr = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(1, -1)).rgb;
+        vec3 ml = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(-1, 0)).rgb;
+        vec3 mr = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(1, 0)).rgb;
+        vec3 bl = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(-1, 1)).rgb;
+        vec3 bc = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(0, 1)).rgb;
+        vec3 br = texture(VXAA_TEXTURE_CURRENT, texCoord + oneTexel * vec2(1, 1)).rgb;
+
+			// Min/Avg/Max of nearest 5 + nearest 9
+        vec3 min5 = min(min(min(min(tc, ml), mc), mr), bc);
+        vec3 min9 = min(min(min(min(tl, tr), min5), bl), br);
+        vec3 avg5 = tc + ml + mc + mr + bc;
+        vec3 avg9 = (tl + tr + avg5 + bl + br) / 9.0;
+        avg5 *= 0.2;
+        vec3 max5 = max(max(max(max(tc, ml), mc), mr), bc);
+        vec3 max9 = max(max(max(max(tl, tr), min5), bl), br);
+
+			// "Rounded" min/avg/max (avg of values for nearest 5 + nearest 9)
+        vec3 minRounded = (min5 + min9) * 0.5;
+        vec3 avgRounded = (avg5 + avg9) * 0.5;
+        vec3 maxRounded = (max5 + max9) * 0.5;
+
+        history2 = ClipAABB(history2, minRounded, avgRounded, maxRounded);
+
     // Average all samples.
     fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
-    //if(depth >= 1.0) fragColor = mix(texture(VXAA_TEXTURE_CURRENT, texCoord), texture(VXAA_TEXTURE_PREV, texCoord2), 0.9);
+    if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
     //fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
 
 }

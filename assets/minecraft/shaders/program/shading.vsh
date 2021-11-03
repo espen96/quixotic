@@ -46,6 +46,7 @@ out vec3 sunVec;
 out vec3 sunPosition2;
 out vec3 sunPosition3;
 out float skyIntensityNight;
+out float skyIntensity;
 
 float map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
@@ -159,7 +160,7 @@ void main() {
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
     zMults = vec3(1.0 / (far * near), far + near, far - near);
 
-     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
+    vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
     gbufferModelViewInverse = inverse(mat4(ModeViewMat));
     wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
@@ -222,11 +223,18 @@ void main() {
     float sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
 
     float angSkyNight = -((pi * 0.5128205128205128 - facos(-sunElevation * 0.95 + 0.05)) / 1.5);
+    float angSky = -((pi * 0.5128205128205128 - facos(sunElevation * 0.95 + 0.05)) / 1.5);
 
+    float fading = clamp(sunElevation + 0.095, 0.0, 0.08) / 0.08;
     float fading2 = clamp(-sunElevation + 0.095, 0.0, 0.08) / 0.08;
+    skyIntensity = max(0., 1.0 - exp(angSky)) * (1.0 - rainStrength * 0.4) * pow(fading, 5.0);
+
     skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
     sunVec = mix(sunVec2, -sunVec2, clamp(skyIntensityNight * 3, 0, 1));
-    sunPosition2 = mix(sunPosition3, -sunPosition3, clamp(skyIntensityNight * 3, 0, 1));
+    sunPosition2 = -sunPosition3*clamp(skyIntensityNight,0,1);
+    sunPosition2 += sunPosition3*clamp(skyIntensity,0,1);
+    sunPosition2 = normalize(sunPosition2);
+    
 
 ///////////////////////////
     suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
