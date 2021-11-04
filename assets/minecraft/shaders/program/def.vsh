@@ -5,7 +5,6 @@ in vec4 Position;
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D pre;
 
 uniform float Time;
 out vec2 texCoord;
@@ -100,8 +99,8 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 }
 
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
-	#define SKY_BRIGHTNESS_DAY 0.4
-	#define SKY_BRIGHTNESS_NIGHT 2.0;	
+	#define SKY_BRIGHTNESS_DAY 0.5
+	#define SKY_BRIGHTNESS_NIGHT 1.0;	
 	float mCosT = clamp(cosT, 0.0, 1.0);
 	float cosY = dot(sunVec, sVector);
 	float Y = facos(cosY);
@@ -134,8 +133,8 @@ void main() {
 
 	vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 	gl_Position = vec4(outPos.xy, 0.2, 1.0);
-	gl_Position.xy = gl_Position.xy * vec2(18. + 258 * 2, 258.) * oneTexel;
-	gl_Position.xy = gl_Position.xy * 2. - 1.0;
+	gl_Position.xy = gl_Position.xy * vec2(534, 258) * oneTexel;
+	gl_Position.xy = gl_Position.xy * 2.0 - 1.0;
 
 	texCoord = Position.xy / OutSize;
 

@@ -1,44 +1,21 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D DiffuseSampler;
-uniform sampler2D temporals3Sampler;
-uniform sampler2D cloudsample;
-uniform sampler2D shadow;
 uniform sampler2D TranslucentDepthSampler;
-uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
 
 uniform vec2 ScreenSize;
 uniform float Time;
 
-in vec3 ambientUp;
-in vec3 ambientLeft;
-in vec3 ambientRight;
-in vec3 ambientB;
-in vec3 ambientF;
-in vec3 ambientDown;
-in vec3 suncol;
 in vec3 zMults;
-
 in vec2 oneTexel;
-in vec4 fogcol;
-
 in vec2 texCoord;
-
-in mat3 gbufferModelViewInverse;
 in mat4 gbufferModelView;
 in mat4 wgbufferModelViewInverse;
 in mat4 gbufferProjection;
 
 in float near;
 in float far;
-in float end;
-in float overworld;
-
-in float rainStrength;
-in vec3 sunVec;
-
-in vec3 sunPosition3;
 in float skyIntensityNight;
 
 mat4 gbufferProjectionInverse = inverse(gbufferProjection);

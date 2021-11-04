@@ -70,12 +70,11 @@ return wind;
 
 void main() {
 vec3 position = Position + ChunkOffset;
-float animation = GameTime * 4000.0;
 test = texture(Sampler0, UV0).rgb;
 vec3 wave = vec3(0.0);
 
 if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a * 255 >= 17.0) {
-wave = wavingLeaves(Position).xyz;
+wave = wavingLeaves(mod(Position,16)).xyz;
 
 }
 vertexColor = Color;

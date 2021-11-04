@@ -4,7 +4,7 @@
         "srcrgb": "one",
         "dstrgb": "zero"
     },
-    "vertex": "tonemap",
+    "vertex": "blur4",
     "fragment": "blur4",
     "attributes": [ "Position" ],
     "samplers": [

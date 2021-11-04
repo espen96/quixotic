@@ -10,10 +10,12 @@ uniform vec2 OutSize;
 
 out vec2 texCoord;
 out vec2 oneTexel;
-
+out float skyIntensity;
+out vec3 nsunColor;
+out float skyIntensityNight;
 out float near;
 out float far;
-
+out float rainStrength;
 out vec3 sunDir;
 out mat4 gbufferModelView;
 out mat4 gbufferProjection;
@@ -22,9 +24,21 @@ out mat4 wgbufferModelViewInverse;
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
 #define PROJNEAR 0.05
+#define PI 3.141592
 
 vec2 getControl(int index, vec2 screenSize) {
     return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
+}
+float facos(float inX) {
+
+	const float C0 = 1.56467;
+	const float C1 = -0.155972;
+
+	float x = abs(inX);
+	float res = C1 * x + C0;
+	res *= sqrt(1.0f - x);
+
+	return (inX >= 0) ? res : PI - res;
 }
 int decodeInt(vec3 ivec) {
     ivec *= 255.0;
@@ -53,11 +67,8 @@ void main() {
     mat4 ModeViewMat = mat4(decodeFloat(texture(DiffuseSampler, start + 16.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 17.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 18.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 19.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 20.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 21.0 * inc).xyz), 0.0, decodeFloat(texture(DiffuseSampler, start + 22.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 23.0 * inc).xyz), decodeFloat(texture(DiffuseSampler, start + 24.0 * inc).xyz), 0.0, 0.0, 0.0, 0.0, 1.0);
 
     sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
-// 0     = +0.9765 +0.2154
-// 6000  = +0.0 +1.0
-// 12000 = -0.9765 +0.2154
-// 18000 = -0.0 -1.0
-// 24000 = +0.9765 +0.2154
+	vec4 rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
+
     bool time8 = sunDir.y > 0;
     float time4 = map(sunDir.x, -1, +1, 0, 1);
     float time5 = mix(12000, 0, time4);
@@ -87,6 +98,56 @@ void main() {
     texCoord = outPos.xy * 0.5 + 0.5;
 
     oneTexel = 1.0 / InSize;
+
+
+
+
+
+	vec3 sunDir2 = sunDir;
+
+	vec3 sunPosition = sunDir2;
+	const vec3 upPosition = vec3(0, 1, 0);
+	 rainStrength = (1 - (rain.r)) * 0.25;
+
+	float normSunVec = sqrt(sunPosition.x * sunPosition.x + sunPosition.y * sunPosition.y + sunPosition.z * sunPosition.z);
+	float normUpVec = sqrt(upPosition.x * upPosition.x + upPosition.y * upPosition.y + upPosition.z * upPosition.z);
+
+	float sunPosX = sunPosition.x / normSunVec;
+	float sunPosY = sunPosition.y / normSunVec;
+	float sunPosZ = sunPosition.z / normSunVec;
+
+	float upPosX = upPosition.x / normUpVec;
+	float upPosY = upPosition.y / normUpVec;
+	float upPosZ = upPosition.z / normUpVec;
+
+	float sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
+
+	float angSky = -((PI * 0.5128205128205128 - facos(sunElevation * 0.95 + 0.05)) / 1.5);
+	float angSkyNight = -((PI * 0.5128205128205128 - facos(-sunElevation * 0.95 + 0.05)) / 1.5);
+	float angMoon = -((PI * 0.5128205128205128 - facos(-sunElevation * 1.065 - 0.065)) / 1.5);
+	float angSun = -((PI * 0.5128205128205128 - facos(sunElevation * 1.065 - 0.065)) / 1.5);
+
+	float fading = clamp(sunElevation + 0.095, 0.0, 0.08) / 0.08;
+	skyIntensity = max(0., 1.0 - exp(angSky)) * (1.0 - rainStrength * 0.4) * pow(fading, 5.0);
+	float fading2 = clamp(-sunElevation + 0.095, 0.0, 0.08) / 0.08;
+	skyIntensityNight = max(0., 1.0 - exp(angSkyNight)) * (1.0 - rainStrength * 0.4) * pow(fading2, 5.0);
+
+	float skyIntensity = max(0., 1.0 - exp(angSky)) * (1.0 - rainStrength * 0.4) * pow(fading, 5.0);
+
+
+	float sunElev = pow(clamp(1.0 - sunElevation, 0.0, 1.0), 4.0) * 1.8;
+	const float sunlightR0 = 1.0;
+	float sunlightG0 = (0.89 * exp(-sunElev * 0.57)) * (1.0 - rainStrength * 0.3) + rainStrength * 0.3;
+	float sunlightB0 = (0.8 * exp(-sunElev * 1.4)) * (1.0 - rainStrength * 0.3) + rainStrength * 0.3;
+	vec3 sunVec = vec3(sunPosX, sunPosY, sunPosZ);
+
+	float sunlightR = sunlightR0 / (sunlightR0 + sunlightG0 + sunlightB0);
+	float sunlightG = sunlightG0 / (sunlightR0 + sunlightG0 + sunlightB0);
+	float sunlightB = sunlightB0 / (sunlightR0 + sunlightG0 + sunlightB0);
+	nsunColor = vec3(sunlightR, sunlightG, sunlightB);
+
+
+
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
 
 }

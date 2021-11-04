@@ -1,18 +1,15 @@
 #version 150
 
 uniform sampler2D DiffuseSampler;
-uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D MainSampler;
-uniform sampler2D previousFrame;
 uniform sampler2D BloomSampler;
 uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
-uniform vec2 OutSize;
 out vec4 fragColor;
 
 in vec2 texCoord;
 
-    #define EXPOSURE 1.30 
+    #define EXPOSURE 1.0 
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
@@ -31,25 +28,6 @@ in vec2 texCoord;
 
 float luma(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
-}
-float rand(vec2 co){
-  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
-
-vec4 textureGood(sampler2D sam, vec2 uv) {
-    vec2 res = textureSize(sam, 0);
-
-    vec2 st = uv * res - 0.5;
-
-    vec2 iuv = floor(st);
-    vec2 fuv = fract(st);
-
-    vec4 a = textureLod(sam, (iuv + vec2(0.5, 0.5)) / res, 0);
-    vec4 b = textureLod(sam, (iuv + vec2(1.5, 0.5)) / res, 0);
-    vec4 c = textureLod(sam, (iuv + vec2(0.5, 1.5)) / res, 0);
-    vec4 d = textureLod(sam, (iuv + vec2(1.5, 1.5)) / res, 0);
-
-    return mix(mix(a, b, fuv.x), mix(c, d, fuv.x), fuv.y);
 }
 
 void getNightDesaturation(inout vec3 color, float lmx) {
@@ -80,6 +58,13 @@ void BSLTonemap(inout vec3 color) {
     color = color / pow(pow(color, vec3(TONEMAP_WHITE_CURVE)) + 1.0, vec3(1.0 / TONEMAP_WHITE_CURVE));
     color = pow(color, mix(vec3(TONEMAP_LOWER_CURVE), vec3(TONEMAP_UPPER_CURVE), sqrt(color)));
 }
+vec3 ToneMap_Hejl2015(in vec3 hdr)
+{
+    vec4 vh = vec4(hdr*0.85, 3.0);	//0
+    vec4 va = (1.75 * vh) + 0.05;	//0.05
+    vec4 vf = ((vh * va + 0.004f) / ((vh * (va + 0.55f) + 0.0491f))) - 0.0821f+0.000633604888;	//((0+0.004)/((0*(0.05+0.55)+0.0491)))-0.0821
+    return vf.xyz / vf.www;
+}
 vec2 unpackUnorm2x4(float pack) {
     vec2 xy;
     xy.x = modf(pack * 255.0 / 16.0, xy.y);
@@ -89,186 +74,24 @@ vec2 unpackUnorm2x4(float pack) {
 float cdist(vec2 coord) {
     return max(abs(coord.s - 0.5), abs(coord.t - 0.5)) * 2.0;
 }
-vec4 sample_biquadratic_exact(sampler2D channel, vec2 uv) {
-    vec2 res = (textureSize(channel, 0).xy);
-    vec2 q = fract(uv * res);
-    ivec2 t = ivec2(uv * res);
-    ivec3 e = ivec3(-1, 0, 1);
-    vec4 s00 = texelFetch(channel, t + e.xx, 0);
-    vec4 s01 = texelFetch(channel, t + e.xy, 0);
-    vec4 s02 = texelFetch(channel, t + e.xz, 0);
-    vec4 s12 = texelFetch(channel, t + e.yz, 0);
-    vec4 s11 = texelFetch(channel, t + e.yy, 0);
-    vec4 s10 = texelFetch(channel, t + e.yx, 0);
-    vec4 s20 = texelFetch(channel, t + e.zx, 0);
-    vec4 s21 = texelFetch(channel, t + e.zy, 0);
-    vec4 s22 = texelFetch(channel, t + e.zz, 0);
-    vec2 q0 = (q + 1.0) / 2.0;
-    vec2 q1 = q / 2.0;
-    vec4 x0 = mix(mix(s00, s01, q0.y), mix(s01, s02, q1.y), q.y);
-    vec4 x1 = mix(mix(s10, s11, q0.y), mix(s11, s12, q1.y), q.y);
-    vec4 x2 = mix(mix(s20, s21, q0.y), mix(s21, s22, q1.y), q.y);
-    return mix(mix(x0, x1, q0.x), mix(x1, x2, q1.x), q.x);
+
+
+#define SHARPENING 0.25 //[0.0 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.0 ]
+vec3 LinearTosRGB(in vec3 color)
+{
+    vec3 x = color * 12.92f;
+    vec3 y = 1.055f * pow(clamp(color,0.0,1.0), vec3(1.0f / 2.4f)) - 0.055f;
+
+    vec3 clr = color;
+    clr.r = color.r < 0.0031308f ? x.r : y.r;
+    clr.g = color.g < 0.0031308f ? x.g : y.g;
+    clr.b = color.b < 0.0031308f ? x.b : y.b;
+
+    return clr;
 }
-vec4 textureQuadratic(in sampler2D sam, in vec2 p) {
-    vec2 texSize = (textureSize(sam, 0).xy); 
-
-    //Roger/iq style
-    p = p * texSize;
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    p = i + f * 0.5;
-    p = p / texSize;
-    f = f * f * (3.0 - 2.0 * f); // optional for extra sweet
-    vec2 w = 0.5 / texSize;
-    return mix(mix(texture(sam, p + vec2(0, 0)), texture(sam, p + vec2(w.x, 0)), f.x), mix(texture(sam, p + vec2(0, w.y)), texture(sam, p + vec2(w.x, w.y)), f.x), f.y);
-
+vec3 toLinear(vec3 sRGB){
+	return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
 }
-#define NUMCONTROLS 100
-#define THRESH 0.5
-#define FPRECISION 4000000.0
-#define PROJNEAR 0.05
-#define FUDGE 32.0
-int inControl(vec2 screenCoord, float screenWidth) {
-    if(screenCoord.y < 1.0) {
-        float index = floor(screenWidth / 2.0) + THRESH / 2.0;
-        index = (screenCoord.x - index) / 2.0;
-        if(fract(index) < THRESH && index < NUMCONTROLS && index >= 0) {
-            return int(index);
-        }
-    }
-    return -1;
-}
-
-vec4 getNotControl(sampler2D inSampler, vec2 coords, bool inctrl) {
-    vec2 oneTexel = 1 / ScreenSize;
-    if(inctrl) {
-        return (texture(inSampler, coords - vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(oneTexel.x, 0.0)) + texture(inSampler, coords + vec2(0.0, oneTexel.y))) / 3.0;
-    } else {
-        return texture(inSampler, coords);
-    }
-}
-vec3 encodeFloat24(float val) {
-    uint sign = val > 0.0 ? 0u : 1u;
-    uint exponent = uint(log2(abs(val)));
-    uint mantissa = uint((abs(val) / exp2(float(exponent)) - 1.0) * 131072.0);
-    return vec3((sign << 7u) | ((exponent + 31u) << 1u) | (mantissa >> 16u), (mantissa >> 8u) & 255u, mantissa & 255u) / 255.0;
-}
-
-float decodeFloat24(vec3 raw) {
-    uvec3 scaled = uvec3(raw * 255.0);
-    uint sign = scaled.r >> 7;
-    uint exponent = ((scaled.r >> 1u) & 63u) - 31u;
-    uint mantissa = ((scaled.r & 1u) << 16u) | (scaled.g << 8u) | scaled.b;
-    return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
-}
-
-uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
-
-
-        const float FXS = 0.015;         // font/screen resolution ratio
-        const float FYS = 0.015;         // font/screen resolution ratio
-
-        const int TEXT_BUFFER_LENGTH = 32;
-        int text[TEXT_BUFFER_LENGTH];
-        int textIndex;
-        vec4 colour;                    // color interface for printTextAt()
-
-        void floatToDigits(float x) {
-            float y, a;
-            const float base = 10.0;
-
-            // Handle sign
-            if (x < 0.0) { 
-                text[textIndex] = '-'; textIndex++; x = -x; 
-            } else { 
-                text[textIndex] = '+'; textIndex++; 
-            }
-
-            // Get integer (x) and fractional (y) part of number
-            y = x; 
-            x = floor(x); 
-            y -= x;
-
-            // Handle integer part
-            int i = textIndex;  // Start of integer part
-            while (textIndex < TEXT_BUFFER_LENGTH) {
-                // Get last digit, scale x down by 10 (or other base)
-                a = x;
-                x = floor(x / base);
-                a -= base * x;
-                // Add last digit to text array (results in reverse order)
-                text[textIndex] = int(a) + '0'; textIndex++;
-                if (x <= 0.0) break;
-            }
-            int j = textIndex - 1;  // End of integer part
-
-            // In-place reverse integer digits
-            while (i < j) {
-                int chr = text[i]; 
-                text[i] = text[j];
-                text[j] = chr;
-                i++; j--;
-            }
-
-            text[textIndex] = '.'; textIndex++;
-
-            // Handle fractional part
-            while (textIndex < TEXT_BUFFER_LENGTH) {
-                // Get first digit, scale y up by 10 (or other base)
-                y *= base;
-                a = floor(y);
-                y -= a;
-                // Add first digit to text array
-                text[textIndex] = int(a) + '0'; textIndex++;
-                if (y <= 0.0) break;
-            }
-
-            // Terminante string
-            text[textIndex] = 0;
-        }
-
-        void printTextAt(float x0, float y0) {
-            // Fragment position **in char-units**, relative to x0, y0
-            float x = texCoord.x/FXS; x -= x0;
-            float y = 0.5*(1.0 - texCoord.y)/FYS; y -= y0;
-
-            // Stop if not inside bbox
-            if ((x < 0.0) || (x > float(textIndex)) || (y < 0.0) || (y > 1.0)) return;
-            
-            int i = int(x); // Char index of this fragment in text
-            x -= float(i); // Fraction into this char
-
-            // Grab pixel from correct char texture
-            i = text[i];
-            x += float(int(i - ((i/16)*16)));
-            y += float(int(i/16));
-            x /= 16.0; y /= 16.0; // Divide by character-sheet size (in chars)
-
-            vec4 fontPixel = texture(FontSampler, vec2(x,y));
-
-            colour = vec4(fontPixel.rgb*fontPixel.a + colour.rgb*colour.a*(1 - fontPixel.a), 1.0);
-        }
-
-        void clearTextBuffer() {
-            for (int i = 0; i < TEXT_BUFFER_LENGTH; i++) {
-                text[i] = 0;
-            }
-            textIndex = 0;
-        }
-
-        void c(int character) {
-            // Adds character to text buffer, increments index for next character
-            // Short name for convenience
-            text[textIndex] = character; 
-            textIndex++;
-        }
-
-vec2 getControl(int index, vec2 screenSize) {
-    return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
-}
-
-#define SHARPENING 0.5 //[0.0 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.11 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.2 0.21 0.22 0.23 0.24 0.25 0.26 0.27 0.28 0.29 0.3 0.31 0.32 0.33 0.34 0.35 0.36 0.37 0.38 0.39 0.4 0.41 0.42 0.43 0.44 0.45 0.46 0.47 0.48 0.49 0.5 0.51 0.52 0.53 0.54 0.55 0.56 0.57 0.58 0.59 0.6 0.61 0.62 0.63 0.64 0.65 0.66 0.67 0.68 0.69 0.7 0.71 0.72 0.73 0.74 0.75 0.76 0.77 0.78 0.79 0.8 0.81 0.82 0.83 0.84 0.85 0.86 0.87 0.88 0.89 0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99 1.0 ]
 
 void main() {
 
@@ -299,23 +122,38 @@ void main() {
           - (SHARPENING)/(1.0-0.5/3.5)*contrast*(m1 - 0.5/3.5*color);
     */
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
+    vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
+    vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
+    float offset = 20.0;
 
-    vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy));
-    vec3 col = texture(blursampler, uv).rgb;
+    vec4 sum = texture(blursampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
+    
+    sum += texture(blursampler, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture(blursampler, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
+    sum += texture(blursampler, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture(blursampler, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
+    sum += texture(blursampler, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
+    sum += texture(blursampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
+    sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
+
+    vec3 col = sum.rgb / 12.0;
     col = pow(col,vec3(2.2))*2.0;
     col = max(vec3(0.0), col - 0.025);
 
     vec3 fin = col.rgb;
 
-    float lightScat = clamp(5.0 * 0.05 * pow(1, 0.2), 0.0, 1.0) * vignette;
+    float lightScat = 0.25 * vignette;
 
     float VL_abs = texture(BloomSampler, texCoord).a;
     float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
     VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
     color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
-    getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
+    //getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
 
     BSLTonemap(color);
+    //color = ToneMap_Hejl2015(color);
+        //color = LinearTosRGB(color);
+
     float lumC = luma(color);
     vec3 diff = color - lumC;
     color = color + diff * (-lumC * CROSSTALK + SATURATION);

@@ -45,43 +45,45 @@ float wave(float n) {
 }
 
 float waterH(vec3 posxz) {
-    posxz *= 16;
-    float wave = 0.0;
 
-    float factor = 1.0;
-    float amplitude = 0.01;
-    float speed = 4.0;
-    float size = 0.1;
+float wave = 0.0;
 
-    float px = posxz.x / 50.0 + 250.0;
-    float py = posxz.z / 50.0 + 250.0;
 
-    float fpx = abs(fract(px * 20.0) - 0.5) * 2.0;
-    float fpy = abs(fract(py * 20.0) - 0.5) * 2.0;
+float factor = 1.0;
+float amplitude = 0.2;
+float speed = 4.0;
+float size = 0.2;
 
-    float d = length(vec2(fpx, fpy));
+float px = posxz.x/50.0 + 250.0;
+float py = posxz.z/50.0  + 250.0;
 
-    for(int i = 0; i < 3; i++) {
-        wave -= d * factor * cos((1 / factor) * px * py * size + 1.0 * (GameTime * 500.0) * speed);
-        factor /= 2;
-    }
+float fpx = abs(fract(px*20.0)-0.5)*2.0;
+float fpy = abs(fract(py*20.0)-0.5)*2.0;
 
-    factor = 1.0;
-    px = -posxz.x / 50.0 + 250.0;
-    py = -posxz.z / 150.0 - 250.0;
+float d = length(vec2(fpx,fpy));
 
-    fpx = abs(fract(px * 20.0) - 0.5) * 2.0;
-    fpy = abs(fract(py * 20.0) - 0.5) * 2.0;
-
-    d = length(vec2(fpx, fpy));
-    float wave2 = 0.0;
-    for(int i = 0; i < 3; i++) {
-        wave2 -= d * factor * cos((1 / factor) * px * py * size + 1.0 * (GameTime * 800.0) * speed);
-        factor /= 2;
-    }
-
-    return amplitude * wave2 + amplitude * wave;
+for (int i = 0; i < 3; i++) {
+wave -= d*factor*cos( (1/factor)*px*py*size + 1.0*(GameTime * 500.0)*speed);
+factor /= 2;
 }
+
+factor = 1.0;
+px = -posxz.x/50.0 + 250.0;
+py = -posxz.z/150.0 - 250.0;
+
+fpx = abs(fract(px*20.0)-0.5)*2.0;
+fpy = abs(fract(py*20.0)-0.5)*2.0;
+
+d = length(vec2(fpx,fpy));
+float wave2 = 0.0;
+for (int i = 0; i < 3; i++) {
+wave2 -= d*factor*cos( (1/factor)*px*py*size + 1.0*(GameTime * 500.0)*speed);
+factor /= 2;
+}
+
+return amplitude*wave2+amplitude*wave;
+}
+
 
 const vec2 COPRIMES = vec2(2, 3);
 
@@ -107,14 +109,17 @@ void main() {
 
     float wtest = (texture(Sampler0, UV0).a);
 
-    vec3 posxz = sin(Position - 0.145);
+	vec3 posxz = mod(Position,16);
+
+	posxz.x += sin(posxz.z+(GameTime * 500.0))*0.25;
+	posxz.z += cos(posxz.x+(GameTime * 500.0)*0.5)*0.25;
 
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);
 
     float wavea = 0.0;
     if(wtest * 255 == 200)
-        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1))*1.5-0.1;
+        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1))*0.1;
     vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0)+ vec4(calculateJitter()*0.25,0,0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);

@@ -294,7 +294,7 @@ void main() {
             estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
 			estEyeDepth = max(62.90 - cameraPosition.y,0.0);
 
-            waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), noise, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
+            waterVolumetrics(vl,fragpos, estEyeDepth, length(fragpos), 1, totEpsilon, scatterCoef, avgSky, direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation,depth2);
 
             fragColor.rgb += vl;
             if(isWater && isEyeInWater == 0)fragColor.rgb = ((vl*0.25)+OutTexel);

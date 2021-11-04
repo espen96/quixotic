@@ -10,8 +10,11 @@ uniform vec2 ScreenSize;
 uniform float Time;
 in vec2 texCoord;
 in vec2 oneTexel;
-
+in float skyIntensity;
+in vec3 nsunColor;
+in float skyIntensityNight;
 in float near;
+in float rainStrength;
 in float far;
 
 in vec3 sunDir;
@@ -101,6 +104,48 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut) {
 
     return textureGood(lut, vec2(x, y)).rgb;
 }
+float pi = 3.141592;
+float facos(float inX) {
+
+  const float C0 = 1.56467;
+  const float C1 = -0.155972;
+
+  float x = abs(inX);
+  float res = C1 * x + C0;
+  res *= sqrt(1.0f - x);
+
+  return (inX >= 0) ? res : pi - res;
+}
+vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
+	#define SKY_BRIGHTNESS_DAY 0.5
+	#define SKY_BRIGHTNESS_NIGHT 1.0;	
+	float mCosT = clamp(cosT, 0.0, 1.0);
+	float cosY = dot(sunVec, sVector);
+	float Y = facos(cosY);
+	const float a = -0.8;
+	const float b = -0.1;
+	const float c = 3.0;
+	const float d = -7.;
+	const float e = 0.35;
+
+  //luminance (cie model)
+	vec3 daySky = vec3(0.0);
+	vec3 moonSky = vec3(0.0);
+	// Day
+	if(skyIntensity > 0.00001) {
+		float L0 = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * Y) - exp(d * pi / 2.)) + e * cosY * cosY);
+		vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength);
+		vec3 normalizedSunColor = nsunColor;
+		vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength);
+		daySky = pow(L0, 1.0 - rainStrength) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * SKY_BRIGHTNESS_DAY;
+	}
+	// Night
+	else if(skyIntensityNight > 0.00001) {
+		float L0Moon = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * (pi - Y)) - exp(d * pi / 2.)) + e * cosY * cosY);
+		moonSky = pow(L0Moon, 1.0 - rainStrength) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
+	}
+	return (daySky + moonSky);
+}
 
 float R2_dither() {
     vec2 alpha = vec2(0.75487765, 0.56984026);
@@ -156,12 +201,17 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     return pos.xyz;
 }
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 noise) {
-    vec2 offsetB = vec2(0.0, oneTexel.y+(noise.y*3.0));
-    vec2 offsetC = vec2(oneTexel.x+(noise.x*3.0), 0.0);
+    vec2 offsetB = vec2(0.0, oneTexel.y+(noise.y*20.0));
+    vec2 offsetB2 = vec2(0.0, oneTexel.y*2);
+    vec2 offsetC = vec2(oneTexel.x+(noise.x*20.0), 0.0);
+    vec2 offsetC2 = vec2(oneTexel.x*2, 0.0);
 
     float depthB = texture(depthtex, texcoords + offsetB).r;
+    float depthB2 = texture(depthtex, texcoords + offsetB2).r;
+    depthB = mix(depthB2,depthB, clamp(float(depthB - depthA)*10000,0,1));
     float depthC = texture(depthtex, texcoords + offsetC).r;
-
+    float depthC2 = texture(depthtex, texcoords + offsetC2).r;
+    depthC = mix(depthC2,depthC, clamp(float(depthC - depthA)*10000,0,1));
     vec3 A = getDepthPoint(texcoords, depthA);
     vec3 B = getDepthPoint(texcoords + offsetB, depthB);
     vec3 C = getDepthPoint(texcoords + offsetC, depthC);
@@ -272,49 +322,6 @@ vec4 SSR(vec3 fragpos, vec3 normal, float noise) {
     return color;
 }
 
-float decodeFloat7_4(uint raw) {
-    uint sign = raw >> 11u;
-    uint exponent = (raw >> 7u) & 15u;
-    uint mantissa = 128u | (raw & 127u);
-    return (float(sign) * -2.0 + 1.0) * float(mantissa) * exp2(float(exponent) - 14.0);
-}
-
-float decodeFloat6_4(uint raw) {
-    uint sign = raw >> 10u;
-    uint exponent = (raw >> 6u) & 15u;
-    uint mantissa = 64u | (raw & 63u);
-    return (float(sign) * -2.0 + 1.0) * float(mantissa) * exp2(float(exponent) - 13.0);
-}
-
-vec3 decodeColor(vec4 raw) {
-    uvec4 scaled = uvec4(round(raw * 255.0));
-    uint encoded = (scaled.r << 24) | (scaled.g << 16) | (scaled.b << 8) | scaled.a;
-
-    return vec3(decodeFloat7_4(encoded >> 21), decodeFloat7_4((encoded >> 10) & 2047u), decodeFloat6_4(encoded & 1023u));
-}
-
-uint encodeFloat7_4(float val) {
-    uint sign = val >= 0.0 ? 0u : 1u;
-    uint exponent = uint(clamp(log2(abs(val)) + 7.0, 0.0, 15.0));
-    uint mantissa = uint(abs(val) * exp2(-float(exponent) + 14.0)) & 127u;
-    return (sign << 11u) | (exponent << 7u) | mantissa;
-}
-
-uint encodeFloat6_4(float val) {
-    uint sign = val >= 0.0 ? 0u : 1u;
-    uint exponent = uint(clamp(log2(abs(val)) + 7.0, 0.0, 15.0));
-    uint mantissa = uint(abs(val) * exp2(-float(exponent) + 13.0)) & 63u;
-    return (sign << 10u) | (exponent << 6u) | mantissa;
-}
-
-vec4 encodeColor(vec3 color) {
-    uint r = encodeFloat7_4(color.r);
-    uint g = encodeFloat7_4(color.g);
-    uint b = encodeFloat6_4(color.b);
-
-    uint encoded = (r << 21) | (g << 10) | b;
-    return vec4(encoded >> 24, (encoded >> 16) & 255u, (encoded >> 8) & 255u, encoded & 255u) / 255.0;
-}
 float dither5x3() {
     const int ditherPattern[15] = int[15] (9, 3, 7, 12, 0, 11, 5, 1, 14, 8, 2, 13, 10, 4, 6);
 
@@ -364,7 +371,7 @@ void main() {
         float noisev3 = clamp((fract(dither5x3() - dither64)),0,1);
          float noisev2 = mix(noisev3,noise,0.5);
 
-        vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(noisev2 * 0.15) * oneTexel);
+        vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(float(color.a*255 == 200)) * oneTexel);
 
 ////////////////////
         vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
@@ -388,7 +395,8 @@ void main() {
 
         //vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
-        vec3 sky_c = (skyLut(view2, sunDir.xyz, view2.y, temporals3Sampler)) * luminance(color2.rgb);
+        vec3 sky_c = skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * luminance(color2.rgb);
+         
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
 

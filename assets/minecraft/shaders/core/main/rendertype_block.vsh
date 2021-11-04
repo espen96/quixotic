@@ -49,17 +49,14 @@ test = textureLod(Sampler0, UV0, 100).rgb;
 
 float xs = 0.0;
 float zs = 0.0;
+/*
 if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a * 255 >= 17.0) {
 xs = sin(position.x + animation);
 zs = cos(position.z + animation);
 }
+*/
+//float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
 
-float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
-if(vertexDistance > 64) {
-xs = 0;
-zs = 0;
-
-}
 vertexColor = Color;
 texCoord0 = UV0;
 

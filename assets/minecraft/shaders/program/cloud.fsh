@@ -230,9 +230,8 @@ void main() {
 
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
 	float noise = mask(gl_FragCoord.xy + (Time * 4000));
-    float dither2 = fract(dither5x3() - dither64);
 
-	float depth = texture(DiffuseDepthSampler, texCoord).r;
+	float depth = 1.0;
 
 	vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
 	vec3 sc = sc * (1 - ((rainStrength) * 0.5));

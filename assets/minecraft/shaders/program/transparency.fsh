@@ -10,9 +10,7 @@ uniform sampler2D ParticlesSampler;
 uniform sampler2D ParticlesDepthSampler;
 uniform sampler2D WeatherSampler;
 uniform sampler2D WeatherDepthSampler;
-uniform sampler2D CloudsSampler;
-uniform sampler2D CloudsDepthSampler;
-uniform sampler2D TranslucentSpecSampler;
+
 uniform vec2 ScreenSize;
 in vec2 texCoord;
 
@@ -78,8 +76,6 @@ void main() {
     color_layers[0] = vec4(texture(DiffuseSampler, texCoord).rgb, 1.0);
     depth_layers[0] = texture(DiffuseDepthSampler, texCoord).r;
     active_layers = 1;
-
-//    try_insert( toLinear(texture( CloudsSampler, texCoord )), CloudsDepthSampler);
     try_insert((texture(TranslucentSampler, texCoord)), TranslucentDepthSampler);
     try_insert((texture(ParticlesSampler, texCoord)), ParticlesDepthSampler);
     try_insert(toLinear(texture(WeatherSampler, texCoord)), WeatherDepthSampler);

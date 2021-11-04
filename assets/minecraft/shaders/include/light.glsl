@@ -47,10 +47,7 @@ vec4 minecraft_sample_lightmap2(sampler2D lightMap, ivec2 uv) {
     vec3 blocklightColSqrt = vec3(TORCH_R, TORCH_G, TORCH_B);
     vec3 blocklightCol = blocklightColSqrt * blocklightColSqrt;
 
-    vec3 blockLight = vec3(uv.x / 16.0) / 16;
-    vec3 skyLight = vec3(uv.y / 16.0) / 16;
 
-    vec3 blockLighting = blocklightCol * blockLight;
 
     vec2 block = vec2(clamp(vec2(uv.x, 0) / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
     vec2 sky = vec2(clamp(vec2(0, uv.y) / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
