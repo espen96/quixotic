@@ -37,7 +37,7 @@ float dither64 = Bayer64(gl_FragCoord.xy);
 void main() {
 
 //vec3 rnd = clamp(vec3(fract(dither5x3() - bayer16x16(gl_FragCoord.xy))),0,1)/8;
-vec3 rnd = clamp((vec3(fract(dither5x3() - dither64)))/8,0,1);
+vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
 
 discardControlGLPos(gl_FragCoord.xy, glpos);
 
@@ -60,7 +60,7 @@ float lightm = 0;
 if(color.a * 255 <= 17.0) {
 discard;
 }
-color.rgb += rnd / 16;
+color.rgb += rnd;
 color.rgb = clamp(color.rgb, 0.001, 1);
 
 float translucent = 0;

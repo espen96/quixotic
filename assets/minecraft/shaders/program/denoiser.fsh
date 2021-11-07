@@ -171,14 +171,14 @@ void main() {
     // We can then convert this into the texture coord of the fragment in the previous frame
     vec4 prevClip = gbufferPreviousProjection * gbufferPreviousModelView * vec4(prevRelativeWorldPos, 1);
     vec2 prevTexCoord = prevClip.xy / prevClip.w * 0.5 + 0.5;
-    vec2 texCoord2 = prevTexCoord;
+    vec2 texCoord2 = texCoord;
     // Sample scene and neighbourhood.
 
     vec4 current = clamp(vec4(texture(VXAA_TEXTURE_CURRENT, texCoord).rgb, 1.0), vec4(0.0f), vec4(1.0f));
     vec4 history = clamp(vec4(texture(VXAA_TEXTURE_PREV, texCoord2).rgb, 1.0), vec4(0.0f), vec4(1.0f));
     current.a = VXAALuma(current.rgb);
     history.a = VXAALuma(history.rgb);
-    float offset = 1.45;
+    float offset = 1.1;
     //if(depth >= 1.0) offset = 1.5;
     vec4 currN[4];
     currN[VXAA_W].rgb = clamp(texture(VXAA_TEXTURE_CURRENT, texCoord + vec2(-offset, 0.0f) / ScreenSize).rgb, vec3(0.0f), vec3(1.0f));
@@ -237,7 +237,7 @@ void main() {
 
     // Average all samples.
     fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
-    if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
-    //fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
+    //if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
+    fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
 
 }

@@ -2,6 +2,8 @@
 
 #moj_import <fog.glsl>
 #moj_import <utils.glsl>
+#moj_import <settings.glsl>
+#moj_import <mappings.glsl>
 
 uniform vec4 ColorModulator;
 uniform float FogStart;
@@ -67,8 +69,24 @@ void main() {
             
             } else if(index == 52) {
                 fragColor = vec4(test,1);
+            //mappings
+            } else if(index == 100) {
+                fragColor = vec4(float(sssMin)/255,float(sssMax)/255,0,1);
+            }  else if(index == 101) {
+                fragColor = vec4(float(lightMin)/255,float(lightMax)/255,0,1);
+            }  else if(index == 102) {
+                fragColor = vec4(float(roughMin)/255,float(roughMax)/255,0,1);
+            } else if(index == 103) {
+                fragColor = vec4(float(metalMin)/255,float(metalMax)/255,0,1);
             }
-                                                            
+            //settings
+            else if(index == 104) {
+                fragColor = vec4(sExposure/255,sWhiteCurve/255,sLowerCurve/255,1);
+            }  else if(index == 105) {
+                fragColor = vec4(sUpperCurve/255,sCrossTalk/255,sSaturation/255,1);
+            }
+
+
             // blackout control pixels for sunDir so sun can write to them (by default, all pixels are FogColor)
             else {
                 fragColor = vec4(0.0, 0.0, 0.0, 1.0);

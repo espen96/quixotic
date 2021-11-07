@@ -38,7 +38,7 @@ void getNightDesaturation(inout vec3 color, float lmx) {
     color = mix(lum * lmx * vec3(Purkinje_R, Purkinje_G, Purkinje_B), color, rodCurve);
 
     float brightness = dot(color, vec3(0.2627, 0.6780, 0.0593));
-    float amount = clamp(0.1 / (pow(brightness * ndeSat, 2.0) + 0.02), 0, 1);
+    float amount = clamp(0.15 / (pow(brightness * ndeSat, 2.0) + 0.02), 0, 1);
     vec3 desatColor = mix(color, vec3(brightness), vec3(0.9)) * vec3(0.2, 1.0, 2.0);
 
     color = mix(color, desatColor, amount);
@@ -148,7 +148,7 @@ void main() {
     float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
     VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
     color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
-    //getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
+    getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
 
     BSLTonemap(color);
     //color = ToneMap_Hejl2015(color);

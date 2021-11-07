@@ -55,6 +55,7 @@ void main() {
                 }
             }
             gbufferModelViewInverse = inverse(ProjMat * ModelViewMat);
+            
         } else {
             isSun = 0.5;
         }

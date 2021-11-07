@@ -17,8 +17,8 @@ out vec3 ambientF;
 out vec3 ambientDown;
 out vec3 suncol;
 out vec3 nsunColor;
-flat out vec3 zMults;
-
+out float skys;
+out float wttest;
 out vec2 oneTexel;
 out vec4 fogcol;
 
@@ -29,7 +29,7 @@ out mat4 gbufferModelView;
 out mat4 wgbufferModelView;
 out mat4 gbufferProjection;
 out mat4 gbufferProjectionInverse;
-out mat4 wgbufferModelViewInverse;
+//out mat4 wgbufferModelViewInverse;
 
 out float near;
 out float far;
@@ -43,6 +43,11 @@ out vec3 sunPosition2;
 out vec3 sunPosition3;
 out float skyIntensityNight;
 out float skyIntensity;
+
+
+
+
+
 
 float map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
@@ -140,8 +145,8 @@ vec2 R2_samples(int n) {
     return fract(alpha * n);
 }
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength, vec3 nsunColor, float skyIntensity, float skyIntensityNight) {
-	#define SKY_BRIGHTNESS_DAY 0.5
-	#define SKY_BRIGHTNESS_NIGHT 0.5;	
+	#define SKY_BRIGHTNESS_DAY 1.0
+	#define SKY_BRIGHTNESS_NIGHT 1.0;	
     float mCosT = clamp(cosT, 0.0, 1.0);
     float cosY = dot(sunVec, sVector);
     float Y = facos(cosY);
@@ -193,21 +198,28 @@ void main() {
     end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
 
     vec4 rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
+    wttest = decodeFloat24(texture(DiffuseSampler, start + 99.0 * inc).xyz);
 
     near = PROJNEAR;
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
-    zMults = vec3(1.0 / (far * near), far + near, far - near);
+    if(overworld != 1.0) {
+        near = 12;
+        far = 256;
+    }
+    //zMults = vec3(1.0 / (far * near), far + near, far - near);
 
     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
     gbufferModelViewInverse = inverse(mat4(ModeViewMat));
-    wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
+    //wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
 
     gbufferModelView = (ModeViewMat);
     wgbufferModelView = (ProjMat * ModeViewMat);
 
     gbufferProjection = ProjMat;
     gbufferProjectionInverse = inverse(ProjMat);
+///////////////////
+
 
 ////////////////////////////////////////////////
 
@@ -276,6 +288,24 @@ void main() {
     float sunlightB = sunlightB0 / (sunlightR0 + sunlightG0 + sunlightB0);
     nsunColor = vec3(sunlightR, sunlightG, sunlightB);
 
+
+
+    float skyIntensity = max(0., 1.0 - exp(angSky)) * (1.0 - rainStrength * 0.4) * pow(fading, 5.0);
+    float moonIntensity = max(0., 1.0 - exp(angMoon));
+    float sunIntensity = max(0., 1.0 - exp(angSun));
+    vec3 sunVec = vec3(sunPosX, sunPosY, sunPosZ);
+    moonIntensity = max(0., 1.0 - exp(angMoon));
+
+    float avgEyeIntensity = ((sunIntensity * 120. + moonIntensity * 4.) + skyIntensity * 230. + skyIntensityNight * 4.);
+    float exposure = 0.18 / log(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3 * log(2.0);
+    const float sunAmount = 27.0 * 1.5;
+    float lightSign = clamp(sunIntensity * pow(10., 35.), 0., 1.);
+    vec4 lightCol = vec4((sunlightR * 3. * sunAmount * sunIntensity + 0.16 / 5. - 0.16 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * 7.84 * exposure, 7.84 * (sunlightG * 3. * sunAmount * sunIntensity + 0.24 / 5. - 0.24 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, 7.84 * (sunlightB * 3. * sunAmount * sunIntensity + 0.36 / 5. - 0.36 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, lightSign * 2.0 - 1.0);
+    suncol = lightCol.rgb;
+    vec3 lightSourceColor = lightCol.rgb;
+    float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
+    float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;
+    skys = 1.8 / log2(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3;
 ///////////////////////////
     ambientUp = vec3(0.0);
     ambientDown = vec3(0.0);
@@ -289,7 +319,7 @@ void main() {
         vec2 ij = R2_samples((int(Time) % 1000) * maxIT + i);
         vec3 pos = normalize(rodSample(ij));
 
-        vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength, nsunColor, skyIntensity, skyIntensityNight) / maxIT;
+        vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength * 0.25, nsunColor, skyIntensity, skyIntensityNight) / maxIT;
 		// /avgSky += samplee/2.2 ;
 
         ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
@@ -300,22 +330,6 @@ void main() {
         ambientDown += samplee * (clamp(pos.y / 6., 0.0, 1.0) + abs(pos.x) / 7. + abs(pos.z) / 7.);
 
     }
-
-    float skyIntensity = max(0., 1.0 - exp(angSky)) * (1.0 - rainStrength * 0.4) * pow(fading, 5.0);
-    float moonIntensity = max(0., 1.0 - exp(angMoon));
-    float sunIntensity = max(0., 1.0 - exp(angSun));
-    vec3 sunVec = vec3(sunPosX, sunPosY, sunPosZ);
-    moonIntensity = max(0., 1.0 - exp(angMoon));
-
-    float avgEyeIntensity = ((sunIntensity * 120. + moonIntensity * 4.) + skyIntensity * 230. + skyIntensityNight * 4.);
-    float exposure = 0.18 / log(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3 * log(2.0);
-    const float sunAmount = 27.0 * 2.0;
-    float lightSign = clamp(sunIntensity * pow(10., 35.), 0., 1.);
-    vec4 lightCol = vec4((sunlightR * 3. * sunAmount * sunIntensity + 0.16 / 5. - 0.16 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * 7.84 * exposure, 7.84 * (sunlightG * 3. * sunAmount * sunIntensity + 0.24 / 5. - 0.24 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, 7.84 * (sunlightB * 3. * sunAmount * sunIntensity + 0.36 / 5. - 0.36 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, lightSign * 2.0 - 1.0);
-    suncol = lightCol.rgb;
-    vec3 lightSourceColor = lightCol.rgb;
-    float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
-    float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;
 
 	//Fake bounced sunlight
     vec3 bouncedSun = lightSourceColor / pi / pi / 4. * 0.5 * (abs(sunVec.x) * 0.2 + clamp(lightDir * sunVec.y, 0.0, 1.0) * 0.6 + abs(sunVec.z) * 0.2);

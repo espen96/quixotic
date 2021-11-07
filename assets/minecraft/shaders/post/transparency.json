@@ -308,7 +308,7 @@
      },
      {
         "name":"copy_with_depth",
-        "intarget":"denoised",
+        "intarget":"shading",
         "outtarget":"previousFrame",
         "auxtargets":[
            {

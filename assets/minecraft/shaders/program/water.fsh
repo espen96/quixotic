@@ -16,7 +16,8 @@ in float skyIntensityNight;
 in float near;
 in float rainStrength;
 in float far;
-
+in float overworld;
+in float end;
 in vec3 sunDir;
 in mat4 gbufferModelView;
 in mat4 gbufferProjection;
@@ -118,7 +119,7 @@ float facos(float inX) {
 }
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
 	#define SKY_BRIGHTNESS_DAY 0.5
-	#define SKY_BRIGHTNESS_NIGHT 1.0;	
+	#define SKY_BRIGHTNESS_NIGHT 0.5;	
 	float mCosT = clamp(cosT, 0.0, 1.0);
 	float cosY = dot(sunVec, sVector);
 	float Y = facos(cosY);
@@ -201,9 +202,9 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     return pos.xyz;
 }
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 noise) {
-    vec2 offsetB = vec2(0.0, oneTexel.y+(noise.y*20.0));
+    vec2 offsetB = vec2(0.0, oneTexel.y+(noise.y*10.0));
     vec2 offsetB2 = vec2(0.0, oneTexel.y*2);
-    vec2 offsetC = vec2(oneTexel.x+(noise.x*20.0), 0.0);
+    vec2 offsetC = vec2(oneTexel.x+(noise.x*10.0), 0.0);
     vec2 offsetC2 = vec2(oneTexel.x*2, 0.0);
 
     float depthB = texture(depthtex, texcoords + offsetB).r;
@@ -364,14 +365,14 @@ void main() {
 
     vec4 color2 = color;
 
-    if(color.a > 0.01) {
+    if(color.a > 0.01 && overworld == 1) {
 
         float depth = texture(TranslucentDepthSampler, texCoord).r;
         float noise = mask(gl_FragCoord.xy + (Time * 100));
         float noisev3 = clamp((fract(dither5x3() - dither64)),0,1);
          float noisev2 = mix(noisev3,noise,0.5);
 
-        vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(float(color.a*255 == 200)) * oneTexel);
+        vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, vec2(float(color.a*255 == 200)+1) * oneTexel);
 
 ////////////////////
         vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
@@ -402,7 +403,7 @@ void main() {
 
 
         reflection = vec4(SSR(viewPos.xyz, normal, noisev2));
-        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.75;
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
         vec3 reflected = reflection.rgb * fresnel;
 
         float alpha0 = color2.a;
