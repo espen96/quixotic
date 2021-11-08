@@ -128,8 +128,8 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 	color = vec3(0.0);
 	float SdotV = dot(sunVec, normalize(fragpositi));
 	//fake multiple scattering approx 1 (from horizon zero down clouds)
-	float mieDay = max(phaseg(SdotV, 0.2), phaseg(SdotV, 0.2));
-	float mieNight = max(phaseg(-SdotV, 0.2), phaseg(-SdotV, 0.2));
+	float mieDay = max(phaseg(SdotV, 0.22), phaseg(SdotV, 0.2));
+	float mieNight = max(phaseg(-SdotV, 0.22), phaseg(-SdotV, 0.2));
 
 	vec3 sunContribution = mieDay * sunColor * 3.14;
 	vec3 moonContribution = mieNight * moonColor * 3.14;

@@ -15,7 +15,9 @@ flat out vec4 skycol;
 out vec4 rain;
 out mat4 gbufferModelViewInverse2;
 out mat4 gbufferModelViewInverse;
+
 out mat4 gbufferProjectionInverse;
+out mat4 gbufferProjection;
 out vec3 suncol;
 out vec3 avgSky;
 out vec3 ambientUp;
@@ -210,6 +212,7 @@ void main() {
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
 
     sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
+    gbufferProjection = (ProjMat);
     gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);

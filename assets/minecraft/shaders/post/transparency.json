@@ -14,22 +14,14 @@
    ],
    "passes":[
       {
-         "name":"cloud",
-         "intarget":"minecraft:main",
-         "outtarget":"swap1",
-         "auxtargets":[
-            {
-               "name":"noisetex",
-               "id":"clouds"
-            }
-         ]
-      },
-
-      {
          "name":"shading",
          "intarget":"minecraft:main",
          "outtarget":"shading",
          "auxtargets":[
+            {
+               "name":"noisetex",
+               "id":"clouds"
+            },
             {
                "name":"clouds",
                "id":"clouds"

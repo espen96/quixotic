@@ -5,9 +5,14 @@ in vec4 Position;
 
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
+uniform sampler2D noisetex;
 uniform sampler2D DiffuseSampler;
-uniform sampler2D temporals3Sampler;
 uniform float Time;
+out mat4 gbufferModelView;
+out mat4 wgbufferModelView;
+out mat4 gbufferProjection;
+out mat4 gbufferProjectionInverse;
+out float sunElevation;
 
 out vec3 ambientUp;
 out vec3 ambientLeft;
@@ -18,17 +23,13 @@ out vec3 ambientDown;
 out vec3 suncol;
 out vec3 nsunColor;
 out float skys;
-out float wttest;
 out vec2 oneTexel;
 out vec4 fogcol;
+out float cloudy;
 
 out vec2 texCoord;
 
-out mat4 gbufferModelViewInverse;
-out mat4 gbufferModelView;
-out mat4 wgbufferModelView;
-out mat4 gbufferProjection;
-out mat4 gbufferProjectionInverse;
+
 //out mat4 wgbufferModelViewInverse;
 
 out float near;
@@ -41,6 +42,7 @@ out vec3 sunVec;
 
 out vec3 sunPosition2;
 out vec3 sunPosition3;
+out vec3 sunPosition;
 out float skyIntensityNight;
 out float skyIntensity;
 
@@ -198,7 +200,6 @@ void main() {
     end = vec4((texture(DiffuseSampler, start + 29.0 * inc))).r;
 
     vec4 rain = vec4((texture(DiffuseSampler, start + 30.0 * inc)));
-    wttest = decodeFloat24(texture(DiffuseSampler, start + 99.0 * inc).xyz);
 
     near = PROJNEAR;
     far = ProjMat[3][2] * PROJNEAR / (ProjMat[3][2] + 2.0 * PROJNEAR);
@@ -210,7 +211,7 @@ void main() {
 
     vec3 sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
-    gbufferModelViewInverse = inverse(mat4(ModeViewMat));
+    //gbufferModelViewInverse = inverse(mat4(ModeViewMat));
     //wgbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
 
     gbufferModelView = (ModeViewMat);
@@ -241,8 +242,8 @@ void main() {
     sunDir = normalize(vec3(sunDirTemp.x, sunDir.y, sunDirTemp.z));
 
     rainStrength = 1 - rain.r;
-    vec3 sunDir2 = sunDir;
-    vec3 sunPosition = mat3(gbufferModelView) * sunDir2;
+     vec3 sunDir2 = sunDir;
+     sunPosition = mat3(gbufferModelView) * sunDir2;
     sunPosition3 = sunDir2;
 
     vec3 upPosition = vec3(gbufferModelView[1].xyz);
@@ -260,7 +261,7 @@ void main() {
     float upPosY = upPosition.y / normUpVec;
     float upPosZ = upPosition.z / normUpVec;
 
-    float sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
+     sunElevation = sunPosX * upPosX + sunPosY * upPosY + sunPosZ * upPosZ;
 
     float angSkyNight = -((pi * 0.5128205128205128 - facos(-sunElevation * 0.95 + 0.05)) / 1.5);
     float angSky = -((pi * 0.5128205128205128 - facos(sunElevation * 0.95 + 0.05)) / 1.5);
@@ -306,6 +307,8 @@ void main() {
     float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
     float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;
     skys = 1.8 / log2(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3;
+         cloudy = decodeFloat24((texture(noisetex, start + 51.0 * inc).rgb));
+
 ///////////////////////////
     ambientUp = vec3(0.0);
     ambientDown = vec3(0.0);

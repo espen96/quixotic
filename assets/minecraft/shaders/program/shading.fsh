@@ -1,15 +1,19 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D DiffuseSampler;
-uniform sampler2D cloudsample;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
+uniform sampler2D noisetex;
 
 uniform vec2 ScreenSize;
 uniform vec2 OutSize;
 uniform float Time;
 
+in mat4 gbufferModelView;
+in mat4 gbufferProjectionInverse;
+in mat4 gbufferProjection;
+mat4 gbufferModelViewInverse = inverse(gbufferModelView);
 in float sShadows;
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
@@ -18,13 +22,12 @@ in float sShadows;
 vec2 getControl(int index, vec2 screenSize) {
     return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
 }
-    vec2 start = getControl(0, OutSize);
-    vec2 inc = vec2(2.0 / OutSize.x, 0.0);
-    vec2 pbr1 = vec4((texture(DiffuseSampler, start + 100.0 * inc))).xy;
-    vec2 pbr2 = vec4((texture(DiffuseSampler, start + 101.0 * inc))).xy;
-    vec2 pbr3 = vec4((texture(DiffuseSampler, start + 102.0 * inc))).xy;
-    vec2 pbr4 = vec4((texture(DiffuseSampler, start + 103.0 * inc))).xy;
-
+vec2 start = getControl(0, OutSize);
+vec2 inc = vec2(2.0 / OutSize.x, 0.0);
+vec2 pbr1 = vec4((texture(DiffuseSampler, start + 100.0 * inc))).xy;
+vec2 pbr2 = vec4((texture(DiffuseSampler, start + 101.0 * inc))).xy;
+vec2 pbr3 = vec4((texture(DiffuseSampler, start + 102.0 * inc))).xy;
+vec2 pbr4 = vec4((texture(DiffuseSampler, start + 103.0 * inc))).xy;
 
 in vec3 ambientUp;
 in vec3 ambientLeft;
@@ -34,20 +37,15 @@ in vec3 ambientF;
 in vec3 ambientDown;
 in vec3 suncol;
 in vec3 nsunColor;
-flat in vec3 zMults;
 in float skys;
-in float wttest;
+in float cloudy;
 
 in vec2 oneTexel;
 in vec4 fogcol;
 
 in vec2 texCoord;
 
-in mat4 gbufferModelViewInverse;
-in mat4 gbufferModelView;
-//in mat4 wgbufferModelViewInverse;
-in mat4 gbufferProjectionInverse;
-in mat4 gbufferProjection;
+
 
 in float near;
 in float far;
@@ -61,6 +59,10 @@ in vec3 sunPosition2;
 in vec3 sunPosition3;
 in float skyIntensityNight;
 in float skyIntensity;
+in float sunElevation;
+
+
+
 
 out vec4 fragColor;
 
@@ -140,9 +142,6 @@ float map(float value, float min1, float max1, float min2, float max2) {
 float luma(vec3 color) {
     return dot(color, vec3(0.299, 0.587, 0.114));
 }
-
-
-
 
 vec4 pbr(vec2 in1, vec2 in2, vec3 test) {
 
@@ -599,7 +598,116 @@ float dbao3(sampler2D depth) {
     }
     return occlusion / float(6 * 12);
 }
+const float sky_planetRadius = 6731e3;
 
+
+const float PI = 3.141592;
+vec3 cameraPosition = vec3(0,abs((cloudy)),0);
+const float cloud_height = 1500.;
+const float maxHeight = 1650.;
+int maxIT_clouds = 15;
+const float cdensity = 0.2;
+
+///////////////////////////
+
+
+
+
+//Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
+float cloudCov(in vec3 pos, vec3 samplePos) {
+    float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
+    float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
+    float coverage = clamp(texture(noisetex, fract(samplePos.xz / 12500.)).x * 1. + 0.5 * rainStrength, 0.0, 1.0);
+    float cloud = coverage * coverage * 1.0 - mult * mult * mult * 3.0 - mult2 * mult2;
+    return max(cloud, 0.0);
+}
+//Erode cloud with 3d Perlin-worley noise, actual cloud value
+
+float cloudVol(in vec3 pos, in vec3 samplePos, in float cov) {
+    float mult2 = (pos.y - 1500) / 2500 + rainStrength * 0.4;
+
+    float cloud = clamp(cov - 0.11 * (0.2 + mult2), 0.0, 1.0);
+    return cloud;
+
+}
+
+vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3 moonColor, vec3 avgAmbient) {
+
+    vec4 fragposition = gbufferModelViewInverse * vec4(fragpositi, 1.0);
+
+    vec3 worldV = normalize(fragposition.rgb);
+    float VdotU = worldV.y;
+    maxIT_clouds = int(clamp(maxIT_clouds / sqrt(VdotU), 0.0, maxIT_clouds));
+
+    vec3 dV_view = worldV;
+
+    vec3 progress_view = dV_view * dither + cameraPosition;
+
+    float total_extinction = 1.0;
+
+    worldV = normalize(worldV) * 300000. + cameraPosition; //makes max cloud distance not dependant of render distance
+    if(worldV.y < cloud_height)
+        return vec4(0.0, 0.0, 0.0, 1.0);	//don't trace if no intersection is possible
+
+    dV_view = normalize(dV_view);
+
+	//setup ray to start at the start of the cloud plane and end at the end of the cloud plane
+    dV_view *= max(maxHeight - cloud_height, 0.0) / dV_view.y / maxIT_clouds;
+
+    vec3 startOffset = dV_view * clamp(dither, 0.0, 1.0);
+    progress_view = startOffset + cameraPosition + dV_view * (cloud_height - cameraPosition.y) / (dV_view.y);
+
+    float mult = length(dV_view);
+
+    color = vec3(0.0);
+    float SdotV = dot(sunVec, normalize(fragpositi));
+	//fake multiple scattering approx 1 (from horizon zero down clouds)
+    float mieDay = max(phaseg(SdotV, 0.22), phaseg(SdotV, 0.2));
+    float mieNight = max(phaseg(-SdotV, 0.22), phaseg(-SdotV, 0.2));
+
+    vec3 sunContribution = mieDay * sunColor * 3.14;
+    vec3 moonContribution = mieNight * moonColor * 3.14;
+    float ambientMult = exp(-(1.25 + 0.8 * clamp(rainStrength, 0.75, 1)) * cdensity * 50.0);
+    vec3 skyCol0 = avgAmbient * ambientMult;
+
+    for(int i = 0; i < maxIT_clouds; i++) {
+        vec3 curvedPos = progress_view;
+        vec2 xz = progress_view.xz - cameraPosition.xz;
+        curvedPos.y -= sqrt(pow(sky_planetRadius, 2.0) - dot(xz, xz)) - sky_planetRadius;
+        vec3 samplePos = curvedPos * vec3(1.0, 1.0 / 32.0, 1.0) / 4 + (sunElevation * 1000) * vec3(0.5, 0.0, 0.5);
+
+        float coverageSP = cloudCov(curvedPos, samplePos);
+        if(coverageSP > 0.05) {
+            float cloud = cloudVol(curvedPos, samplePos, coverageSP);
+            if(cloud > 0.05) {
+                float mu = cloud * cdensity;
+
+				//fake multiple scattering approx 2  (from horizon zero down clouds)
+                float h = 0.35 - 0.35 * clamp(progress_view.y / 4000. - 1500. / 4000., 0.0, 1.0);
+                float powder = 1.0 - exp(-mu * mult);
+                float Shadow = mix(1.0, powder, h);
+                float ambientPowder = mix(1.0, powder, h * ambientMult);
+                vec3 S = vec3(sunContribution * Shadow + Shadow * moonContribution + skyCol0 * ambientPowder);
+
+                vec3 Sint = (S - S * exp(-mult * mu)) / (mu);
+                color += mu * Sint * total_extinction;
+                total_extinction *= exp(-mu * mult);
+                if(total_extinction < 1e-5)
+                    break;
+            }
+
+        }
+
+        progress_view += dV_view;
+
+    }
+
+    float cosY = normalize(dV_view).y;
+
+    color.rgb = mix(color.rgb * vec3(0.2, 0.21, 0.21), color.rgb, 1 - rainStrength);
+    return mix(vec4(color, clamp(total_extinction, 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0), 1 - smoothstep(0.02, 0.20, cosY));
+
+}
 float dbao(sampler2D depth) {
     float ao = 0.0;
     float aspectRatio = ScreenSize.x / ScreenSize.y;
@@ -719,73 +827,6 @@ float mask(vec2 p) {
 
     return (pow(f, 150.) + 1.3 * f) * 0.43478260869; // <.98 : ~ f/2, P=50%  >.98 : ~f^150, P=50%    
 }
-float ld(float depth) {
-    return 1.0 / (zMults.y - depth * zMults.z);		// (-depth * (far - near)) = (2.0 * near)/ld - far - near
-}
-
-vec4 BilateralUpscale(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
-
-    vec4 vl = vec4(0.0);
-    float sum = 0.0;
-    ivec2 posVl = ivec2(coord / 2.0);
-
-    ivec2 pos = (ivec2(gl_FragCoord.xy + (Time * 1000)) % 2) * 1;
-
-    float w = 1e-5;
-    vl += texelFetch(tex, posVl + ivec2(-0.5) + pos, 0) * w;
-    sum += w;
-
-    vl += texelFetch(tex, posVl + ivec2(-0.5, 0) + pos, 0) * w;
-    sum += w;
-
-    vl += texelFetch2D(tex, posVl + ivec2(0) + pos, 0) * w;
-    sum += w;
-
-    vl += texelFetch(tex, posVl + ivec2(0, -0.5) + pos, 0) * w;
-    sum += w;
-
-    return vl / sum;
-}
-vec4 BilateralUpscale2(sampler2D tex, sampler2D depth, vec2 coord, float frDepth, float rendres) {
-
-    vec4 vl = vec4(0.0);
-    float sum = 0.0;
-    mat3x3 weights;
-    const ivec2 scaling = ivec2(1.0 / 1);
-
-    ivec2 posD = ivec2(coord / 1.0) * scaling;
-    ivec2 posVl = ivec2(coord / 1.0);
-
-    float dz = zMults.x;
-    ivec2 pos = (ivec2(gl_FragCoord.xy + (Time * 1000)) % 2) * 2;
-	//pos = ivec2(1,-1);
-
-    ivec2 tcDepth = posD + ivec2(-4, -4) * scaling + pos * scaling;
-    float dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
-    float w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
-    vl += texelFetch2D(tex, posVl + ivec2(-2) + pos, 0) * w;
-    sum += w;
-
-    tcDepth = posD + ivec2(-10, 0) * scaling + pos * scaling;
-    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
-    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
-    vl += texelFetch2D(tex, posVl + ivec2(-2, 0) + pos, 0) * w;
-    sum += w;
-
-    tcDepth = posD + ivec2(0) + pos * scaling;
-    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
-    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
-    vl += texelFetch2D(tex, posVl + ivec2(0) + pos, 0) * w;
-    sum += w;
-
-    tcDepth = posD + ivec2(0, -4) * scaling + pos * scaling;
-    dsample = ld(texelFetch2D(depth, tcDepth, 0).r);
-    w = abs(dsample - frDepth) < dz ? 1.0 : 1e-5;
-    vl += texelFetch2D(tex, posVl + ivec2(0, -2) + pos, 0) * w;
-    sum += w;
-
-    return vl / sum;
-}
 
 vec3 viewToWorld(vec3 viewPos) {
 
@@ -798,21 +839,19 @@ vec3 viewToWorld(vec3 viewPos) {
 }
 #define fsign(a)  (clamp((a)*1e35,0.,1.)*2.-1.)
 
-float interleaved_gradientNoise(){
-	return fract(52.9829189*fract(0.06711056*gl_FragCoord.x + 0.00583715*gl_FragCoord.y)+Time/1.6128);
+float interleaved_gradientNoise() {
+    return fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y) + Time / 1.6128);
 }
-float triangularize(float dither)
-{
-    float center = dither*2.0-1.0;
-    dither = center*inversesqrt(abs(center));
-    return clamp(dither-fsign(center),0.0,1.0);
+float triangularize(float dither) {
+    float center = dither * 2.0 - 1.0;
+    dither = center * inversesqrt(abs(center));
+    return clamp(dither - fsign(center), 0.0, 1.0);
 }
-vec3 fp10Dither(vec3 color,float dither){
-	const vec3 mantissaBits = vec3(6.,6.,5.);
-	vec3 exponent = floor(log2(color));
-	return color + dither*exp2(-mantissaBits)*exp2(exponent);
+vec3 fp10Dither(vec3 color, float dither) {
+    const vec3 mantissaBits = vec3(6., 6., 5.);
+    vec3 exponent = floor(log2(color));
+    return color + dither * exp2(-mantissaBits) * exp2(exponent);
 }
-
 
 vec3 getDepthPoint(vec2 coord, float depth) {
     vec4 pos;
@@ -826,8 +865,8 @@ vec3 getDepthPoint(vec2 coord, float depth) {
     return pos.xyz;
 }
 vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float water) {
-    vec2 offsetB = vec2(0.0, oneTexel.y);
-    vec2 offsetC = vec2(oneTexel.x, 0.0);
+    vec2 offsetB = vec2(0.0, oneTexel.y * 0.6);
+    vec2 offsetC = vec2(oneTexel.x * 0.6, 0.0);
     float depthB = texture(depthtex, texCoords + offsetB).r;
     float depthC = texture(depthtex, texCoords + offsetC).r;
     vec3 A = getDepthPoint(texCoords, depthA);
@@ -847,6 +886,95 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
 
     return normalize(normal);
 }
+
+float getRawDepth(vec2 uv) {
+    return texture(TranslucentDepthSampler, uv).x;
+}
+
+            // inspired by keijiro's depth inverse projection
+            // https://github.com/keijiro/DepthInverseProjection
+            // constructs view space ray at the far clip plane from the screen uv
+            // then multiplies that ray by the linear 01 depth
+vec3 viewSpacePosAtScreenUV(vec2 uv) {
+    vec3 viewSpaceRay = (gbufferProjectionInverse * vec4(uv * 2.0 - 1.0, 1.0, 1.0) * near).xyz;
+    float rawDepth = getRawDepth(uv);
+    return viewSpaceRay * (linZ(rawDepth) + pow8(luma(texture(DiffuseSampler, uv).xyz)) * 0.00);
+}
+vec3 viewSpacePosAtPixelPosition(vec2 vpos) {
+    vec2 uv = vpos * oneTexel.xy;
+    return viewSpacePosAtScreenUV(uv);
+}
+
+vec3 viewNormalAtPixelPosition(vec2 vpos) {
+                // get current pixel's view space position
+    vec3 viewSpacePos_c = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 0.0));
+
+                // get view space position at 1 pixel offsets in each major direction
+    vec3 viewSpacePos_l = viewSpacePosAtPixelPosition(vpos + vec2(-1.0, 0.0));
+    vec3 viewSpacePos_r = viewSpacePosAtPixelPosition(vpos + vec2(1.0, 0.0));
+    vec3 viewSpacePos_d = viewSpacePosAtPixelPosition(vpos + vec2(0.0, -1.0));
+    vec3 viewSpacePos_u = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 1.0));
+
+                // get the difference between the current and each offset position
+    vec3 l = viewSpacePos_c - viewSpacePos_l;
+    vec3 r = viewSpacePos_r - viewSpacePos_c;
+    vec3 d = viewSpacePos_c - viewSpacePos_d;
+    vec3 u = viewSpacePos_u - viewSpacePos_c;
+
+                // pick horizontal and vertical diff with the smallest z difference
+    vec3 hDeriv = abs(l.z) < abs(r.z) ? l : r;
+    vec3 vDeriv = abs(d.z) < abs(u.z) ? d : u;
+
+                // get view space normal from the cross product of the two smallest offsets
+    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
+
+    return viewNormal;
+}
+
+vec3 viewNormalAtPixelPosition2(vec2 vpos) {
+                // screen uv from vpos
+    vec2 uv = vpos * oneTexel.xy;
+
+                // current pixel's depth
+    float c = getRawDepth(uv);
+
+                // get current pixel's view space position
+    vec3 viewSpacePos_c = viewSpacePosAtScreenUV(uv);
+
+                // get view space position at 1 pixel offsets in each major direction
+    vec3 viewSpacePos_l = viewSpacePosAtScreenUV(uv + vec2(-1.0, 0.0) * oneTexel.xy);
+    vec3 viewSpacePos_r = viewSpacePosAtScreenUV(uv + vec2(1.0, 0.0) * oneTexel.xy);
+    vec3 viewSpacePos_d = viewSpacePosAtScreenUV(uv + vec2(0.0, -1.0) * oneTexel.xy);
+    vec3 viewSpacePos_u = viewSpacePosAtScreenUV(uv + vec2(0.0, 1.0) * oneTexel.xy);
+
+                // get the difference between the current and each offset position
+    vec3 l = viewSpacePos_c - viewSpacePos_l;
+    vec3 r = viewSpacePos_r - viewSpacePos_c;
+    vec3 d = viewSpacePos_c - viewSpacePos_d;
+    vec3 u = viewSpacePos_u - viewSpacePos_c;
+
+                // get depth values at 1 & 2 pixels offsets from current along the horizontal axis
+    vec4 H = vec4(getRawDepth(uv + vec2(-1.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(1.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(-2.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(2.0, 0.0) * oneTexel.xy));
+
+                // get depth values at 1 & 2 pixels offsets from current along the vertical axis
+    vec4 V = vec4(getRawDepth(uv + vec2(0.0, -1.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 1.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, -2.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 2.0) * oneTexel.xy));
+
+                // current pixel's depth difference from slope of offset depth samples
+                // differs from original article because we're using non-linear depth values
+                // see article's comments
+    vec2 he = abs((2 * H.xy - H.zw) - c);
+    vec2 ve = abs((2 * V.xy - V.zw) - c);
+
+                // pick horizontal and vertical diff with the smallest depth difference from slopes
+    vec3 hDeriv = he.x < he.y ? l : r;
+    vec3 vDeriv = ve.x < ve.y ? d : u;
+
+                // get view space normal from the cross product of the best derivatives
+    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
+
+    return viewNormal;
+}
+
 vec2 unpackUnorm2x4v2(vec4 pack) {
     vec2 xy;
     float pack2 = (pack.x + pack.y + pack.z + pack.z) / 4;
@@ -854,13 +982,6 @@ vec2 unpackUnorm2x4v2(vec4 pack) {
     return xy * vec2(16.0 / 15.0, 1.0 / 15.0);
 }
 ////////////////////
-
-
-
-
-
-
-
 
 #define DEBUG
 #define DEBUG_PROGRAM 30
@@ -870,18 +991,37 @@ vec2 unpackUnorm2x4v2(vec4 pack) {
 vec3 Debug = vec3(1.0);
 
 // Write the direct variable onto the screen
-void show( bool x) { Debug = vec3(float(x)); }
-void show(float x) { Debug = vec3(x); }
-void show( vec2 x) { Debug = vec3(x, 0.0); }
-void show( vec3 x) { Debug = x; }
-void show( vec4 x) { Debug = x.rgb; }
+void show(bool x) {
+    Debug = vec3(float(x));
+}
+void show(float x) {
+    Debug = vec3(x);
+}
+void show(vec2 x) {
+    Debug = vec3(x, 0.0);
+}
+void show(vec3 x) {
+    Debug = x;
+}
+void show(vec4 x) {
+    Debug = x.rgb;
+}
 
-
-void inc2( bool x) { Debug += vec3(float(x)); }
-void inc2(float x) { Debug += vec3(x); }
-void inc2( vec2 x) { Debug += vec3(x, 0.0); }
-void inc2( vec3 x) { Debug += x; }
-void inc2( vec4 x) { Debug += x.rgb; }
+void inc2(bool x) {
+    Debug += vec3(float(x));
+}
+void inc2(float x) {
+    Debug += vec3(x);
+}
+void inc2(vec2 x) {
+    Debug += vec3(x, 0.0);
+}
+void inc2(vec3 x) {
+    Debug += x;
+}
+void inc2(vec4 x) {
+    Debug += x.rgb;
+}
 
 #ifdef DRAW_DEBUG_VALUE
 	// Display the value of the variable on the debug value viewer
@@ -892,11 +1032,7 @@ void inc2( vec4 x) { Debug += x.rgb; }
 	#define incval(x)
 #endif
 
-
-
-
-vec4 SampleTextureCatmullRom(sampler2D tex, vec2 uv, vec2 texSize )
-{
+vec4 SampleTextureCatmullRom(sampler2D tex, vec2 uv, vec2 texSize) {
     // We're going to sample a a 4x4 grid of texels surrounding the target UV coordinate. We'll do this by rounding
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
@@ -910,9 +1046,9 @@ vec4 SampleTextureCatmullRom(sampler2D tex, vec2 uv, vec2 texSize )
     // Compute the Catmull-Rom weights using the fractional offset that we calculated earlier.
     // These equations are pre-expanded based on our knowledge of where the texels will be located,
     // which lets us avoid having to evaluate a piece-wise function.
-    vec2 w0 = f * ( -0.5 + f * (1.0 - 0.5*f));
-    vec2 w1 = 1.0 + f * f * (-2.5 + 1.5*f);
-    vec2 w2 = f * ( 0.5 + f * (2.0 - 1.5*f) );
+    vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+    vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+    vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
     vec2 w3 = f * f * (-0.5 + 0.5 * f);
 
     // Work out weighting factors and sampling offsets that will let us use bilinear filtering to
@@ -930,176 +1066,159 @@ vec4 SampleTextureCatmullRom(sampler2D tex, vec2 uv, vec2 texSize )
     texPos12 *= oneTexel;
 
     vec4 result = vec4(0.0);
-    result += texture(tex, vec2(texPos0.x,  texPos0.y)) * w0.x * w0.y;
+    result += texture(tex, vec2(texPos0.x, texPos0.y)) * w0.x * w0.y;
     result += texture(tex, vec2(texPos12.x, texPos0.y)) * w12.x * w0.y;
-    result += texture(tex, vec2(texPos3.x,  texPos0.y)) * w3.x * w0.y;
+    result += texture(tex, vec2(texPos3.x, texPos0.y)) * w3.x * w0.y;
 
-    result += texture(tex, vec2(texPos0.x,  texPos12.y)) * w0.x * w12.y;
+    result += texture(tex, vec2(texPos0.x, texPos12.y)) * w0.x * w12.y;
     result += texture(tex, vec2(texPos12.x, texPos12.y)) * w12.x * w12.y;
-    result += texture(tex, vec2(texPos3.x,  texPos12.y)) * w3.x * w12.y;
+    result += texture(tex, vec2(texPos3.x, texPos12.y)) * w3.x * w12.y;
 
-    result += texture(tex, vec2(texPos0.x,  texPos3.y)) * w0.x * w3.y;
+    result += texture(tex, vec2(texPos0.x, texPos3.y)) * w0.x * w3.y;
     result += texture(tex, vec2(texPos12.x, texPos3.y)) * w12.x * w3.y;
-    result += texture(tex, vec2(texPos3.x,  texPos3.y)) * w3.x * w3.y;
+    result += texture(tex, vec2(texPos3.x, texPos3.y)) * w3.x * w3.y;
 
     return result;
 }
 /***********************************************************************/
 /* Text Rendering */
-const int
-	_A    = 0x64bd29, _B    = 0x749d27, _C    = 0xe0842e, _D    = 0x74a527,
-	_E    = 0xf09c2f, _F    = 0xf09c21, _G    = 0xe0b526, _H    = 0x94bd29,
-	_I    = 0xf2108f, _J    = 0x842526, _K    = 0x9284a9, _L    = 0x10842f,
-	_M    = 0x97a529, _N    = 0x95b529, _O    = 0x64a526, _P    = 0x74a4e1,
-	_Q    = 0x64acaa, _R    = 0x749ca9, _S    = 0xe09907, _T    = 0xf21084,
-	_U    = 0x94a526, _V    = 0x94a544, _W    = 0x94a5e9, _X    = 0x949929,
-	_Y    = 0x94b90e, _Z    = 0xf4106f, _0    = 0x65b526, _1    = 0x431084,
-	_2    = 0x64904f, _3    = 0x649126, _4    = 0x94bd08, _5    = 0xf09907,
-	_6    = 0x609d26, _7    = 0xf41041, _8    = 0x649926, _9    = 0x64b904,
-	_APST = 0x631000, _PI   = 0x07a949, _UNDS = 0x00000f, _HYPH = 0x001800,
-	_TILD = 0x051400, _PLUS = 0x011c40, _EQUL = 0x0781e0, _SLSH = 0x041041,
-	_EXCL = 0x318c03, _QUES = 0x649004, _COMM = 0x000062, _FSTP = 0x000002,
-	_QUOT = 0x528000, _BLNK = 0x000000, _COLN = 0x000802, _LPAR = 0x410844,
-	_RPAR = 0x221082;
+const int _A = 0x64bd29, _B = 0x749d27, _C = 0xe0842e, _D = 0x74a527, _E = 0xf09c2f, _F = 0xf09c21, _G = 0xe0b526, _H = 0x94bd29, _I = 0xf2108f, _J = 0x842526, _K = 0x9284a9, _L = 0x10842f, _M = 0x97a529, _N = 0x95b529, _O = 0x64a526, _P = 0x74a4e1, _Q = 0x64acaa, _R = 0x749ca9, _S = 0xe09907, _T = 0xf21084, _U = 0x94a526, _V = 0x94a544, _W = 0x94a5e9, _X = 0x949929, _Y = 0x94b90e, _Z = 0xf4106f, _0 = 0x65b526, _1 = 0x431084, _2 = 0x64904f, _3 = 0x649126, _4 = 0x94bd08, _5 = 0xf09907, _6 = 0x609d26, _7 = 0xf41041, _8 = 0x649926, _9 = 0x64b904, _APST = 0x631000, _PI = 0x07a949, _UNDS = 0x00000f, _HYPH = 0x001800, _TILD = 0x051400, _PLUS = 0x011c40, _EQUL = 0x0781e0, _SLSH = 0x041041, _EXCL = 0x318c03, _QUES = 0x649004, _COMM = 0x000062, _FSTP = 0x000002, _QUOT = 0x528000, _BLNK = 0x000000, _COLN = 0x000802, _LPAR = 0x410844, _RPAR = 0x221082;
 
 const ivec2 MAP_SIZE = ivec2(5, 5);
 
 int GetBit(int bitMap, int index) {
-	return (bitMap >> index) & 1;
+    return (bitMap >> index) & 1;
 }
 
 float DrawChar(int charBitMap, inout vec2 anchor, vec2 charSize, vec2 uv) {
-	uv = (uv - anchor) / charSize;
-	
-	anchor.x += charSize.x;
-	
-	if (!all(lessThan(abs(uv - vec2(0.5)), vec2(0.5))))
-		return 0.0;
-	
-	uv *= MAP_SIZE;
-	
-	int index = int(uv.x) % MAP_SIZE.x + int(uv.y)*MAP_SIZE.x;
-	
-return float(GetBit(charBitMap, index));
+    uv = (uv - anchor) / charSize;
+
+    anchor.x += charSize.x;
+
+    if(!all(lessThan(abs(uv - vec2(0.5)), vec2(0.5))))
+        return 0.0;
+
+    uv *= MAP_SIZE;
+
+    int index = int(uv.x) % MAP_SIZE.x + int(uv.y) * MAP_SIZE.x;
+
+    return float(GetBit(charBitMap, index));
 }
 
 const int STRING_LENGTH = 15;
 int[STRING_LENGTH] drawString;
 
 float DrawString(inout vec2 anchor, vec2 charSize, int stringLength, vec2 uv) {
-	uv = (uv - anchor) / charSize;
-	
-	anchor.x += charSize.x * stringLength;
-	
-	if (!all(lessThan(abs(uv / vec2(stringLength, 1.0) - vec2(0.5)), vec2(0.5))))
-		return 0.0;
-	
-	int charBitMap = drawString[int(uv.x)];
-	
-	uv *= MAP_SIZE;
-	
-	int index = int(uv.x) % MAP_SIZE.x + int(uv.y)*MAP_SIZE.x;
-	
-return float(GetBit(charBitMap, index));
+    uv = (uv - anchor) / charSize;
+
+    anchor.x += charSize.x * stringLength;
+
+    if(!all(lessThan(abs(uv / vec2(stringLength, 1.0) - vec2(0.5)), vec2(0.5))))
+        return 0.0;
+
+    int charBitMap = drawString[int(uv.x)];
+
+    uv *= MAP_SIZE;
+
+    int index = int(uv.x) % MAP_SIZE.x + int(uv.y) * MAP_SIZE.x;
+
+    return float(GetBit(charBitMap, index));
 }
 
 #define log10(x) (log2(x) / log2(10.0))
 
 float DrawInt(int val, inout vec2 anchor, vec2 charSize, vec2 uv) {
-	if (val == 0) return DrawChar(_0, anchor, charSize, uv);
-	
-	const int _DIGITS[10] = int[10](_0,_1,_2,_3,_4,_5,_6,_7,_8,_9);
-	
-	bool isNegative = val < 0.0;
-	
-	if (isNegative) drawString[0] = _HYPH;
-	
-	val = abs(val);
-	
-	int posPlaces = int(ceil(log10(abs(val) + 0.001)));
-	int strIndex = posPlaces - int(!isNegative);
-	
-	while (val > 0) {
-		drawString[strIndex--] = _DIGITS[val % 10];
-		val /= 10;
-	}
-	
-	return DrawString(anchor, charSize, posPlaces + int(isNegative), texCoord);
+    if(val == 0)
+        return DrawChar(_0, anchor, charSize, uv);
+
+    const int _DIGITS[10] = int[10] (_0, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+
+    bool isNegative = val < 0.0;
+
+    if(isNegative)
+        drawString[0] = _HYPH;
+
+    val = abs(val);
+
+    int posPlaces = int(ceil(log10(abs(val) + 0.001)));
+    int strIndex = posPlaces - int(!isNegative);
+
+    while(val > 0) {
+        drawString[strIndex--] = _DIGITS[val % 10];
+        val /= 10;
+    }
+
+    return DrawString(anchor, charSize, posPlaces + int(isNegative), texCoord);
 }
 
 float DrawFloat(float val, inout vec2 anchor, vec2 charSize, int negPlaces, vec2 uv) {
-	int whole = int(val);
-	int part  = int(fract(abs(val)) * pow(10, negPlaces));
-	
-	int posPlaces = max(int(ceil(log10(abs(val)))), 1);
-	
-	anchor.x -= charSize.x * (posPlaces + int(val < 0) + 0.25);
-	float ret = 0.0;
-	ret += DrawInt(whole, anchor, charSize, uv);
-	ret += DrawChar(_FSTP, anchor, charSize, texCoord);
-	anchor.x -= charSize.x * 0.3;
-	ret += DrawInt(part, anchor, charSize, uv);
-	
-	return ret;
+    int whole = int(val);
+    int part = int(fract(abs(val)) * pow(10, negPlaces));
+
+    int posPlaces = max(int(ceil(log10(abs(val)))), 1);
+
+    anchor.x -= charSize.x * (posPlaces + int(val < 0) + 0.25);
+    float ret = 0.0;
+    ret += DrawInt(whole, anchor, charSize, uv);
+    ret += DrawChar(_FSTP, anchor, charSize, texCoord);
+    anchor.x -= charSize.x * 0.3;
+    ret += DrawInt(part, anchor, charSize, uv);
+
+    return ret;
 }
 
 void DrawDebugText() {
 	#if (defined DEBUG) && (defined DRAW_DEBUG_VALUE) && (DEBUG_PROGRAM != 50)
-		vec2 charSize = vec2(0.009) * ScreenSize.yy / ScreenSize;
-		vec2 texPos = vec2(charSize.x / 1.5, 1.0 - charSize.y * 2.0);
-		
-		if (
-		  texCoord.x > charSize.x * 12.0
-		 || texCoord.y < 1 - charSize.y * 12)
-		{ return; }
-		
-		vec3 color = fragColor.rgb;
-		float text = 0.0;
-		
-		vec3 val = vec3(1.0);
-		
-		drawString = int[STRING_LENGTH](_D,_E,_B,_U,_G,0,_S,_T,_A,_T,_S,0,0,0,0);
-		text += DrawString(texPos, charSize, 11, texCoord);
-		color += text * vec3(1.0, 1.0, 1.0)* sqrt(clamp(abs(val.b), 0.2, 1.0));
-		
-		texPos.x = charSize.x / 1.0, 1.0;
-		texPos.y -= charSize.y *2;
-		
-		text = 0.0;
-		drawString = int[STRING_LENGTH](_R,_COLN, 0,0,0,0,0,0,0,0,0,0,0,0,0);
-		text += DrawString(texPos, charSize, 2, texCoord);
-		texPos.x += charSize.x * 5.0;
-		text += DrawFloat(val.r, texPos, charSize, 3, texCoord);
-		color += text * vec3(1.0, 0.0, 0.0) * sqrt(clamp(abs(val.r), 0.2, 1.0));
+    vec2 charSize = vec2(0.009) * ScreenSize.yy / ScreenSize;
+    vec2 texPos = vec2(charSize.x / 1.5, 1.0 - charSize.y * 2.0);
 
-		texPos.x = charSize.x / 1.0, 1.0;
-		texPos.y -= charSize.y * 1.4;
-		
-		text = 0.0;
-		drawString = int[STRING_LENGTH](_G,_COLN, 0,0,0,0,0,0,0,0,0,0,0,0,0);
-		text += DrawString(texPos, charSize, 2, texCoord);
-		texPos.x += charSize.x * 5.0;
-		text += DrawFloat(val.g, texPos, charSize, 3, texCoord);
-		color += text * vec3(0.0, 1.0, 0.0) * sqrt(clamp(abs(val.g), 0.2, 1.0));
-		
-		texPos.x = charSize.x / 1.0, 1.0;
-		texPos.y -= charSize.y * 1.4;
-		
-		text = 0.0;
-		drawString = int[STRING_LENGTH](_B,_COLN, 0,0,0,0,0,0,0,0,0,0,0,0,0);
-		text += DrawString(texPos, charSize, 2, texCoord);
-		texPos.x += charSize.x * 5.0;
-		text += DrawFloat(val.b, texPos, charSize, 3, texCoord);
-		color += text * vec3(0.0, 0.8, 1.0)* sqrt(clamp(abs(val.b), 0.2, 1.0));
+    if(texCoord.x > charSize.x * 12.0 || texCoord.y < 1 - charSize.y * 12) {
+        return;
+    }
 
-    
-		texPos.x = charSize.x / 1.0, 1.0;
-		texPos.y -= charSize.y * 1.4;
-		
-		
-			
+    vec3 color = fragColor.rgb;
+    float text = 0.0;
 
-		fragColor.rgb = color;
+    vec3 val = vec3(1.0);
+
+    drawString = int[STRING_LENGTH] (_D, _E, _B, _U, _G, 0, _S, _T, _A, _T, _S, 0, 0, 0, 0);
+    text += DrawString(texPos, charSize, 11, texCoord);
+    color += text * vec3(1.0, 1.0, 1.0) * sqrt(clamp(abs(val.b), 0.2, 1.0));
+
+    texPos.x = charSize.x / 1.0, 1.0;
+    texPos.y -= charSize.y * 2;
+
+    text = 0.0;
+    drawString = int[STRING_LENGTH] (_R, _COLN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    text += DrawString(texPos, charSize, 2, texCoord);
+    texPos.x += charSize.x * 5.0;
+    text += DrawFloat(val.r, texPos, charSize, 3, texCoord);
+    color += text * vec3(1.0, 0.0, 0.0) * sqrt(clamp(abs(val.r), 0.2, 1.0));
+
+    texPos.x = charSize.x / 1.0, 1.0;
+    texPos.y -= charSize.y * 1.4;
+
+    text = 0.0;
+    drawString = int[STRING_LENGTH] (_G, _COLN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    text += DrawString(texPos, charSize, 2, texCoord);
+    texPos.x += charSize.x * 5.0;
+    text += DrawFloat(val.g, texPos, charSize, 3, texCoord);
+    color += text * vec3(0.0, 1.0, 0.0) * sqrt(clamp(abs(val.g), 0.2, 1.0));
+
+    texPos.x = charSize.x / 1.0, 1.0;
+    texPos.y -= charSize.y * 1.4;
+
+    text = 0.0;
+    drawString = int[STRING_LENGTH] (_B, _COLN, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    text += DrawString(texPos, charSize, 2, texCoord);
+    texPos.x += charSize.x * 5.0;
+    text += DrawFloat(val.b, texPos, charSize, 3, texCoord);
+    color += text * vec3(0.0, 0.8, 1.0) * sqrt(clamp(abs(val.b), 0.2, 1.0));
+
+    texPos.x = charSize.x / 1.0, 1.0;
+    texPos.y -= charSize.y * 1.4;
+
+    fragColor.rgb = color;
 	#endif
 }
 void main() {
@@ -1120,12 +1239,21 @@ void main() {
 
         //float frDepth = ld(depth2);
         //vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler) + (noise / 12);
-        vec3 atmosphere = skyLut2(view.xyz, sunPosition3, view.y, rainStrength * 0.5)*skys;
+        vec3 atmosphere = skyLut2(view.xyz, sunPosition3, view.y, rainStrength * 0.5) * skys;
         atmosphere = lumaBasedReinhardToneMapping(atmosphere);
 
         if(view.y > 0.) {
-            vec4 cloud = texture(cloudsample, texCoord * CLOUDS_QUALITY);
+            vec3 avgamb = vec3(0.0);
+            avgamb += ambientUp;
+            avgamb += ambientDown;
+            avgamb += ambientRight;
+            avgamb += ambientLeft;
+            avgamb += ambientB;
+            avgamb += ambientF;
+            avgamb *= (1.0 + rainStrength * 0.2);
+            //vec4 cloud = texture(cloudsample, texCoord * CLOUDS_QUALITY);
             //vec4 cloud = BilateralUpscale(cloudsample, TranslucentDepthSampler, gl_FragCoord.xy, frDepth, 0.5);
+            vec4 cloud = renderClouds(viewPos, avgamb, noise, suncol, suncol, avgamb).rgba;
 
             atmosphere += (stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1);
             atmosphere += drawSun(dot(sunPosition2, view), 0, suncol.rgb / 150., vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1) * 20;
@@ -1144,6 +1272,7 @@ void main() {
         vec2 texCoord = texCoord;
         vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
+        normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
 
         vec2 texCoord2 = texCoord;
         if(isWater) {
@@ -1191,16 +1320,15 @@ void main() {
                 postlight = 0.0;
             }
             vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-            
+
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
 
-            
             if(screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0) {
-            ao = dbao(TranslucentDepthSampler);
+                ao = dbao(TranslucentDepthSampler);
 
-                if(sShadows ==1 )screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
+                if(sShadows == 1)
+                    screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
             }
-
 
             screenShadow = clamp(screenShadow, 0.1, 1.0);
             vec3 normal3 = (normal);
@@ -1266,7 +1394,7 @@ void main() {
             outcol.rgb *= 1.0 + max(0.0, light);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(ao), 0.01, 1);
+            //outcol.rgb = clamp(vec3(gr), 0.01, 1);
             //if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
         ///---------------------------------------------
         } else {
@@ -1274,20 +1402,18 @@ void main() {
             if(end != 1.0) {
                 vec2 p_m = texCoord;
 
-                vec2 p_d = texCoord-Time * 0.1;
-           
+                vec2 p_d = texCoord - Time * 0.1;
 
-                dst_map_val = fract(vec2(sin(length( fract(p_d)+Time*0.2 )*100.0)));
+                dst_map_val = fract(vec2(sin(length(fract(p_d) + Time * 0.2) * 100.0)));
                 vec2 dst_offset = dst_map_val.xy;
 
-    
                 dst_offset *= 0.001;
                 dst_offset *= (1. - texCoord.t);
 
                 vec2 texCoord = texCoord + dst_offset;
                 OutTexel = toLinear(texture(DiffuseSampler, texCoord).rgb);
             }
-            
+
             float ao = 1.0;
             ao = dbao2(TranslucentDepthSampler);
             float lumC = luma(fogcol.rgb);
@@ -1300,7 +1426,6 @@ void main() {
             if(light > 0.001)
                 outcol.rgb *= clamp(vec3(2.0 - 1 * 2) * light * 2, 1.0, 10.0);
         //outcol.rgb = vec3(texCoord,0);
-
 
         }
         if(isWater) {

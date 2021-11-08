@@ -55,7 +55,7 @@ float alpha = color.a;
 
 //  color.rgb = (color.rgb*lm2.rgb);
 
-color.rgb += rnd;
+//color.rgb += rnd/255;
 color.rgb = clamp(color.rgb, 0.01, 1);
 
 float translucent = 0;

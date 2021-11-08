@@ -60,7 +60,7 @@ float lightm = 0;
 if(color.a * 255 <= 17.0) {
 discard;
 }
-color.rgb += rnd;
+//color.rgb += rnd/255;
 color.rgb = clamp(color.rgb, 0.001, 1);
 
 float translucent = 0;
