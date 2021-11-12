@@ -159,22 +159,59 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
     vec3 absorbance = vec3(1.0);
     float expFactor = 2.7;
     vec3 progress = start.xyz;
+    const float exposure = 8.0;			//godrays intensity 15.0 is default
+    const float density = 1.0;
+    const int NUM_SAMPLES = 25;			//increase this for better quality at the cost of performance /8 is default
+    const float grnoise = 0.0;		//amount of noise /0.0 is default
+    float truepos = sunPosition3.z / abs(sunPosition3.z);		//1 -> sun / -1 -> moon
+
+    const int nSteps = NUM_SAMPLES;
+    const float blurScale = 0.002 / nSteps * 9.0;
+    const int center = (nSteps - 1) / 2;
+    vec3 blur = vec3(0.0);
+    float tw = 0.0;
+    const float sigma = 0.5;
+    float gr = 0.0;
+    vec4 tpos = gbufferProjection * vec4(-sunPosition3, 1.0);
+    tpos = vec4(tpos.xyz / tpos.w, 1.0);
+    vec2 lightPos = tpos.xy / tpos.z;
+    lightPos = (lightPos + 1.0f) / 2.0f;
+
+    float aspectRatio = ScreenSize.x / ScreenSize.y;
+
+    vec2 deltaTextCoord = vec2(texCoord.st - lightPos.xy);
+    vec2 textCoord = texCoord.st;
+    vec2 textCoord2 = texCoord.st;
+
+    float avgdecay = 0.0;
+    float distx = abs(textCoord2.x * aspectRatio - lightPos.x * aspectRatio);
+    float disty = abs(textCoord2.y - lightPos.y);
+    float fallof = 1.0;
 
     for(int i = 0; i < VL_SAMPLES; i++) {
         float d = (pow(expFactor, float(i + dither) / float(VL_SAMPLES)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);
         float dd = pow(expFactor, float(i + dither) / float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES) / (expFactor - 1.0);
         progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
+        vec2 deltaTextCoord = vec2(texCoord.st - lightPos.xy);
+        deltaTextCoord *= d;
+        textCoord -= deltaTextCoord;
 
-        progress = start.xyz + d * dV;
+        fallof *= 0.7;
+        float sample = step(float(texture2D(TranslucentDepthSampler, textCoord + deltaTextCoord * dither * grnoise).x < 1.0), 0.01);
 
-        float density = cloudVol(progressW) * 1.5 * ATMOSPHERIC_DENSITY * 400.;
+        gr += (sample * fallof * dtest);
+
+        gr = mix(1.0, gr, dtest);
+
+        float density = cloudVol(progressW) * 1.5 * (ATMOSPHERIC_DENSITY) * 400.;
 		//Just air
         vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * 8.0) * 8.0;
 
 		//Pbr for air, yolo mix between mie and rayleigh for water droplets
         vec3 rL = rC * (airCoef.x + density * 0.15);
         vec3 m = (airCoef.y + density * 1.85) * mC;
-        vec3 vL0 = sunColor * (rayL * rL + m * mie) * 0.75 + skyCol0 * (rL + m);
+        //vec3 vL0 = sunColor * clamp(gr*2.0,0.2,1.0) * (rayL * rL + m * mie) * 0.75 + skyCol0 * (rL + m);
+        vec3 vL0 = sunColor * 1.0 * (rayL * rL + m * mie) * 0.75 + skyCol0 * (rL + m);
         vL += vL0 * dd * dL * absorbance;
         absorbance *= exp(-(rL + m) * dL * dd);
     }
@@ -194,7 +231,6 @@ void waterVolumetrics(inout vec3 inColor, vec3 rayEnd, float estEyeDepth, float 
     vec3 vL = vec3(0.0);
     float phase = phaseg(VdotL, Dirt_Mie_Phase);
     float expFactor = 11.0;
-    bool issky = depth >= 1.0;
     for(int i = 0; i < spCount; i++) {
         float d = (pow(expFactor, float(i + dither) / float(spCount)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);		// exponential step position (0-1)
         float dd = pow(expFactor, float(i + dither) / float(spCount)) * log(expFactor) / float(spCount) / (expFactor - 1.0);	//step length (derivative)
@@ -292,47 +328,8 @@ void main() {
         vec3 direct;
         direct = suncol;
 
-        float dtest = clamp(dot(viewPos.xyz * 2.0 - 1.0, sunPosition3) * 0.0001, 0, 1);
-		const float exposure = 8.0;			//godrays intensity 15.0 is default
-		const float density = 1.0;			
-		const int NUM_SAMPLES = 25;			//increase this for better quality at the cost of performance /8 is default
-		const float grnoise = 0.0;		//amount of noise /0.0 is default
-	float truepos = sunPosition3.z/abs(sunPosition3.z);		//1 -> sun / -1 -> moon
-	
-	const int nSteps = NUM_SAMPLES;
-	const float blurScale = 0.002/nSteps*9.0;
-	const int center = (nSteps-1)/2;
-	vec3 blur = vec3(0.0);
-	float tw = 0.0;
-	const float sigma = 0.5;
-	        float gr = 0.0;
-        vec4 tpos = gbufferProjection * vec4(-sunPosition3, 1.0);
-        tpos = vec4(tpos.xyz / tpos.w, 1.0);
-        vec2 lightPos = tpos.xy / tpos.z;
-        lightPos = (lightPos + 1.0f) / 2.0f;
-		
+        float dtest = clamp((dot(normalize(viewPos.xyz), normalize(sunPosition3)) * 0.005)*200.0, 0, 1);
 
-	
-        float aspectRatio = ScreenSize.x / ScreenSize.y;
-
-		vec2 deltaTextCoord = vec2( texCoord.st - lightPos.xy );
-		vec2 textCoord = texCoord.st;
-		vec2 textCoord2 = texCoord.st;
-		deltaTextCoord *= 1.0 /  float(NUM_SAMPLES) * density;
-		float avgdecay = 0.0;
-		float distx = abs(textCoord2.x*aspectRatio-lightPos.x*aspectRatio);
-		float disty = abs(textCoord2.y-lightPos.y);
-		float fallof = 1.0;
-		
-		for(int i=0; i < NUM_SAMPLES ; i++) {			
-			textCoord -= deltaTextCoord;
-
-			fallof *= 0.7;
-			float sample = step(float(texture2D(TranslucentDepthSampler, textCoord+ deltaTextCoord*noise*grnoise).x < 1.0), 0.01);
-
-			gr += sample*fallof;
-		}
-        
         float df = length(fragpos);
 
         if(isEyeInWater == 1 && overworld == 1 || isWater) {
@@ -359,13 +356,14 @@ void main() {
         }
 
         if(isEyeInWater == 0) {
-            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, (gr/NUM_SAMPLES)*dtest);
+            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, dtest);
             fragColor.rgb *= vl[1];
             fragColor.rgb += vl[0];
             if(luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)
                 lmx = 0.93;
             lmx += LinearizeDepth(depth) * 0.005;
             fragColor.rgb = mix(OutTexel, fragColor.rgb, clamp(lmx, 0, 1));
+            //fragColor.rgb = vec3(dtest);
 
             fragColor.a = vl[1].r;
         }
