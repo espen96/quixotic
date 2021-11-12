@@ -133,7 +133,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
 
 	vec3 sunContribution = mieDay * sunColor * 3.14;
 	vec3 moonContribution = mieNight * moonColor * 3.14;
-	float ambientMult = exp(-(1.25 + 0.8 * clamp(rainStrength, 0.75, 1)) * cdensity * 50.0);
+	float ambientMult = exp(-(1.25 + 0.8 * clamp(rainStrength, 0.75, 1)) * cdensity * 75.0);
 	vec3 skyCol0 = avgAmbient * ambientMult;
 
 	for(int i = 0; i < maxIT_clouds; i++) {
@@ -250,7 +250,17 @@ float bayer2(vec2 a) {
 #define bayer128(a) (bayer64(.5*(a))*.25+bayer2(a))
 
 float dither64 = bayer64(gl_FragCoord.xy);
-
+vec3 lumaBasedReinhardToneMapping(vec3 color) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float toneMappedLuma = luma / (1. + luma);
+    color *= clamp(toneMappedLuma / luma, 0, 10);
+    //color = pow(color, vec3(0.45454545454));
+    return color;
+}
+vec3 reinhard(vec3 x) {
+    x *= 1.66;
+    return x / (1.0 + x);
+}
 void main() {
 
     //vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
@@ -262,6 +272,7 @@ void main() {
 	vec3 sc = sc * (1 - ((rainStrength) * 0.5));
 	vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
 	vec4 cloud = renderClouds(fragpos, avgSky, noise, sc, sc, avgSky).rgba;
+	cloud.rgb = lumaBasedReinhardToneMapping(cloud.rgb);
 
 	fragColor = cloud;
 

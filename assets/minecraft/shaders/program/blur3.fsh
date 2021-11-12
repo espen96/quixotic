@@ -11,7 +11,7 @@ in vec2 texCoord;
 void main() {
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
     vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
-    float offset = 20.0;
+    float offset = 15.0;
 
     vec4 sum = texture(DiffuseSampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
     

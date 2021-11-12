@@ -45,8 +45,6 @@ in vec4 fogcol;
 
 in vec2 texCoord;
 
-
-
 in float near;
 in float far;
 in float end;
@@ -55,14 +53,12 @@ in float overworld;
 in float rainStrength;
 in vec3 sunVec;
 
+in vec3 sunPosition;
 in vec3 sunPosition2;
 in vec3 sunPosition3;
 in float skyIntensityNight;
 in float skyIntensity;
 in float sunElevation;
-
-
-
 
 out vec4 fragColor;
 
@@ -233,7 +229,13 @@ vec3 lumaBasedReinhardToneMapping(vec3 color) {
     color = pow(color, vec3(0.45454545454));
     return color;
 }
-
+vec3 lumaBasedReinhardToneMapping2(vec3 color) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float toneMappedLuma = luma / (1. + luma);
+    color *= clamp(toneMappedLuma / luma, 0, 10);
+    //color = pow(color, vec3(0.45454545454));
+    return color;
+}
 vec4 textureGood(sampler2D sam, vec2 uv) {
     vec2 res = textureSize(sam, 0);
 
@@ -414,6 +416,11 @@ vec4 nvec4(vec3 pos) {
 
 float cdist(vec2 coord) {
     return max(abs(coord.x - 0.5), abs(coord.y - 0.5)) * 1.85;
+}
+float cdist2(vec2 coord) {
+    vec2 vec = abs(coord * 2.0 - 1.0);
+    float d = max(vec.x, vec.y);
+    return 1.0 - d * d;
 }
 
 vec3 rayTrace(vec3 dir, vec3 position, float dither) {
@@ -600,18 +607,14 @@ float dbao3(sampler2D depth) {
 }
 const float sky_planetRadius = 6731e3;
 
-
 const float PI = 3.141592;
-vec3 cameraPosition = vec3(0,abs((cloudy)),0);
+vec3 cameraPosition = vec3(0, abs((cloudy)), 0);
 const float cloud_height = 1500.;
 const float maxHeight = 1650.;
 int maxIT_clouds = 15;
 const float cdensity = 0.2;
 
 ///////////////////////////
-
-
-
 
 //Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
 float cloudCov(in vec3 pos, vec3 samplePos) {
@@ -1235,12 +1238,34 @@ void main() {
 
     bool sky = depth >= 1.0;
 
+    float comp = 1.0 - near / far / far;			//distances above that are considered as sky
+
+    vec4 tpos = gbufferProjection * vec4((-sunPosition), 1.0);
+    tpos = vec4(tpos.xyz / tpos.w, 1.0);
+    vec2 pos1 = tpos.xy / tpos.z;
+	vec2 lightPos = pos1*0.5+0.5;
+    vec2 ntc2 = texCoord;
+    vec2 deltatexcoord = vec2(lightPos - ntc2);
+
+    vec2 noisetc = lightPos - deltatexcoord * clamp(noise,0,1);
+    float gr = 0.0;
+
+    vec4 Samplee = textureGather(TranslucentDepthSampler, noisetc);
+    gr += dot(step(vec4(comp), Samplee), vec4(0.25));
+
+    float grCol = clamp(gr*2-0.1,0,1);
+    grCol = mix(1.0,grCol,clamp(cdist2(noisetc),0,1));
+    grCol = mix(1.0,grCol,clamp(dot((sunPosition2), normalize(view))*2-1.2,0,1));
+    grCol = mix(1.0,grCol,float(!sky));
+
+    grCol = clamp(grCol,0,1);
+
     if(sky && overworld == 1.0) {
 
         //float frDepth = ld(depth2);
         //vec3 atmosphere = skyLut(view, sunPosition3.xyz, view.y, temporals3Sampler) + (noise / 12);
         vec3 atmosphere = skyLut2(view.xyz, sunPosition3, view.y, rainStrength * 0.5) * skys;
-        atmosphere = lumaBasedReinhardToneMapping(atmosphere);
+        atmosphere = (atmosphere);
 
         if(view.y > 0.) {
             vec3 avgamb = vec3(0.0);
@@ -1261,7 +1286,8 @@ void main() {
         }
 
         atmosphere = (clamp(atmosphere * 1.1, 0, 2));
-        outcol.rgb = (atmosphere);
+        outcol.rgb = lumaBasedReinhardToneMapping(atmosphere);
+        outcol.a = clamp(grCol, 0, 1);
         fragColor = outcol;
   	//DrawDebugText();
         return;
@@ -1272,7 +1298,7 @@ void main() {
         vec2 texCoord = texCoord;
         vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
-        normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
+        if(!isWater)normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
 
         vec2 texCoord2 = texCoord;
         if(isWater) {
@@ -1326,7 +1352,7 @@ void main() {
             if(screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0) {
                 ao = dbao(TranslucentDepthSampler);
 
-                if(sShadows == 1)
+              
                     screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
             }
 
@@ -1392,9 +1418,10 @@ void main() {
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);
+            outcol.a = clamp(grCol, 0, 1);
 
         ///---------------------------------------------
-            //outcol.rgb = clamp(vec3(gr), 0.01, 1);
+            //outcol.rgb = clamp(vec3(sunPosition), 0.01, 1);
             //if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
         ///---------------------------------------------
         } else {

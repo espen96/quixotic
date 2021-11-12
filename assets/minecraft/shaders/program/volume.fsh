@@ -1,5 +1,5 @@
 #version 150
-
+#extension GL_EXT_gpu_shader4_1 : enable
 uniform sampler2D MainSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D TranslucentSampler;
@@ -36,7 +36,7 @@ in vec3 suncol;
 #define VL_SAMPLES 6 
 #define Ambient_Mult 1.0 
 #define SEA_LEVEL 70 //The volumetric light uses an altitude-based fog density, this is where fog density is the highest, adjust this value according to your world.
-#define ATMOSPHERIC_DENSITY 1.0
+#define ATMOSPHERIC_DENSITY 1.25
 #define fog_mieg1 0.40
 #define fog_mieg2 0.10
 #define fog_coefficientRayleighR 5.8
@@ -66,9 +66,18 @@ vec3 cameraPosition = vec3(0, abs((cloudy)), 0);
 
 out vec4 fragColor;
 const float pi = 3.141592653589793238462643383279502884197169;
-
+float cdist(vec2 coord) {
+    vec2 vec = abs(coord * 2.0 - 1.0);
+    float d = max(vec.x, vec.y);
+    return 1.0 - d * d;
+}
 vec4 lightCol = vec4(suncol, float(sunElevation > 1e-5) * 2 - 1.);
-
+vec3 lumaBasedReinhardToneMapping(vec3 color) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float toneMappedLuma = luma / (1. + luma);
+    color *= clamp(toneMappedLuma / luma, 0, 10);
+    return color;
+}
 float LinearizeDepth(float depth) {
     return (2.0 * near * far) / (far + near - depth * (far - near));
 }
@@ -153,67 +162,30 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
-    vec3 start = (vec3(0.));
-    vec3 dV = (fragpos - start);
 
+    float mu = 1.0;
+    float muS = 1.0 * mu;
     vec3 absorbance = vec3(1.0);
-    float expFactor = 2.7;
-    vec3 progress = start.xyz;
-    const float exposure = 8.0;			//godrays intensity 15.0 is default
-    const float density = 1.0;
-    const int NUM_SAMPLES = 25;			//increase this for better quality at the cost of performance /8 is default
-    const float grnoise = 0.0;		//amount of noise /0.0 is default
-    float truepos = sunPosition3.z / abs(sunPosition3.z);		//1 -> sun / -1 -> moon
-
-    const int nSteps = NUM_SAMPLES;
-    const float blurScale = 0.002 / nSteps * 9.0;
-    const int center = (nSteps - 1) / 2;
-    vec3 blur = vec3(0.0);
-    float tw = 0.0;
-    const float sigma = 0.5;
-    float gr = 0.0;
-    vec4 tpos = gbufferProjection * vec4(-sunPosition3, 1.0);
-    tpos = vec4(tpos.xyz / tpos.w, 1.0);
-    vec2 lightPos = tpos.xy / tpos.z;
-    lightPos = (lightPos + 1.0f) / 2.0f;
-
-    float aspectRatio = ScreenSize.x / ScreenSize.y;
-
-    vec2 deltaTextCoord = vec2(texCoord.st - lightPos.xy);
-    vec2 textCoord = texCoord.st;
-    vec2 textCoord2 = texCoord.st;
-
-    float avgdecay = 0.0;
-    float distx = abs(textCoord2.x * aspectRatio - lightPos.x * aspectRatio);
-    float disty = abs(textCoord2.y - lightPos.y);
-    float fallof = 1.0;
-
+    float expFactor = 11.0;
     for(int i = 0; i < VL_SAMPLES; i++) {
         float d = (pow(expFactor, float(i + dither) / float(VL_SAMPLES)) / expFactor - 1.0 / expFactor) / (1 - 1.0 / expFactor);
         float dd = pow(expFactor, float(i + dither) / float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES) / (expFactor - 1.0);
         progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
-        vec2 deltaTextCoord = vec2(texCoord.st - lightPos.xy);
-        deltaTextCoord *= d;
-        textCoord -= deltaTextCoord;
+			//project into biased shadowmap space
+        float densityVol = cloudVol(progressW);
+        float sh = dtest;
 
-        fallof *= 0.7;
-        float sample = step(float(texture2D(TranslucentDepthSampler, textCoord + deltaTextCoord * dither * grnoise).x < 1.0), 0.01);
+			//Water droplets(fog)
+        float density = densityVol * ATMOSPHERIC_DENSITY * mu * 300.;
+			//Just air
+        vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * vec2(6., 7.0)) * 6.0;
 
-        gr += (sample * fallof * dtest);
-
-        gr = mix(1.0, gr, dtest);
-
-        float density = cloudVol(progressW) * 1.5 * (ATMOSPHERIC_DENSITY) * 400.;
-		//Just air
-        vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * 8.0) * 8.0;
-
-		//Pbr for air, yolo mix between mie and rayleigh for water droplets
-        vec3 rL = rC * (airCoef.x + density * 0.15);
-        vec3 m = (airCoef.y + density * 1.85) * mC;
-        //vec3 vL0 = sunColor * clamp(gr*2.0,0.2,1.0) * (rayL * rL + m * mie) * 0.75 + skyCol0 * (rL + m);
-        vec3 vL0 = sunColor * 1.0 * (rayL * rL + m * mie) * 0.75 + skyCol0 * (rL + m);
-        vL += vL0 * dd * dL * absorbance;
-        absorbance *= exp(-(rL + m) * dL * dd);
+			//Pbr for air, yolo mix between mie and rayleigh for water droplets
+        vec3 rL = rC * airCoef.x;
+        vec3 m = (airCoef.y + density) * mC;
+        vec3 vL0 = sunColor * sh * (rayL * rL + m * mie) + skyCol0 * (rL + m);
+        vL += (vL0 - vL0 * exp(-(rL + m) * dd * dL)) / ((rL + m) + 0.00000001) * absorbance;
+        absorbance *= clamp(exp(-(rL + m) * dd * dL), 0.0, 1.0);
     }
     return mat2x3(vL, absorbance);
 }
@@ -328,7 +300,23 @@ void main() {
         vec3 direct;
         direct = suncol;
 
-        float dtest = clamp((dot(normalize(viewPos.xyz), normalize(sunPosition3)) * 0.005)*200.0, 0, 1);
+        vec4 tpos = gbufferProjection * vec4((sunPosition3), 1.0);
+        tpos = vec4(tpos.xyz / tpos.w, 1.0);
+        vec2 pos1 = tpos.xy / tpos.z;
+        vec2 lightPos = pos1 * 0.5 + 0.5;
+        vec2 ntc2 = texCoord;
+
+        #define GODRAYS_FILTER_SAMPLES  5 //[3 5 7 10 12 20]
+        vec2 deltatexcoord = vec2(lightPos - ntc2) / GODRAYS_FILTER_SAMPLES * vec2(oneTexel) * 250.;
+
+        vec2 noisetc = texCoord - 0.5 * (deltatexcoord * noise) * GODRAYS_FILTER_SAMPLES;
+
+        float gr = 0.0;
+        for(int i = 0; i < GODRAYS_FILTER_SAMPLES; i++) {
+            float Samplee = texture(MainSampler, noisetc).a;
+            gr += Samplee;
+            noisetc += deltatexcoord;
+        }
 
         float df = length(fragpos);
 
@@ -356,14 +344,14 @@ void main() {
         }
 
         if(isEyeInWater == 0) {
-            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, dtest);
+            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
             fragColor.rgb *= vl[1];
-            fragColor.rgb += vl[0];
+            fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
             if(luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)
                 lmx = 0.93;
             lmx += LinearizeDepth(depth) * 0.005;
             fragColor.rgb = mix(OutTexel, fragColor.rgb, clamp(lmx, 0, 1));
-            //fragColor.rgb = vec3(dtest);
+            //fragColor.rgb = vec3(texture(MainSampler, texCoord).a);
 
             fragColor.a = vl[1].r;
         }

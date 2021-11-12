@@ -70,7 +70,7 @@ float decodeFloat24(vec3 raw) {
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
 
-#define BASE_FOG_AMOUNT 1.0 
+#define BASE_FOG_AMOUNT 2.0 
 #define FOG_TOD_MULTIPLIER 1.0 
 #define FOG_RAIN_MULTIPLIER 0.5
 
@@ -154,8 +154,8 @@ float facos(float inX) {
 }
 
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength, vec3 nsunColor, float skyIntensity, float skyIntensityNight) {
-	#define SKY_BRIGHTNESS_DAY 0.5
-	#define SKY_BRIGHTNESS_NIGHT 5.0;	
+	#define SKY_BRIGHTNESS_DAY 1.0
+	#define SKY_BRIGHTNESS_NIGHT 1.0;	
     float mCosT = clamp(cosT, 0.0, 1.0);
     float cosY = dot(sunVec, sVector);
     float Y = facos(cosY);

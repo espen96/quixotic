@@ -9,7 +9,7 @@ out vec4 fragColor;
 
 in vec2 texCoord;
 
-    #define EXPOSURE 1.0 
+    #define EXPOSURE 1.1 
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
@@ -124,7 +124,7 @@ void main() {
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
     vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
-    float offset = 20.0;
+    float offset = 15.0;
 
     vec4 sum = texture(blursampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
     
@@ -137,8 +137,7 @@ void main() {
     sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
 
     vec3 col = sum.rgb / 12.0;
-    col = pow(col,vec3(2.2))*2.0;
-    col = max(vec3(0.0), col - 0.025);
+
 
     vec3 fin = col.rgb;
 
