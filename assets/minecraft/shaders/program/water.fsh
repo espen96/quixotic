@@ -8,6 +8,7 @@ uniform sampler2D TerrainCloudsSampler;
 uniform sampler2D temporals3Sampler;
 uniform vec2 ScreenSize;
 uniform float Time;
+in float skys;
 in vec2 texCoord;
 in vec2 oneTexel;
 in float skyIntensity;
@@ -118,34 +119,35 @@ float facos(float inX) {
   return (inX >= 0) ? res : pi - res;
 }
 vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength) {
-	#define SKY_BRIGHTNESS_DAY 0.5
-	#define SKY_BRIGHTNESS_NIGHT 0.5;	
-	float mCosT = clamp(cosT, 0.0, 1.0);
-	float cosY = dot(sunVec, sVector);
-	float Y = facos(cosY);
-	const float a = -0.8;
-	const float b = -0.1;
-	const float c = 3.0;
-	const float d = -7.;
-	const float e = 0.35;
+	#define SKY_BRIGHTNESS_DAY 1.0
+	#define SKY_BRIGHTNESS_NIGHT 1.0;	
+    float mCosT = clamp(cosT, 0.0, 1.0);
+    float cosY = dot(sunVec, sVector);
+    float Y = facos(cosY);
+    const float a = -0.8;
+    const float b = -0.1;
+    const float c = 3.0;
+    const float d = -7.;
+    const float e = 0.35;
 
   //luminance (cie model)
-	vec3 daySky = vec3(0.0);
-	vec3 moonSky = vec3(0.0);
+    vec3 daySky = vec3(0.0);
+    vec3 moonSky = vec3(0.0);
 	// Day
-	if(skyIntensity > 0.00001) {
-		float L0 = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * Y) - exp(d * pi / 2.)) + e * cosY * cosY);
-		vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) / 1.5, vec3(0.4, 0.5, 0.6) / 1.5, rainStrength);
-		vec3 normalizedSunColor = nsunColor;
-		vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength);
-		daySky = pow(L0, 1.0 - rainStrength) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15. * SKY_BRIGHTNESS_DAY;
-	}
+    if(skyIntensity > 0.00001) {
+        float L0 = (a * exp(-0.1 / mCosT) + 1.0) * (c * (exp(d * Y) - 0.000017) + 1.0 + e * cosY * cosY);
+        vec3 skyColor0 = mix(vec3(0.05, 0.5, 1.) * 0.66666, vec3(0.4, 0.5, 0.6) * 0.66666, rainStrength);
+        vec3 normalizedSunColor = nsunColor;
+        vec3 skyColor = mix(skyColor0, normalizedSunColor, 1.0 - pow(1.0 + L0, -1.2)) * (1.0 - rainStrength);
+        daySky = pow(L0, 1.0 - rainStrength) * skyIntensity * skyColor * vec3(0.8, 0.9, 1.) * 15.0 * SKY_BRIGHTNESS_DAY;
+    }
 	// Night
-	else if(skyIntensityNight > 0.00001) {
-		float L0Moon = (1.0 + a * exp(b / mCosT)) * (1.0 + c * (exp(d * (pi - Y)) - exp(d * pi / 2.)) + e * cosY * cosY);
-		moonSky = pow(L0Moon, 1.0 - rainStrength) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
-	}
-	return (daySky + moonSky);
+    else if(skyIntensityNight > 0.00001) {
+
+        float L0Moon = (a * exp(-0.1 / mCosT) + 1.0) * (c * (exp(d * (pi - Y)) - 0.000017) + 1.0 + e * cosY * cosY);
+        moonSky = pow(L0Moon, 1.0 - rainStrength) * skyIntensityNight * vec3(0.08, 0.12, 0.18) * vec3(0.4) * SKY_BRIGHTNESS_NIGHT;
+    }
+    return (daySky + moonSky);
 }
 
 float R2_dither() {
@@ -267,7 +269,7 @@ vec3 rayTrace(vec3 dir, vec3 position, float dither) {
 
     float quality = SSR_STEPS;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
-    float rayLength = ((position.z + dir.z * far * sqrt(3.)) > -near) ? (-near - position.z) / dir.z : far * sqrt(3.);
+    float rayLength = ((position.z + dir.z * far * 1.73205080757) > -near) ? (-near - position.z) / dir.z : far * 1.73205080757;
     vec3 direction = normalize(toClipSpace3(position + dir * rayLength) - clipPosition);  //convert to clip space
     direction.xy = normalize(direction.xy);
 
@@ -359,6 +361,21 @@ float dither = bayer16x16(gl_FragCoord.xy);
 #define bayer128(a) (bayer64(.5*(a))*.25+bayer2(a))
 
 float dither64 = bayer64(gl_FragCoord.xy);
+vec3 lumaBasedReinhardToneMapping(vec3 color) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float toneMappedLuma = luma / (1. + luma);
+    color *= clamp(toneMappedLuma / luma, 0, 10);
+    color = pow(color, vec3(0.45454545454));
+    return color;
+}
+vec3 lumaBasedReinhardToneMapping2(vec3 color) {
+    float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float toneMappedLuma = luma / (1. + luma);
+    color *= clamp(toneMappedLuma / luma, 0, 10);
+    //color = pow(color, vec3(0.45454545454));
+    return color;
+}
+
 void main() {
 
     vec4 color = texture(TranslucentSampler, texCoord);
@@ -384,7 +401,6 @@ void main() {
         float normalDotEye = dot(normal, normalize(fragpos3));
         float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
         fresnel = fresnel * 0.98 + 0.02;
-        fresnel *= max(1.0 - 0 * 0.5 * 1, 0.5);
         fresnel *= 1.0 - 1 * 0.3;
 
         vec4 screenPos = gl_FragCoord;
@@ -396,7 +412,7 @@ void main() {
 
         //vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
-        vec3 sky_c = skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * luminance(color2.rgb);
+        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength)*0.5);
          
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
@@ -408,7 +424,8 @@ void main() {
 
         float alpha0 = color2.a;
         color.a = -color2.a * fresnel + color2.a + fresnel;
-        color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a * 0.1, 0.0, 1.0);
+        //color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a * 0.1, 0.0, 1.0);
+        color.rgb = clamp((-0.65*color2.rgb*alpha0*fresnel+0.65*color2.rgb*alpha0+1.0*reflected)/color.a, 0.0, 1.0);
         //color.rgb = reflection.rgb;
 
     }        

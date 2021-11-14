@@ -17,10 +17,14 @@ out vec4 skycol;
 out vec4 rain;
 out vec3 avgSky;
 out vec3 sc;
-
+out vec3 curvedPos;
+out vec3 samplePos;
+out vec2 xz;
 out mat4 gbufferModelViewInverse;
 out mat4 gbufferModelView;
 out mat4 gbufferProjectionInverse;
+out vec3 skyCol0;
+out float ambientMult;
 
 out float cloudy;
 out float pos2;
@@ -159,7 +163,37 @@ vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength, vec3 nsu
     }
     return (daySky + moonSky);
 }
+const float pidiv= 0.31830988618; // 1/pi
+float sqr(float x) {
+	return x * x;
+}
+float pow3(float x) {
+	return sqr(x) * x;
+}
+float pow4(float x) {
+	return sqr(x) * sqr(x);
+}
+float pow5(float x) {
+	return pow4(x) * x;
+}
+float pow6(float x) {
+	return pow5(x) * x;
+}
+float pow8(float x) {
+	return pow4(x) * pow4(x);
+}
+float pow16(float x) {
+	return pow8(x) * pow8(x);
+}
+float pow32(float x) {
+	return pow16(x) * pow16(x);
+}
 
+//Mie phase function
+float phaseg(float x, float g) {
+    float gg = sqr(g);
+    return ((-0.25 * gg + 0.25) * pidiv) * pow(-2.0 * g * x + gg + 1.0, -1.5);
+}
 void main() {
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
@@ -186,7 +220,7 @@ void main() {
 
     sunDir = normalize((inverse(ModeViewMat) * vec4(decodeFloat(texture(DiffuseSampler, start).xyz), decodeFloat(texture(DiffuseSampler, start + inc).xyz), decodeFloat(texture(DiffuseSampler, start + 2.0 * inc).xyz), 1.0)).xyz);
 
-    gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
+    gbufferModelViewInverse = inverse(ModeViewMat);
     gbufferModelView = (ProjMat * ModeViewMat);
      cloudy = decodeFloat24((texture(noisetex, start + 51.0 * inc).rgb));
 
@@ -301,7 +335,24 @@ void main() {
 
 
 
+////////////////
+const float sky_planetRadius = 6731e3;
 
+vec3 cameraPosition = vec3(0, abs((cloudy)), 0);
+const float cloud_height = 1500.;
+const float maxHeight = 1650.;
+int maxIT_clouds = 15;
+const float cdensity = 0.2;
+		vec3 sc = sc * (1 - ((rainStrength) * 0.5));
+
+	//fake multiple scattering approx 1 (from horizon zero down clouds)
+
+
+	ambientMult = exp(-(1.25 + 0.8 * clamp(rainStrength, 0.75, 1)) * cdensity * 50.0);
+	skyCol0 = avgSky * ambientMult;
+
+
+//////////
 
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
     gl_Position.xy = (gl_Position.xy * 0.5 + 0.5) * clamp(CLOUDS_QUALITY + 0.01, 0.0, 1.0) * 2.0 - 1.0;

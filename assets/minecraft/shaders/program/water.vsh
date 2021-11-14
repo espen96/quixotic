@@ -18,6 +18,7 @@ out float overworld;
 out float end;
 out float far;
 out float rainStrength;
+out float skys;
 out vec3 sunDir;
 out mat4 gbufferModelView;
 out mat4 gbufferProjection;
@@ -149,7 +150,13 @@ void main() {
 	float sunlightB = sunlightB0 / (sunlightR0 + sunlightG0 + sunlightB0);
 	nsunColor = vec3(sunlightR, sunlightG, sunlightB);
 
+    float moonIntensity = max(0., 1.0 - exp(angMoon));
+    float sunIntensity = max(0., 1.0 - exp(angSun));
+    moonIntensity = max(0., 1.0 - exp(angMoon));
 
+    float avgEyeIntensity = ((sunIntensity * 120. + moonIntensity * 4.) + skyIntensity * 230. + skyIntensityNight * 4.);
+
+    skys = 1.8 / log2(max(avgEyeIntensity * 0.16 + 1.0, 1.13)) * 0.3;
 
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
 

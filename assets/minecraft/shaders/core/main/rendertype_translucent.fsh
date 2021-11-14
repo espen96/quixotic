@@ -75,7 +75,7 @@ void main() {
     vec4 color = texture(Sampler0, texCoord0);
     color = color * vertexColor * ColorModulator;
 
-    if(textureLod(Sampler0, texCoord0,0).a *255 == 200) {color.rgb = mix(color.rgb,toLinear(mix(color.rgb,vec3(0.42,0.6,0.7),0.5)),0.5);
+    if(textureLod(Sampler0, texCoord0,0).a *255 == 200) {color.rgb = mix(color.rgb,toLinear(mix(color.rgb,vec3(0.42,0.6,0.7),0.75)),0.75);
     color.a = textureLod(Sampler0, texCoord0,0).a;}
     color.rgb = clamp(color.rgb, 0.01, 1);
   //color.rgb = (noise)*100;

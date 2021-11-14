@@ -47,7 +47,7 @@ in vec3 suncol;
 #define fog_coefficientMieG 3.0
 #define fog_coefficientMieB 3.0
 
-#define Dirt_Amount 0.02  //How much dirt there is in water
+#define Dirt_Amount 0.005  //How much dirt there is in water
 
 #define Dirt_Scatter_R 0.6  //How much dirt diffuses red
 #define Dirt_Scatter_G 0.6  //How much dirt diffuses green
@@ -145,7 +145,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
     float SdotV = dot(sunPosition, normalize(fragpos)) * lightCol.a;
     float dL = length(dVWorld);
 	//Mie phase + somewhat simulates multiple scattering (Horizon zero down cloud approx)
-    float mie = max(phaseg(SdotV, fog_mieg1), 1.0 / 13.0);
+    float mie = max(phaseg(SdotV, fog_mieg1), 0.07692307692);
     float rayL = phaseRayleigh(SdotV);
 
     vec3 ambientCoefs = dVWorld / dot(abs(dVWorld), vec3(1.));
@@ -157,14 +157,12 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
     ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
     ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
 
-    vec3 skyCol0 = ambientLight * 8.0 * 1.0 / 2.0 / 3.0 * eyeBrightnessSmooth.y / vec3(240.) * Ambient_Mult / 3.1415;
-    vec3 sunColor = lightCol.rgb * 8.0 / 1.0 / 3.0;
+    vec3 skyCol0 = (8.0*ambientLight*Ambient_Mult)/18.849;
+    vec3 sunColor = (8.0 * lightCol.rgb) / 3.0;
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
 
-    float mu = 1.0;
-    float muS = 1.0 * mu;
     vec3 absorbance = vec3(1.0);
     float expFactor = 11.0;
     for(int i = 0; i < VL_SAMPLES; i++) {
@@ -176,9 +174,9 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
         float sh = dtest;
 
 			//Water droplets(fog)
-        float density = densityVol * ATMOSPHERIC_DENSITY * mu * 300.;
+        float density = densityVol * ATMOSPHERIC_DENSITY * 300.;
 			//Just air
-        vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * vec2(6., 7.0)) * 6.0;
+        vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * vec2(6.0, 7.0)) * 6.0;
 
 			//Pbr for air, yolo mix between mie and rayleigh for water droplets
         vec3 rL = rC * airCoef.x;
@@ -300,27 +298,9 @@ void main() {
         vec3 direct;
         direct = suncol;
 
-        vec4 tpos = gbufferProjection * vec4((sunPosition3), 1.0);
-        tpos = vec4(tpos.xyz / tpos.w, 1.0);
-        vec2 pos1 = tpos.xy / tpos.z;
-        vec2 lightPos = pos1 * 0.5 + 0.5;
-        vec2 ntc2 = texCoord;
-
-        #define GODRAYS_FILTER_SAMPLES  5 //[3 5 7 10 12 20]
-        vec2 deltatexcoord = vec2(lightPos - ntc2) / GODRAYS_FILTER_SAMPLES * vec2(oneTexel) * 250.;
-
-        vec2 noisetc = texCoord - 0.5 * (deltatexcoord * noise) * GODRAYS_FILTER_SAMPLES;
-
-        float gr = 0.0;
-        for(int i = 0; i < GODRAYS_FILTER_SAMPLES; i++) {
-            float Samplee = texture(MainSampler, noisetc).a;
-            gr += Samplee;
-            noisetc += deltatexcoord;
-        }
-
         float df = length(fragpos);
 
-        if(isEyeInWater == 1 && overworld == 1 || isWater) {
+        if(isEyeInWater == 1 && overworld == 1) {
 
             float dirtAmount = Dirt_Amount;
             vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B) * fogcol.rgb;

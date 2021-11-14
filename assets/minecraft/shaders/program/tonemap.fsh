@@ -32,9 +32,9 @@ float luma(vec3 color) {
 
 void getNightDesaturation(inout vec3 color, float lmx) {
     float lum = dot(color, vec3(0.15, 0.3, 0.55));
-    float lum2 = dot(color, vec3(0.85, 0.7, 0.45)) / 2;
+    float lum2 = dot(color, vec3(0.85, 0.7, 0.45)) *0.5;
     float rodLum = lum2 * 300.0;
-    float rodCurve = mix(1.0, rodLum / (2.5 + rodLum), 1 * (Purkinje_strength));
+    float rodCurve = mix(1.0, rodLum / (2.5 + rodLum), (Purkinje_strength));
     color = mix(lum * lmx * vec3(Purkinje_R, Purkinje_G, Purkinje_B), color, rodCurve);
 
     float brightness = dot(color, vec3(0.2627, 0.6780, 0.0593));
@@ -136,7 +136,7 @@ void main() {
     sum += texture(blursampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
     sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
 
-    vec3 col = sum.rgb / 12.0;
+    vec3 col = sum.rgb * 0.08333333333;
 
 
     vec3 fin = col.rgb;

@@ -18,7 +18,7 @@ const vec2 offsets[60] = vec2[60] (vec2(0.0000, 0.2500), vec2(-0.2165, 0.1250), 
 #define focal  1.2
 #define aperture 1.8
 #define MANUAL_FOCUS 64.0
-#define dof
+//#define dof
 #define dof1
 
 

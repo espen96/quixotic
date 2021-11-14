@@ -44,26 +44,15 @@ float luma3(vec3 color) {
 }
 
 vec4 minecraft_sample_lightmap2(sampler2D lightMap, ivec2 uv) {
-    vec3 blocklightColSqrt = vec3(TORCH_R, TORCH_G, TORCH_B);
-    vec3 blocklightCol = blocklightColSqrt * blocklightColSqrt;
 
-
-
-    vec2 block = vec2(clamp(vec2(uv.x, 0) / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
     vec2 sky = vec2(clamp(vec2(0, uv.y) / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
 
-    vec4 lm = texture(lightMap, clamp(uv / 256.0, vec2(0.5 / 16.0), vec2(15.5 / 16.0)));
     vec4 sl = texture(lightMap, sky);
-    sl *= sl;
 
-    vec4 bl = texture(lightMap, block);
+    float lmx = clamp((float(uv.y) / 255), 0, 1);
+    float lmy = clamp((float(uv.x) / 255), 0, 1);
 
-//    bl.rgb *= blockLight;
-    bl.rgb *= blocklightCol;
-    bl.rgb = mix(bl.rgb, lm.rgb, 0.75);
+    vec3 ambientLight = clamp(sl.rgb * (pow(lmx, 8.0) * 1.5) + (pow(lmy, 3.0) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)), 0.0005, 10.0);
 
-    vec4 ambient = vec4(bl + sl);
-    ambient.rgb = mix(ambient.rgb * ambient.rgb, ambient.rgb, 0.5);
-
-    return vec4(clamp(ambient.rgb, 0.0, 1.0), 1.0);
+    return vec4(clamp(ambientLight.rgb, 0.0, 1.0), 1.0);
 }
