@@ -33,8 +33,8 @@ float dither64 = Bayer64(gl_FragCoord.xy);
 
 void main() {
 
-//vec3 rnd = clamp((vec3(fract(dither5x3() - dither64)))/8,0,1);
-vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
+vec3 rnd = clamp((vec3(fract(dither5x3() - dither64)))/8,0,1);
+//vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
 
 discardControlGLPos(gl_FragCoord.xy, glpos);
 

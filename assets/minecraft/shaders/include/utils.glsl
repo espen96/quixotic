@@ -220,6 +220,10 @@ vec3 encodeFloat24(float val) {
     uint mantissa = uint((abs(val) / exp2(float(exponent)) - 1.0) * 131072.0);
     return vec3((sign << 7u) | ((exponent + 31u) << 1u) | (mantissa >> 16u), (mantissa >> 8u) & 255u, mantissa & 255u) / 255.0;
 }
+float R2_dither(){
+	vec2 alpha = vec2(0.75487765, 0.56984026);
+	return fract(alpha.x * gl_FragCoord.x + alpha.y * gl_FragCoord.y + 1.0/1.6180339887 * (GameTime*1000));
+}
 
 float decodeFloat24(vec3 raw) {
     uvec3 scaled = uvec3(raw * 255.0);

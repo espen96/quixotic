@@ -12,7 +12,7 @@
         { "name": "DiffuseDepthSampler" },
         { "name": "TranslucentSampler" },
         { "name": "temporals3Sampler" },
-        { "name": "TranslucentSpecSampler" },
+        { "name": "atmo" },
         { "name": "TranslucentDepthSampler" },
         { "name": "shading" },
         { "name": "noisetex" },

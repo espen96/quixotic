@@ -184,6 +184,7 @@ vec3 skyLut2(vec3 sVector, vec3 sunVec, float cosT, float rainStrength, vec3 nsu
     return (daySky + moonSky);
 }
 
+
 void main() {
 
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
@@ -299,7 +300,11 @@ void main() {
     float lightSign = clamp(sunIntensity * pow(10., 35.), 0., 1.);
     vec4 lightCol = vec4((sunlightR * 3. * sunAmount * sunIntensity + 0.16 / 5. - 0.16 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * 7.84 * exposure, 7.84 * (sunlightG * 3. * sunAmount * sunIntensity + 0.24 / 5. - 0.24 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, 7.84 * (sunlightB * 3. * sunAmount * sunIntensity + 0.36 / 5. - 0.36 / 5. * lightSign) * (1.0 - rainStrength * 0.95) * exposure, lightSign * 2.0 - 1.0);
 
+
+
     vec3 lightSourceColor = lightCol.rgb;
+
+    
     float sunVis = clamp(sunElevation, 0.0, 0.05) / 0.05 * clamp(sunElevation, 0.0, 0.05) / 0.05;
     float lightDir = float(sunVis >= 1e-5) * 2.0 - 1.0;
 
@@ -317,7 +322,6 @@ void main() {
         vec3 pos = normalize(rodSample(ij));
 
         vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength*0.25, nsunColor, skyIntensity, skyIntensityNight) / maxIT;
-		 avgSky += samplee/2.2 ;
 
         ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
         ambientLeft += samplee * (clamp(-pos.x, 0.0, 1.0) + clamp(pos.y / 7., 0.0, 1.0) + abs(pos.z) / 7.);

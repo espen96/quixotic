@@ -52,7 +52,7 @@ vec4 minecraft_sample_lightmap2(sampler2D lightMap, ivec2 uv) {
     float lmx = clamp((float(uv.y) / 255), 0, 1);
     float lmy = clamp((float(uv.x) / 255), 0, 1);
 
-    vec3 ambientLight = clamp(sl.rgb * (pow(lmx, 8.0) * 1.5) + (pow(lmy, 3.0) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)), 0.0005, 10.0);
+    vec3 ambientLight = clamp(sl.rgb * (pow(lmx, 8.0) * 1.5) + (pow(lmy, 3.0) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B)), 0.0005, 10.0);
 
     return vec4(clamp(ambientLight.rgb, 0.0, 1.0), 1.0);
 }
