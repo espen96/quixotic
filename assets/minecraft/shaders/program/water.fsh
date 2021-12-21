@@ -1,6 +1,16 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 
+vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel){
+  ivec2 coord = ivec2(gl_FragCoord.xy);
+  return vec4(
+    texelFetch(sampler, coord+offsets[0], 0)[channel],
+    texelFetch(sampler, coord+offsets[1], 0)[channel],
+    texelFetch(sampler, coord+offsets[2], 0)[channel],
+    texelFetch(sampler, coord+offsets[3], 0)[channel]
+    );
+}
+
 out vec4 fragColor;
 
 uniform sampler2D DiffuseDepthSampler;
@@ -21,12 +31,21 @@ in float rainStrength;
 in float far;
 in float overworld;
 in float end;
+in vec4 fogcol;
 in vec3 sunDir;
 in mat4 gbufferModelView;
 in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
 in mat4 wgbufferModelViewInverse;
-
+in vec3 ambientUp;
+in vec3 ambientLeft;
+in vec3 ambientRight;
+in vec3 ambientB;
+in vec3 ambientF;
+in vec3 ambientDown;
+#define TORCH_R 1.0
+#define TORCH_G 0.7
+#define TORCH_B 0.5
 float luminance(vec3 rgb)
 {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
@@ -121,8 +140,14 @@ vec3 skyLut(vec3 sVector, vec3 sunVec, float cosT, sampler2D lut)
 
     return textureGood(lut, vec2(x, y)).rgb;
 }
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
 float pi = 3.141592;
 float facos(float inX)
+
 {
 
     const float C0 = 1.56467;
@@ -432,19 +457,46 @@ void main()
     color.rgb = OutTexel3.rgb;
     vec4 color2 = color;
     float iswater = float(color.a * 255 == 200);
+
+    float depth = texture(TranslucentDepthSampler, texCoord).r;
+    float noise = mask(gl_FragCoord.xy + (Time * 100));
+    float noisev3 = clamp((fract(dither5x3() - dither64)), 0, 1);
+    float noisev2 = mix(noisev3, noise, 0.5);
+    vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
+    vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 2.0);
+    vec3 normal2 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5);
+    vec3 normal3 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 10);
+    vec3 normal4 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 20);
+    normal = (normal + normal2 + normal3 + normal4) / 4;
+
+    vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
+
+    vec3 ambientLight = ambientUp * clamp(ambientCoefs.y, 0., 1.);
+    ambientLight += ambientDown * clamp(-ambientCoefs.y, 0., 1.);
+    ambientLight += ambientRight * clamp(ambientCoefs.x, 0., 1.);
+    ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
+    ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
+    ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
+    ambientLight *= 1.0;
+    ambientLight *= (1.0 + rainStrength * 0.2);
+
+    ambientLight = clamp(ambientLight * (pow8(lmx) * 1.5) +
+                             (pow3(lmy) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
+                         0.0005, 10.0);
+if( overworld !=1){
+
+            float lumC = luma(fogcol.rgb);
+            vec3 diff = fogcol.rgb - lumC;
+
+             ambientLight =
+                clamp((diff) * (0.1) +
+                          (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
+                      0.0005, 10.0);
+        color.rgb = (color.rgb * ambientLight);         
+}
+        color2.rgb = (color2.rgb * ambientLight);                         
     if (color.a > 0.01 && overworld == 1)
     {
-
-        float depth = texture(TranslucentDepthSampler, texCoord).r;
-        float noise = mask(gl_FragCoord.xy + (Time * 100));
-        float noisev3 = clamp((fract(dither5x3() - dither64)), 0, 1);
-        float noisev2 = mix(noisev3, noise, 0.5);
-        vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
-        vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 2.0);
-        vec3 normal2 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5);
-        vec3 normal3 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 10);
-        vec3 normal4 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 20);
-        normal = (normal + normal2 + normal3 + normal4) / 4;
         ////////////////////
         vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
         vec3 screenPos2 = vec3(texCoord, depth);
@@ -466,7 +518,7 @@ void main()
 
         // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
-        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * 0.5)*lmx;
+        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * 0.5) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
 
@@ -478,6 +530,8 @@ void main()
         color.a = -color2.a * fresnel + color2.a + fresnel;
         // color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a *
         // 0.1, 0.0, 1.0);
+
+
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
         // color.rgb = reflection.rgb;

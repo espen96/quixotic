@@ -24,6 +24,7 @@ in mat4 gbufferProjectionInverse;
 flat in float near;
 flat in float far;
 flat in float overworld;
+flat in float end;
 flat in float cloudy;
 flat in vec3 currChunkOffset;
 
@@ -276,8 +277,21 @@ void main()
     float depth = texture(TranslucentDepthSampler, texCoord).r;
     float depth2 = texture(DiffuseDepthSampler, texCoord).r;
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
-
     vec2 texCoord = texCoord;
+    vec2 dst_map_val = vec2(0);
+    if (end != 1.0 && overworld != 1.0)
+    {
+        vec2 p_d = texCoord - Time * 0.1;
+
+        dst_map_val = fract(vec2(sin(length(fract(p_d) + Time * 0.2) * 100.0)));
+        vec2 dst_offset = dst_map_val.xy;
+
+        dst_offset *= 0.001;
+        dst_offset *= (1. - texCoord.t);
+
+        texCoord = texCoord + dst_offset;
+    }
+
     vec2 texCoord2 = texCoord;
     float lum = luma(fogcol.rgb);
     vec3 diff = fogcol.rgb - lum;
@@ -312,7 +326,7 @@ void main()
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
-    if (isWater && isEyeInWater == 0)
+    if (isWater && isEyeInWater == 0 && overworld == 1.0)
         depth = mix(depth2, depth, estEyeDepth2);
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
@@ -341,7 +355,6 @@ void main()
             fragColor.rgb *= abso;
 
             fragColor.rgb += lumaBasedReinhardToneMapping(vl);
-
         }
 
         else if (isEyeInWater == 0)
@@ -358,7 +371,7 @@ void main()
                 absorbance = 1;
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
-                if (depth2 >= 1 && isWater)
+            if (depth2 >= 1 && isWater)
                 fragColor.rgb = OutTexel.rgb;
         }
     }
