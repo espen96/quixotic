@@ -124,7 +124,7 @@ void main() {
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
-    vertexColor = Color;
+    vertexColor = Color* minecraft_sample_lightmap2(Sampler2, UV2);
 
     texCoord0 = UV0;
 //    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);

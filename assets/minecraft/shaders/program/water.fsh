@@ -1,14 +1,12 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 
-vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel){
-  ivec2 coord = ivec2(gl_FragCoord.xy);
-  return vec4(
-    texelFetch(sampler, coord+offsets[0], 0)[channel],
-    texelFetch(sampler, coord+offsets[1], 0)[channel],
-    texelFetch(sampler, coord+offsets[2], 0)[channel],
-    texelFetch(sampler, coord+offsets[3], 0)[channel]
-    );
+vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel)
+{
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    return vec4(
+        texelFetch(sampler, coord + offsets[0], 0)[channel], texelFetch(sampler, coord + offsets[1], 0)[channel],
+        texelFetch(sampler, coord + offsets[2], 0)[channel], texelFetch(sampler, coord + offsets[3], 0)[channel]);
 }
 
 out vec4 fragColor;
@@ -483,18 +481,18 @@ void main()
     ambientLight = clamp(ambientLight * (pow8(lmx) * 1.5) +
                              (pow3(lmy) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
                          0.0005, 10.0);
-if( overworld !=1){
+    if (overworld != 1)
+    {
 
-            float lumC = luma(fogcol.rgb);
-            vec3 diff = fogcol.rgb - lumC;
+        float lumC = luma(fogcol.rgb);
+        vec3 diff = fogcol.rgb - lumC;
 
-             ambientLight =
-                clamp((diff) * (0.1) +
-                          (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
-                      0.0005, 10.0);
-        color.rgb = (color.rgb * ambientLight);         
-}
-        color2.rgb = (color2.rgb * ambientLight);                         
+        ambientLight = clamp((diff) * (0.1) + (pow3(lmy) * 2.0) *
+                                                  (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
+                             0.0005, 10.0);
+        color.rgb = (color.rgb * ambientLight);
+    }
+     //color2.rgb = (color2.rgb * ambientLight);
     if (color.a > 0.01 && overworld == 1)
     {
         ////////////////////
@@ -530,7 +528,6 @@ if( overworld !=1){
         color.a = -color2.a * fresnel + color2.a + fresnel;
         // color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a *
         // 0.1, 0.0, 1.0);
-
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
