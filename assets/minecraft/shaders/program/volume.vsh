@@ -322,7 +322,7 @@ void main() {
         vec3 pos = normalize(rodSample(ij));
 
         vec3 samplee = 2.2 * skyLut2(pos.xyz, sunDir2, pos.y, rainStrength*0.25, nsunColor, skyIntensity, skyIntensityNight) / maxIT;
-
+        avgSky = samplee;
         ambientUp += samplee * (pos.y + abs(pos.x) / 7. + abs(pos.z) / 7.);
         ambientLeft += samplee * (clamp(-pos.x, 0.0, 1.0) + clamp(pos.y / 7., 0.0, 1.0) + abs(pos.z) / 7.);
         ambientRight += samplee * (clamp(pos.x, 0.0, 1.0) + clamp(pos.y / 7., 0.0, 1.0) + abs(pos.z) / 7.);

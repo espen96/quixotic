@@ -236,8 +236,8 @@ void main() {
         history2 = ClipAABB(history2, minRounded, avgRounded, maxRounded);
 
     // Average all samples.
-    fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
+    //fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
     //if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
-    //fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
+    fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
 
 }

@@ -12,7 +12,8 @@ uniform mat4 ProjMat;
 
 out vec4 vertexColor;
 out vec2 texCoord0;
-
+out float lmx;
+out float lmy;
 //out vec4 normal;
 
 out vec4 glpos;

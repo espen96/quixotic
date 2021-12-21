@@ -17,12 +17,13 @@ uniform vec3 ChunkOffset;
 out float lmx;
 out float lmy;
 out vec4 vertexColor;
+out vec4 vertexColor2;
 noperspective out vec3 test;
 out vec2 texCoord0;
 out vec2 texCoord2;
 
 out vec4 glpos;
-
+out mat4 ProjMat2;
 const vec2 COPRIMES = vec2(2, 3);
 
 vec2 halton(int index) {
@@ -59,9 +60,11 @@ zs = cos(position.z + animation);
 
 vertexColor = Color;
 texCoord0 = UV0;
+vertexColor2 = Color * minecraft_sample_lightmap2(Sampler2, UV2);
 
 lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
+ProjMat2 = ProjMat;
 
 gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
 

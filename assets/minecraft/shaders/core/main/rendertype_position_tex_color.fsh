@@ -10,7 +10,8 @@ uniform mat4 ProjMat;
 
 out vec2 texCoord0;
 out vec4 vertexColor;
-
+in float lmx;
+in float lmy;
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
 

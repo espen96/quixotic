@@ -32,7 +32,7 @@ void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
     glpos = gl_Position;
 
-//    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
+    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color);
     lightMapColor = texelFetch(Sampler2, UV2 / 16, 0);
     overlayColor = texelFetch(Sampler1, UV1, 0);
@@ -40,7 +40,7 @@ void main() {
     lm = clamp((float(UV2.y) / 255) - (float(UV2.x) / 255), 0, 1);
     ProjMat2 = ProjMat;
 
-    //normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
+    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
     glpos = gl_Position;
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);

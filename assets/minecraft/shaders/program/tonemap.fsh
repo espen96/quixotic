@@ -143,10 +143,11 @@ void main() {
 
     float lightScat = 0.25 * vignette;
 
-    float VL_abs = texture(BloomSampler, texCoord).a;
-    float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
-    VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
-    color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
+    //float VL_abs = texture(BloomSampler, texCoord).a;
+    //float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
+    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
+    //color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
+    color = ((color * 1.5) + fin * lightScat);
     getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
 
     BSLTonemap(color);
@@ -157,7 +158,7 @@ void main() {
     vec3 diff = color - lumC;
     color = color + diff * (-lumC * CROSSTALK + SATURATION);
 
-  //  color.rgb = vec3(VL_abs);
+    //color.rgb = vec3(VL_abs);
  
 
     fragColor = vec4((vec3(color.rgb)), 1.0);

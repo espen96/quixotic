@@ -11,6 +11,7 @@ in vec3 Normal;
 
 uniform sampler2D Sampler1;
 uniform sampler2D Sampler2;
+out mat4 ProjMat2;
 
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
@@ -36,7 +37,7 @@ void main() {
     vertexColor = minecraft_mix_light(Light0_Direction, Light1_Direction, Normal, Color);
     overlayColor = texelFetch(Sampler1, ivec2(UV1), 0);
     texCoord0 = UV0;
-
+ProjMat2 = ProjMat;
     //normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
 
     lmx = clamp((float(UV2.y) / 255), 0, 1);

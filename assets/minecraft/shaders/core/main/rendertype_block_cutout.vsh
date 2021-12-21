@@ -10,7 +10,7 @@ in ivec2 UV2;
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
 uniform float GameTime;
-
+out mat4 ProjMat2;
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
@@ -79,6 +79,7 @@ wave = wavingLeaves(mod(Position,16)).xyz;
 }
 vertexColor = Color;
 texCoord0 = UV0;
+ProjMat2 = ProjMat;
 
 lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);

@@ -2,6 +2,7 @@
 #extension GL_ARB_gpu_shader5 : enable
 uniform sampler2D cloudsample;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D TranslucentDepthSampler;
 uniform sampler2D TranslucentSampler;
 uniform sampler2D PreviousFrameSampler;
@@ -922,164 +923,14 @@ vec2 unpackUnorm2x4v2(vec4 pack)
     xy.x = modf(pack2 * 255.0 / 16.0, xy.y);
     return xy * vec2(1.06666666667, 1.0 / 15.0);
 }
-////////////////////
 
-const float M_PI = 3.1415926535;
-const float DEGRAD = M_PI / 180.0;
-
-float height = 500.0; // viewer height
-
-// rendering quality
-const int steps2 = 16; // 16 is fast, 128 or 256 is extreme high
-const int stepss = 8;  // 8 is fast, 16 or 32 is high
-
-float haze = rainStrength; // 0.2
-
-const float I = 10.0; // sun light power, 10.0 is normal
-const float g = 0.76; // light concentration .76 //.45 //.6  .76 is normaL
-const float g2 = g * g;
-
-// Reyleigh scattering (sky color, atmospheric up to 8km)
-// vec3 bR = vec3(5.8e-6, 13.5e-6, 33.1e-6); // normal earth
-// vec3 bR = vec3(5.7e-6, 13.3e-6, 33.0e-6); // normal earth2
-vec3 bR = vec3(3.8e-6f, 13.5e-6f, 33.1e-6f); // normal earth3
-// vec3 bR = vec3(5.8e-6, 33.1e-6, 13.5e-6); //purple
-// vec3 bR = vec3( 63.5e-6, 13.1e-6, 50.8e-6 ); //green
-// vec3 bR = vec3( 13.5e-6, 23.1e-6, 115.8e-6 ); //yellow
-// vec3 bR = vec3( 5.5e-6, 15.1e-6, 355.8e-6 ); //yeellow
-// vec3 bR = vec3(3.5e-6, 333.1e-6, 235.8e-6 ); //red-purple
-
-// Mie scattering (water particles up to 1km)
-vec3 bM = vec3(21e-6); // normal mie
-// vec3 bM = vec3(50e-6); //high mie
-
-//-----
-// positions
-
-const float Hr = 7994.0; // Reyleight scattering top
-const float Hm = 1200.0; // Mie scattering top
-
-const float R0 = 6360e3;    // planet radius
-const float Ra = 6420e3;    // atmosphere radius
-vec3 C = vec3(0., -R0, 0.); // planet center
-
-//--------------------------------------------------------------------------
-// scattering
-
-void densities(in vec3 pos, out float rayleigh, out float mie)
-{
-    float h = length(pos - C) - R0;
-    rayleigh = exp(-h / Hr);
-    vec3 d = pos;
-    d.y = 0.0;
-    float dist = length(d);
-    mie = exp(-h / Hm) + haze;
-}
-
-float escape(in vec3 p, in vec3 d, in float R)
-{
-    vec3 v = p - C;
-    float b = dot(v, d);
-    float c = dot(v, v) - R * R;
-    float det2 = b * b - c;
-    if (det2 < 0.)
-        return -1.;
-    float det = sqrt(det2);
-    float t1 = -b - det, t2 = -b + det;
-    return (t1 >= 0.) ? t1 : t2;
-}
-
-// this can be explained:
-// http://www.scratchapixel.com/lessons/3d-advanced-lessons/simulating-the-colors-of-the-sky/atmospheric-scattering/
-void scatter(vec3 o, vec3 d, out vec3 col, out float scat, vec3 Ds)
-{
-    float L = escape(o, d, Ra);
-    float mu = dot(d, Ds);
-    float opmu2 = 1.0 + mu * mu;
-    float phaseR = .0596831 * opmu2;
-    float phaseM = .1193662 * (1. - g2) * opmu2 / ((2. + g2) * pow(1. + g2 - 2. * g * mu, 1.5));
-
-    float depthR = 0., depthM = 0.;
-    vec3 R = vec3(0.), M = vec3(0.);
-
-    float dl = L / float(steps2);
-    for (int i = 0; i < steps2; ++i)
-    {
-        float l = float(i) * dl;
-        vec3 p = o + d * l;
-
-        float dR, dM;
-        densities(p, dR, dM);
-        dR *= dl;
-        dM *= dl;
-        depthR += dR;
-        depthM += dM;
-
-        float Ls = escape(p, Ds, Ra);
-        if (Ls > 0.)
-        {
-            float dls = Ls / float(stepss);
-            float depthRs = 0., depthMs = 0.;
-            for (int j = 0; j < stepss; ++j)
-            {
-                float ls = float(j) * dls;
-                vec3 ps = p + Ds * ls;
-                float dRs, dMs;
-                densities(ps, dRs, dMs);
-                depthRs += dRs * dls;
-                depthMs += dMs * dls;
-            }
-
-            vec3 A = exp(-(bR * (depthRs + depthR) + bM * (depthMs + depthM)));
-            R += A * dR;
-            M += A * dM;
-        }
-    }
-
-    col = I * (R * bR * phaseR + M * bM * phaseM);
-    scat = 1.0 - clamp(depthM * 1e-5, 0., 1.);
-}
-
-//--------------------------------------------------------------------------
-// ray casting
-
-vec4 generate(in vec3 view, in vec3 sunpos)
-{
-
-    // moon
-    float att = 1.0;
-    float staratt = 0.0;
-    if (sunpos.y < -0.20)
-    {
-        sunpos = -sunpos;
-        att = 0.01;
-    }
-
-    vec3 O = vec3(0., height, 0.);
-
-    vec3 D = view;
-
-    if (D.y <= -0.15)
-    {
-        D.y = -0.3 - D.y;
-    }
-
-    vec3 Ds = normalize(sunpos);
-    float scat = 0.0;
-    vec3 color = vec3(0.);
-    scatter(O, D, color, scat, Ds);
-    color *= att;
-
-    float env = 1.0;
-    return (vec4(env * pow(color, vec3(.7)), 1.0));
-}
-
-///////////////////////
 void main()
 {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
     float depth = texture(TranslucentDepthSampler, texCoord).r;
+    float depth2 = texture(DiffuseDepthSampler, texCoord).r;
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
+    bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
 
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
@@ -1088,29 +939,25 @@ void main()
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
 
-    bool sky = depth >= 1.0;
+    bool sky = depth2 >= 1.0;
+    //if(isWater) sky = depth2 >= 1.0;
     float vdots = dot(view, sunPosition2);
 
     if (sky && overworld == 1.0)
     {
-        //vec3 atmosphere = skyLut2(view.xyz, sunPosition3, view.y, rainStrength * 0.5) * skys;
-
-        //atmosphere = toLinear(generate(view.xyz, sunPosition3).xyz);
 
         vec4 cloud = vec4(0, 0, 0, 1);
         cloud = texture(cloudsample, texCoord * CLOUDS_QUALITY);
-        vec3 atmosphere = (cloud.rgb);
+        vec3 atmosphere = toLinear(cloud.rgb);
         if (view.y > 0.)
         {
 
-            atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            atmosphere += drawSun(vdots, 0, suncol.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
-             //atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
+            // atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
+            // atmosphere += drawSun(vdots, 0, suncol.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
         }
 
         outcol.rgb = lumaBasedReinhardToneMapping(atmosphere);
-        fragColor = outcol;
-        return;
     }
     else
     {
@@ -1135,8 +982,6 @@ void main()
 
         grCol = clamp(grCol, 0, 1);
 
-        bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
-
         vec2 texCoord = texCoord;
         vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
@@ -1153,12 +998,18 @@ void main()
             refractedCoord = texCoord;
         texCoord2 = refractedCoord;
     }
-    */
-        vec4 OutTexel3 = (texture(DiffuseSampler, texCoord2).rgba);
-        vec3 OutTexel = toLinear(OutTexel3.rgb);
+    */        
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
         float res = mod(mod2, 2.0f);
         ivec2 texoffsets[4] = ivec2[](ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
+        vec4 OutTexel3 = (texture(DiffuseSampler, texCoord2).rgba);
+        vec4 cbgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 2);       
+        vec4 crgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 0);       
+        float lmx = clamp(mix(OutTexel3.b,dot(cbgather,vec4(1.0))/4 , res), 0.0, 1);
+        float lmy = clamp(mix(OutTexel3.r,dot(crgather,vec4(1.0))/4 , res), 0.0, 1);
+;
+ 
+
         vec4 depthgather = textureGatherOffsets(TranslucentDepthSampler, texCoord, texoffsets, 0);
         vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
         float depthtest = dot(depthgather, vec4(1.0)) * 0.25;
@@ -1167,12 +1018,15 @@ void main()
         vec2 lmtrans = unpackUnorm2x4(OutTexel3.a);
         vec2 lmtrans10 = unpackUnorm2x4v2(lmgather);
         lmtrans10 = mix(lmtrans10, lmtrans, depthtest);
+        float lmtestx = clamp(mix(lmtrans10.y/4, lmtrans.y, res), 0.0, 1);
 
-        float lmy = clamp(mix(lmtrans.y, lmtrans10.y / 4, res), 0.0, 1);
-        float lmx = clamp(mix(lmtrans10.y, lmtrans.y, res), 0.0, 1);
+        float lmtesty = clamp(mix(lmtrans.y, lmtrans10.y / 4, res), 0.0, 1);
+
         vec4 pbr = pbr(lmtrans, unpackUnorm2x4(lmgather.x), OutTexel3.rgb);
         float light = pbr.r;
-
+        OutTexel3.r = clamp(mix(dot(crgather,vec4(1.0))/4, OutTexel3.r, res), 0.0, 1);
+         OutTexel3.b = clamp(mix(dot(cbgather,vec4(1.0))/4, OutTexel3.b, res), 0.0, 1);
+        vec3 OutTexel = toLinear(OutTexel3.rgb);
         if (overworld == 1.0)
         {
             float ao = 1.0;
@@ -1183,13 +1037,14 @@ void main()
                 isEyeInWater = 1;
             if (fogcol.r == 0.6 && fogcol.b == 0.0)
                 isEyeInLava = 1;
-
-            if (lmx > 0.95)
+/*
+            if (lmtestx > 0.95 ||lmtesty > 0.95 )
             {
-                lmx *= 0.75;
+                lmx = 0.75;
                 lmy = 0.0;
                 postlight = 0.0;
             }
+            */
             vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
@@ -1271,7 +1126,7 @@ void main()
             outcol.a = clamp(grCol, 0, 1);
 
             ///---------------------------------------------
-            // outcol.rgb = clamp(vec3(suncol), 0.01, 1);
+             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(lmx), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
             ///---------------------------------------------
         }
@@ -1307,14 +1162,15 @@ void main()
             if (light > 0.001)
                 outcol.rgb *= clamp(vec3(2.0 - 1 * 2) * light * 2, 1.0, 10.0);
         }
-        if (isWater)
-        {
-            vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B) * fogcol.rgb;
-            vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
-            vec3 totEpsilon = dirtEpsilon * Dirt_Amount + waterEpsilon;
-            outcol.rgb *= clamp(exp(-length(viewPos) * totEpsilon), 0.2, 1.0);
-        }
     }
 
+    if (isWater)
+    {
+
+        vec3 waterEpsilon = vec3(Water_Absorb_R, Water_Absorb_G, Water_Absorb_B) * fogcol.rgb;
+        vec3 dirtEpsilon = vec3(Dirt_Absorb_R, Dirt_Absorb_G, Dirt_Absorb_B);
+        vec3 totEpsilon = dirtEpsilon * Dirt_Amount + waterEpsilon;
+        outcol.rgb *= exp(-length(viewPos) * totEpsilon);
+    }
     fragColor = outcol + (noise / 128);
 }

@@ -36,16 +36,19 @@ void main() {
 
   //  color *= lightMapColor;
 
-  color.rgb += rnd / 255;
+  //color.rgb += rnd / 255;
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
-  color.rgb = clamp(color.rgb, 0.01, 1);
+  color.rgb = clamp(color.rgb, 0.0, 1);
 
-  float lm = lmx;
-  if(res == 0.0f) {
-    lm = lmy;
 
+if( vertexDistance < 1.5 && FogStart*0.000001 > 1) color.rgb = color.rgb;
+  else if(res == 0.0f) {
+
+    color.b =  clamp(lmx, 0, 0.95);
+    color.r =  clamp(lmy, 0, 0.95);
   }
+
     #define sssMin 22
     #define sssMax 47
     #define lightMin 48

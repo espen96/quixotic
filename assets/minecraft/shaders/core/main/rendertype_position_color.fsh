@@ -8,7 +8,8 @@ uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 
 out vec4 vertexColor;
-
+in float lmx;
+in float lmy;
 in vec4 glpos;
 void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);

@@ -15,13 +15,15 @@ uniform mat4 ProjMat;
 out float vertexDistance;
 out vec4 vertexColor;
 out vec2 texCoord0;
-
+out float lmx;
+out float lmy;
 out vec4 glpos;
 
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
     glpos = gl_Position;
-
+    lmx = clamp((float(UV2.y) / 255), 0, 1);
+    lmy = clamp((float(UV2.x) / 255), 0, 1);
     vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     if(vertexDistance <= 800)
         vertexColor = Color * minecraft_sample_lightmap(Sampler2, UV2);

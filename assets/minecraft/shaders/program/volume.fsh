@@ -164,14 +164,9 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
 
     vec3 ambientCoefs = dVWorld / dot(abs(dVWorld), vec3(1.));
 
-    vec3 ambientLight = ambientUp * clamp(ambientCoefs.y, 0., 1.);
-    ambientLight += ambientDown * clamp(-ambientCoefs.y, 0., 1.);
-    ambientLight += ambientRight * clamp(ambientCoefs.x, 0., 1.);
-    ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
-    ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
-    ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
+    vec3 ambientLight = ambientUp;
 
-    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 18.849;
+    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 19.0;
     vec3 sunColor = (8.0 * lightCol.rgb) / 3.0;
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
@@ -231,10 +226,9 @@ void waterVolumetrics(inout vec3 inColor, vec3 rayEnd, float estEyeDepth, float 
         vec3 ambientMul = exp(-max(estEyeDepth - dY * d, 0.0) * waterCoefs * 1.1);
         vec3 sunMul = exp(-max((estEyeDepth - dY * d), 0.0) / abs(sunElevation) * waterCoefs);
         vec3 light = (lightSource * phase * sunMul + ambientMul * ambient) * scatterCoef;
-        vL += (light - light * exp(-waterCoefs * dd * rayLength)) / waterCoefs * absorbance;
         absorbance *= exp(-dd * rayLength * waterCoefs);
+        vL += (light - light * exp(-waterCoefs * dd * rayLength)) / waterCoefs * absorbance;
     }
-    inColor += vL;
     inColor += vL;
 }
 
@@ -295,18 +289,6 @@ void main()
         isEyeInWater = 1;
     if (fogcol.r == 0.6 && fogcol.b == 0.0)
         isEyeInLava = 1;
-
-    vec3 vl = vec3(0.);
-
-    vec3 OutTexel = texture(MainSampler, texCoord).rgb;
-    vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
-    vec3 screenPos = vec3(texCoord, depth);
-    vec3 clipPos = screenPos * 2.0 - 1.0;
-    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
-    vec3 viewPos = tmp.xyz / tmp.w;
-    vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
-    fragColor.rgb = OutTexel;
-
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     vec2 lmtrans = unpackUnorm2x4((texture(MainSampler, texCoord2).a));
@@ -317,7 +299,24 @@ void main()
     lmy = mix(lmtrans.y, lmtrans3.y, res);
     lmx = mix(lmtrans3.y, lmtrans.y, res);
     if (depth >= 1.0)
-        lmx = 1.0;
+        lmx = 0.0;
+
+    vec3 vl = vec3(0.);
+    float estEyeDepth = max(62.90 - cameraPosition.y, 0.0);
+
+    float estEyeDepth2 = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0.0, 1.0);
+    estEyeDepth2 *= estEyeDepth2 * estEyeDepth2 * 2.0;
+    vec3 OutTexel = texture(MainSampler, texCoord).rgb;
+    vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
+    vec3 screenPos = vec3(texCoord, depth);
+    vec3 clipPos = screenPos * 2.0 - 1.0;
+    vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
+    vec3 viewPos = tmp.xyz / tmp.w;
+    if (isWater && isEyeInWater == 0)
+        depth = mix(depth2, depth, estEyeDepth2);
+
+    vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
+    fragColor.rgb = OutTexel;
 
     if (overworld == 1.0)
     {
@@ -335,33 +334,32 @@ void main()
             vec3 scatterCoef = dirtAmount * vec3(Dirt_Scatter_R, Dirt_Scatter_G, Dirt_Scatter_B);
             fragColor.rgb *= clamp(exp(-df * totEpsilon), 0.2, 1.0);
 
-            float estEyeDepth = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0., 1.0);
-            estEyeDepth *= estEyeDepth * estEyeDepth * 2.0;
-            estEyeDepth = max(62.90 - cameraPosition.y, 0.0);
+            waterVolumetrics(vl, fragpos, estEyeDepth, length(fragpos), 1, totEpsilon, scatterCoef, avgSky * 10,
+                             direct.rgb, dot(normalize(fragpos), normalize(sunPosition)), sunElevation, depth);
+            vec3 abso = exp(-length(fragpos) * totEpsilon);
 
-            waterVolumetrics(vl, fragpos, estEyeDepth, length(fragpos), 1, totEpsilon, scatterCoef, avgSky, direct.rgb,
-                             dot(normalize(fragpos), normalize(sunPosition)), sunElevation, depth2);
+            fragColor.rgb *= abso;
 
-            fragColor.rgb += vl;
-            if (isWater && isEyeInWater == 0)
-                fragColor.rgb = ((vl * 0.25) + OutTexel);
+            fragColor.rgb += lumaBasedReinhardToneMapping(vl);
 
-            if (depth >= 1.0)
-                fragColor.rgb = vl;
         }
 
-        if (isEyeInWater == 0)
+        else if (isEyeInWater == 0)
         {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
-             fragColor.rgb *= vl[1];
-             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
+            fragColor.rgb *= vl[1];
+            fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
             if (luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)
                 lmx = 0.93;
             lmx += LinearizeDepth(depth) * 0.005;
-            fragColor.rgb = mix(OutTexel, fragColor.rgb, clamp(lmx, 0, 1));
-            // fragColor.rgb = vec3(texture(MainSampler, texCoord).a);
 
-            fragColor.a = vl[1].r;
+            float absorbance = dot(vl[1], vec3(0.22, 0.71, 0.07));
+            if (isEyeInWater == 1)
+                absorbance = 1;
+            fragColor.rgb *= vl[1];
+            fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
+                if (depth2 >= 1 && isWater)
+                fragColor.rgb = OutTexel.rgb;
         }
     }
     else

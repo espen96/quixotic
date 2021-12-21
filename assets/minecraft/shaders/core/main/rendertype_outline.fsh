@@ -12,7 +12,8 @@ uniform vec4 FogColor;
 in vec4 vertexColor;
 in vec2 texCoord0;
 in vec4 glpos;
-
+in float lmx;
+in float lmy;
 out vec4 fragColor;
 
 void main() {

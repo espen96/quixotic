@@ -2,6 +2,7 @@
    "targets":[
       "swap1",
       "swap2",
+      "trans",
       "volume",
       "denoised",
       "previousFrame",
@@ -23,8 +24,8 @@
                "id":"clouds"
             },
             {
-               "name":"TranslucentDepthSampler",
-               "id":"translucent:depth"
+               "name":"DiffuseDepthSampler",
+               "id":"minecraft:main:depth"
             }
          ]
       },

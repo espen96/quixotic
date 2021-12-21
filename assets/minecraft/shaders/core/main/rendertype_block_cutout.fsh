@@ -7,6 +7,7 @@
 uniform sampler2D Sampler0;
 
 uniform vec4 ColorModulator;
+in mat4 ProjMat2;
 
 in vec4 vertexColor;
 in vec2 texCoord0;
@@ -34,11 +35,15 @@ float dither5x3() {
 }
 
 float dither64 = Bayer64(gl_FragCoord.xy);
-void main() {
 
+
+void main() {
+    vec2 p = texCoord0+fract(GameTime/24000);
+
+    bool gui = isGUI( ProjMat2);
 vec3 rnd = clamp((vec3(fract(dither5x3() - dither64)))/8,0,1);
 //vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
-
+rnd = vec3(bluenoise(p))/4;
 discardControlGLPos(gl_FragCoord.xy, glpos);
 
 vec4 albedo = texture(Sampler0, texCoord0);
@@ -107,10 +112,13 @@ if(alpha0 >= 128) alpha2 = floor(map(alpha0, 128, 255, 0, 255)) / 255;
   //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
 float alpha3 = alpha1;
-float lm = lmx + (luma4(rnd * clamp(lmx * 100, 0, 1)));
-if(res == 0.0f) {
-lm = lmy + (luma4(rnd * clamp(lmy * 100, 0, 1)));
+float lm = lmx;
+  if(res == 0.0f && !gui) {
+lm = lmy + ((rnd.x * clamp(lmy * 100, 0, 1)));
 alpha3 = alpha2;
+color.b =  clamp(lmx, 0, 0.95);
+color.r =  clamp(lmy, 0, 0.95);
+
 }
 fragColor = vec4(color.rgb,packUnorm2x4(alpha3, clamp(lm, 0, 0.95)));
 

@@ -49,8 +49,8 @@ float waterH(vec3 posxz) {
 float wave = 0.0;
 
 
-float factor = 1.0;
-float amplitude = 0.2;
+float factor = 1.5;
+float amplitude = 0.01;
 float speed = 4.0;
 float size = 0.2;
 
@@ -119,12 +119,12 @@ void main() {
 
     float wavea = 0.0;
     if(wtest * 255 == 200)
-        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1))*0.1;
+        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1));
     vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0)+ vec4(calculateJitter()*0.25,0,0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);
 //    vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
-    vertexColor = Color*texelFetch(Sampler2, UV2 / 16, 0);
+    vertexColor = Color* minecraft_sample_lightmap2(Sampler2, UV2);
 
     texCoord0 = UV0;
 //    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);

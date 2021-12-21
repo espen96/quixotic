@@ -5,7 +5,7 @@
         "dstrgb": "1-srcalpha"
     },
     "vertex": "main/rendertype_block",
-    "fragment": "main/rendertype_block",
+    "fragment": "main/rendertype_trip",
     "attributes": [
         "Position",
         "Color",

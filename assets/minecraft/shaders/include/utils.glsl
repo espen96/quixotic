@@ -255,7 +255,7 @@ vec2 unpackUnorm2x2(float pack) {
 
 //Dithering from Jodie
 float Bayer2(vec2 a) {
-    a = floor(a + fract(GameTime*8000));
+    a = floor(a + (GameTime*100));
     return fract(dot(a, vec2(0.5, a.y * 0.75)));
 }
 
@@ -304,3 +304,100 @@ float mask(vec2 p) {
 }
 
 
+const float ITER = 36.;
+const float FREQ = 0.7*3.14159;
+
+vec2 hash21(float p)
+{
+	vec3 p3 = fract(vec3(p) * vec3(.1031, .1030, .0973));
+	p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.xx+p3.yz)*p3.zy);
+}
+
+//a wave with its gradient
+vec4 sinC(vec2 uv, float freq, float i)
+{
+    vec2 ang = 2.*3.14159*hash21(i+ITER*float(GameTime/24000));
+ 	vec2 k = vec2(sin(ang.x), cos(ang.x));
+    float x = freq*dot(uv,k)  - ang.y;
+    float amp = 1.;//pow(freq, -3.5);
+    float H = amp*sin(x);
+    float Hdx = amp*cos(x);
+    return vec4(H, Hdx*k*freq, 0.3*amp);
+}
+
+vec3 map(vec2 uv) {
+    float freq = FREQ;
+    float amp = 1.;
+
+    vec4 h = vec4(0.0);
+    for(float i = 0.; i < ITER; i++) 
+    {        
+        h += sinC(uv, freq, i);
+    	freq *= 1.0 + 0.3/ITER;
+    }
+    return 0.5*h.xyz/h.w + 0.5;
+}
+float hash21(vec2 p)
+{
+	return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+// I verified value distribution is flat by taking a sample and
+// importing into GIMP, taking a histogram, which looks flat.
+
+// I had no tool for frequency analysis handy!
+// well Fabrice pointed me at his stuff so 
+// I made https://shadertoy.com/view/3tlczs from it
+
+//float diff(float x)
+//{
+//    return .5 + .5 * (dFdx(x) + dFdy(x)); //fwidth(x);
+//}
+// 1st derivative in direction, central difference
+// f'(x) = (f(x+y) - f(x-y)) / (2|y|)
+#define diff2(f, x, y) (((f((x) + (y))) - (f((x) - (y)))) / (2.*length(y)))
+
+// 2nd derivative
+// f''(x) = ((f'(x+y) - f'(x)) / (|y|) 
+//         - (f'(x) - f'(x-y)) / (|y|)) / (|y|)
+#define diff3(f, x, y) (((f((x) + (y))) + (f((x) - (y))) - 2.*(f((x)))) / dot(y,y))
+    // N.B. in 2D, this winds up being a plus-pattern high-pass filter
+    // with center coeff -.5 and all the rest .125
+    // after being normalized and all
+
+float bluenoise(vec2 p)
+{
+    float s = .125;
+    float h3 = .5 + s * (
+          diff3(hash21, p, vec2(1,0)) 
+        + diff3(hash21, p, vec2(0,1))
+        );
+    return h3;
+}
+    // with coordinate scale of 2., looks more like blue noise should.
+    // value samples looks gaussian distributed to me;  some averaging happened somehow.
+    // perhaps due to combination of two dimensional axes?
+    // h2 histogram in GIMP looks gaussian bell curve shaped if the gamma is correct
+    // but that apparently signifies nothing about the frequency distribution?!
+	// since the original white noise range is 0 to 1,
+    // the deltas can be -1 to 1, and there's 2 of them, so they need averaged,
+    // which apparently gives us gaussian value distribution, bunched near mid-gray.
+// h2 is violet noise, from what I understand
+float violetnoise(vec2 p)
+{
+    p *= 2.; // without, the resolution seems halved, pixels doubled  -- or used to! fine, now, but comes out more distorted, smeared, without
+    float s = .5; //sqrt(.5); //
+    float h2 = .5 + s * (
+          diff2(hash21, p, vec2(1,0))
+        + diff2(hash21, p, vec2(0,1))
+        );
+    return h2;
+}
+
+float luma4(vec3 color) {
+    return dot(color, vec3(0.21, 0.72, 0.07));
+}
+
+vec3 toLinear(vec3 sRGB) {
+    return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
+}
