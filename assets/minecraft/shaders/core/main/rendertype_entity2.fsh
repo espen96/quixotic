@@ -25,7 +25,7 @@ in float lmy;
 in vec4 glpos;
 
 void main() {
-  vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
+  //vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
   discardControlGLPos(gl_FragCoord.xy, glpos);
   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 

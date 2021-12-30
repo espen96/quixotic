@@ -974,7 +974,7 @@ void mainImage(out vec3 atmosphere, in vec2 fragCoord, vec3 view)
                                 camera_vector,      // the camera vector (ray direction of this pixel)
                                 scene.w,            // max dist, essentially the scene depth
                                 light_dir,          // light direction
-                                vec3(40.0),         // light intensity, 40 looks nice
+                                vec3(25.0),         // light intensity, 40 looks nice
                                 PLANET_POS,         // position of the planet
                                 PLANET_RADIUS,      // radius of the planet in meters
                                 ATMOS_RADIUS,       // radius of the atmosphere in meters

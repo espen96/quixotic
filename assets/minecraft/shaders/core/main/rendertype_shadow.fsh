@@ -25,7 +25,7 @@ in float lmy;
 in vec4 glpos;
 
 void main() {
-  vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
+ // vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
   discardControlGLPos(gl_FragCoord.xy, glpos);
   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 discard;
@@ -36,7 +36,7 @@ discard;
 
 //    color *= lightMapColor;
 
-  color.rgb += rnd / 255;
+  //color.rgb += rnd / 255;
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
   color.rgb = clamp(color.rgb, 0.01, 1);

@@ -93,7 +93,7 @@ if(diff.r < 0.1 && diff.b < 0.05) alpha0 = int(floor(map((albedo.g * 0.1) * 255,
 
 float noise = luma4(rnd) * 128;
 
-if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0 + noise * 0.1, sssMin, sssMax)); // SSS
+if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0, sssMin, sssMax)); // SSS
 
 if(alpha0 >= lightMin && alpha0 <= lightMax) alpha0 = int(clamp(alpha0 + 0, lightMin, lightMax)); // Emissives
 

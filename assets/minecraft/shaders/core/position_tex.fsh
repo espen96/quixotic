@@ -142,6 +142,7 @@ void main() {
     else if(isSun > 0.75) {
 
         discard;
+        /*
         vec3 p1 = c1 / cscale.x;
         vec3 p2 = c2 / cscale.y;
         vec3 p3 = c3 / cscale.z;
@@ -160,6 +161,8 @@ void main() {
             color.a = 0.0;
 
         }
+
+ */       
     } else {
 
         if(gl_FragCoord.z > 0.9)

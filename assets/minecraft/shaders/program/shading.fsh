@@ -1,14 +1,12 @@
 #version 150
 #extension GL_ARB_gpu_shader5 : enable
 
-vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel){
-  ivec2 coord = ivec2(gl_FragCoord.xy);
-  return vec4(
-    texelFetch(sampler, coord+offsets[0], 0)[channel],
-    texelFetch(sampler, coord+offsets[1], 0)[channel],
-    texelFetch(sampler, coord+offsets[2], 0)[channel],
-    texelFetch(sampler, coord+offsets[3], 0)[channel]
-    );
+vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel)
+{
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    return vec4(
+        texelFetch(sampler, coord + offsets[0], 0)[channel], texelFetch(sampler, coord + offsets[1], 0)[channel],
+        texelFetch(sampler, coord + offsets[2], 0)[channel], texelFetch(sampler, coord + offsets[3], 0)[channel]);
 }
 
 uniform sampler2D cloudsample;
@@ -464,8 +462,8 @@ float cdist2(vec2 coord)
 
 vec3 rayTrace(vec3 dir, vec3 position, float dither)
 {
-    float stepSize = 15;
-    int maxSteps = 30;
+    float stepSize = 200*dither;
+    int maxSteps = 15;
     int maxLength = 30;
 
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
@@ -507,14 +505,36 @@ vec3 rayTrace(vec3 dir, vec3 position, float dither)
 
     return vec3(1.1);
 }
+vec3 cosineHemisphereSample2(vec2 Xi)
+{
+    float r = sqrt(Xi.x);
+    float theta = 2.0 * 3.14159265359 * Xi.y;
 
-vec4 SSR(vec3 fragpos, float fragdepth, vec3 normal, float noise)
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+
+    return vec3(x, y, sqrt(max(0.0f, 1 - Xi.x)));
+}
+
+vec3 TangentToWorld2(vec3 N, vec3 H)
+{
+    vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 T = normalize(cross(UpVector, N));
+    vec3 B = cross(N, T);
+
+    return vec3((T * H.x) + (B * H.y) + (N * H.z));
+}
+
+vec2 R2_samples2(int n)
+{
+    vec2 alpha = vec2(0.75487765, 0.56984026);
+    return fract(alpha * n);
+}
+vec4 SSR(vec3 fragpos, float fragdepth, float noise, vec3 reflectedVector)
 {
     vec3 pos = vec3(0.0);
 
     vec4 color = vec4(0.0);
-
-    vec3 reflectedVector = reflect(normalize(fragpos), normalize(normal));
 
     pos = rayTrace(reflectedVector, fragpos, noise);
 
@@ -689,8 +709,10 @@ float dbao(sampler2D depth)
 float rayTraceShadow(vec3 dir, vec3 position, float dither, float depth)
 {
     float stepSize = clamp(linZ(depth) * 10.0, 15, 200);
+    stepSize = clamp(90 * dither, 15, 200);
     int maxSteps = int(clamp(invLinZ(depth) * 10.0, 15, 50));
     dither *= 1.0 - pow(depth, 256);
+    maxSteps = 90;
     vec3 clipPosition = nvec3(gbufferProjection * nvec4(position)) * 0.5 + 0.5;
     float rayLength = ((position.z + dir.z * 1.73205080757 * far) > -1.73205080757 * near)
                           ? (-1.73205080757 * near - position.z) / dir.z
@@ -949,10 +971,20 @@ void main()
     vec3 viewPos = tmp.xyz / tmp.w;
     vec3 p3 = mat3(gbufferModelViewInverse) * viewPos;
     vec3 view = normVec(p3);
+    ivec2 texoffsets[4] = ivec2[](ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
+    ivec2 texoffsets2[4] = ivec2[](ivec2(0, -1), ivec2(-1, 0), -ivec2(0, -1), -ivec2(-1, 0));
+
+    vec4 depthgather = textureGatherOffsets(DiffuseDepthSampler, texCoord, texoffsets2, 0);
 
     bool sky = depth2 >= 1.0;
+    bool edgex = depthgather.x >= 1.0;
+    bool edgey = depthgather.y >= 1.0;
+    bool edgez = depthgather.z >= 1.0;
+    bool edgew = depthgather.w >= 1.0;
     // if(isWater) sky = depth2 >= 1.0;
     float vdots = dot(view, sunPosition2);
+    bool skycheck = abs(float(edgex) + float(edgey) + float(edgez) + float(edgew)) > 0.0;
+    ivec2 texoffsets3[4] = ivec2[](ivec2(0, 2), ivec2(2, 0), -ivec2(0, 2), -ivec2(2, 0));
 
     if (sky && overworld == 1.0)
     {
@@ -972,6 +1004,7 @@ void main()
     }
     else
     {
+
         float comp = 1.0 - near / far / far; // distances above that are considered as sky
 
         vec4 tpos = gbufferProjection * vec4((-sunPosition), 1.0);
@@ -1012,13 +1045,12 @@ void main()
     */
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
         float res = mod(mod2, 2.0f);
-        ivec2 texoffsets[4] = ivec2[](ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
+
         vec4 OutTexel3 = (texture(DiffuseSampler, texCoord2).rgba);
         vec4 cbgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 2);
         vec4 crgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 0);
         float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res), 0.0, 1);
         float lmy = clamp(mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res), 0.0, 1);
-        ;
 
         vec4 depthgather = textureGatherOffsets(TranslucentDepthSampler, texCoord, texoffsets, 0);
         vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
@@ -1036,7 +1068,12 @@ void main()
         float light = pbr.r;
         OutTexel3.r = clamp(mix(dot(crgather, vec4(1.0)) / 4, OutTexel3.r, res), 0.0, 1);
         OutTexel3.b = clamp(mix(dot(cbgather, vec4(1.0)) / 4, OutTexel3.b, res), 0.0, 1);
+        if (skycheck && res != 1)
+        {
+            OutTexel3.rb *= 0.5;
+        }
         vec3 OutTexel = toLinear(OutTexel3.rgb);
+
         if (overworld == 1.0)
         {
             float ao = 1.0;
@@ -1058,15 +1095,14 @@ void main()
             vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
+            ao = dbao(TranslucentDepthSampler);
+            /*
+                        if (screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0)
+                        {
 
-            if (screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0)
-            {
-                ao = dbao(TranslucentDepthSampler);
-
-                // screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos,
-                // noise, depth) + lmy;
-            }
-
+                            screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
+                        }
+            */
             screenShadow = clamp(screenShadow, 0.1, 1.0);
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
@@ -1094,18 +1130,26 @@ void main()
 
             if (pbr.a * 255 > 1.0 && !isWater)
             {
-                vec3 normal2 = normal3 + (noise * (1 - smoothness));
 
-                vec3 avgSky = mix(vec3(0.0), ambientLight, lmx);
-                vec4 reflection = vec4(SSR(viewPos.xyz, depth, normal2, noise));
+                int seed = (int(Time * 1) % 10000) * 1 + 1;
+                vec2 ij = fract(R2_samples2(seed) + vec2(noise));
+                vec3 rayDir = normalize(cosineHemisphereSample2(ij));
+                rayDir = TangentToWorld2(normal3, rayDir);
+                vec3 reflectedVector = reflect(normalize(viewPos.xyz), (mix(normal3, rayDir, (1 - smoothness))));
+
+                // vec3 avgSky = mix(vec3(0.0), ambientLight, lmx);
+                vec3 avgSky = ambientLight;
+                vec4 reflection = vec4(SSR(viewPos.xyz, depth, noise, reflectedVector));
 
                 float normalDotEye = dot(normal, normalize(viewPos));
                 float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
                 fresnel = 0.686 * fresnel + 0.0142;
 
                 reflection = mix(vec4(avgSky, 1), reflection, reflection.a);
-                reflections += ((reflection.rgb) * (fresnel * OutTexel));
+                reflections += ((reflection.rgb) * (fresnel * OutTexel + OutTexel * 0.5));
                 OutTexel *= 0.075;
+                // OutTexel *= 0.5;
+
                 reflections = max(vec3(0.0), reflections);
             }
 
@@ -1136,7 +1180,7 @@ void main()
             outcol.a = clamp(grCol, 0, 1);
 
             ///---------------------------------------------
-            // outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(lmx), 0.01, 1));
+            // outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(screenShadow), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
             ///---------------------------------------------
         }
@@ -1148,10 +1192,9 @@ void main()
             float lumC = luma(fogcol.rgb);
             vec3 diff = fogcol.rgb - lumC;
 
-            vec3 ambientLight =
-                clamp((diff) * (0.1) +
-                          (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
-                      0.0005, 10.0);
+            vec3 ambientLight = clamp((diff) * (0.25) + (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) *
+                                                                             vec3(TORCH_R, TORCH_G, TORCH_B)),
+                                      0.0005, 10.0);
             outcol.rgb = lumaBasedReinhardToneMapping(OutTexel.rgb * ambientLight * ao);
 
             if (light > 0.001)
