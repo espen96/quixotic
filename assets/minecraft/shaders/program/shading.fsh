@@ -1064,7 +1064,9 @@ void main()
 
         float lmtesty = clamp(mix(lmtrans.y, lmtrans10.y / 4, res), 0.0, 1);
 
-        vec4 pbr = pbr(lmtrans, unpackUnorm2x4(lmgather.x), OutTexel3.rgb);
+        //vec4 pbr = pbr(lmtrans, unpackUnorm2x4(lmgather.x), OutTexel3.rgb);
+        vec4 pbr = pbr(OutTexel3.aa, (lmgather.xx), OutTexel3.rgb);
+
         float light = pbr.r;
         OutTexel3.r = clamp(mix(dot(crgather, vec4(1.0)) / 4, OutTexel3.r, res), 0.0, 1);
         OutTexel3.b = clamp(mix(dot(cbgather, vec4(1.0)) / 4, OutTexel3.b, res), 0.0, 1);
@@ -1180,7 +1182,7 @@ void main()
             outcol.a = clamp(grCol, 0, 1);
 
             ///---------------------------------------------
-            // outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(screenShadow), 0.01, 1));
+             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.z), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
             ///---------------------------------------------
         }

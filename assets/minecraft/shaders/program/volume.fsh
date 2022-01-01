@@ -326,8 +326,8 @@ void main()
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
-    if (isWater && isEyeInWater == 0 && overworld == 1.0)
-        depth = mix(depth2, depth, estEyeDepth2);
+    //if (isWater && isEyeInWater == 0 && overworld == 1.0)
+    //    depth = mix(depth2, depth, estEyeDepth2);
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
     fragColor.rgb = OutTexel;
@@ -362,10 +362,11 @@ void main()
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
+            /*
             if (luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)
                 lmx = 0.93;
             lmx += LinearizeDepth(depth) * 0.005;
-
+            */
             float absorbance = dot(vl[1], vec3(0.22, 0.71, 0.07));
             if (isEyeInWater == 1)
                 absorbance = 1;

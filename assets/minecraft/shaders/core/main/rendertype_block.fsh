@@ -86,9 +86,9 @@ if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0 + 0, sssMin, 
 
 if(alpha0 >= lightMin && alpha0 <= lightMax) alpha0 = int(clamp(alpha0, lightMin, lightMax)); // Emissives
 
-if(alpha0 >= roughMin && alpha0 <= roughMax) alpha0 = int(clamp(alpha0 + noise, roughMin, roughMax)); // Roughness
+if(alpha0 >= roughMin && alpha0 <= roughMax) alpha0 = int(clamp(alpha0 + 0, roughMin, roughMax)); // Roughness
 
-if(alpha0 >= metalMin && alpha0 <= metalMax) alpha0 = int(clamp(alpha0 + noise, metalMin, metalMax)); // Metals
+if(alpha0 >= metalMin && alpha0 <= metalMax) alpha0 = int(clamp(alpha0 + 0, metalMin, metalMax)); // Metals
 
 noise /= 255;
 
@@ -108,7 +108,7 @@ alpha3 = alpha2;
 color.b =  clamp(lmx, 0, 0.95);
 color.r =  clamp(lmy, 0, 0.95);
 }
-fragColor = vec4(color.rgb,packUnorm2x4(alpha3, clamp(lm, 0, 0.95)));
+fragColor = vec4(color.rgb,alpha3);
 
 
 }

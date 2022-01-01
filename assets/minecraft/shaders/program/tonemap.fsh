@@ -35,7 +35,7 @@ void getNightDesaturation(inout vec3 color, float lmx) {
     float lum2 = dot(color, vec3(0.85, 0.7, 0.45)) *0.5;
     float rodLum = lum2 * 300.0;
     float rodCurve = mix(1.0, rodLum / (2.5 + rodLum), (Purkinje_strength));
-    color = mix(lum * lmx * vec3(Purkinje_R, Purkinje_G, Purkinje_B), color, rodCurve);
+    color = mix(lum * 0.5 * vec3(Purkinje_R, Purkinje_G, Purkinje_B), color, rodCurve);
 
     float brightness = dot(color, vec3(0.2627, 0.6780, 0.0593));
     float amount = clamp(0.15 / (pow(brightness * ndeSat, 2.0) + 0.02), 0, 1);
