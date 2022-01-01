@@ -181,7 +181,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test)
         maps1 = 0.0;
     maps2 = map(maps2, 0, 1, 0, 128);
 
-    float maps = (maps1 + maps2) / 255;
+    float maps = in1.x;
     float expanded = int(maps * 255);
 
     if (expanded >= sssMin && expanded <= sssMax)
@@ -1182,7 +1182,7 @@ void main()
             outcol.a = clamp(grCol, 0, 1);
 
             ///---------------------------------------------
-             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.z), 0.01, 1));
+             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
             ///---------------------------------------------
         }

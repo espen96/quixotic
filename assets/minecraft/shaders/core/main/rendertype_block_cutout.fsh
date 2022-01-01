@@ -120,7 +120,7 @@ color.b =  clamp(lmx, 0, 0.95);
 color.r =  clamp(lmy, 0, 0.95);
 
 }
-fragColor = vec4(color.rgb,alpha3);
+fragColor = vec4(color.rgb,floor(map(alpha0, 0, 255, 0, 255)) / 255);
 
 
 }
