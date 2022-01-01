@@ -53,6 +53,5 @@ if( vertexDistance < 1.5 && FogStart*0.000001 > 1) color.rgb *= lightMapColor.rg
 //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
   fragColor = color;
   //fragColor.rgb = vec3(normal);
-  fragColor.a = packUnorm2x4(0.0, clamp(lm + (Bayer256(gl_FragCoord.xy) / 16), 0, 0.9));
 
 }

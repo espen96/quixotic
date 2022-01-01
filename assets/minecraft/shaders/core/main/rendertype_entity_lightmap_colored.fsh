@@ -43,6 +43,6 @@ bool gui = isGUI( ProjMat2);
     color.r =  clamp(lmy, 0, 0.95);
   }
   fragColor = color;
-  fragColor.a = packUnorm2x4(0, clamp(lm + (Bayer256(gl_FragCoord.xy) / 16), 0, 0.9));
+
 
 }

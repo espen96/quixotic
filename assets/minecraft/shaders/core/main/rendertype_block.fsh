@@ -84,7 +84,7 @@ float noise = luma4(rnd) * 128;
 
 if(alpha0 >= sssMin && alpha0 <= sssMax) alpha0 = int(clamp(alpha0 + 0, sssMin, sssMax)); // SSS
 
-if(alpha0 >= lightMin && alpha0 <= lightMax) alpha0 = int(clamp(alpha0+0, lightMin, lightMax)); // Emissives
+if(alpha0 >= lightMin && alpha0 <= lightMax) alpha0 = int(clamp(alpha0 + 0, lightMin, lightMax)); // Emissives
 
 if(alpha0 >= roughMin && alpha0 <= roughMax) alpha0 = int(clamp(alpha0 + 0, roughMin, roughMax)); // Roughness
 
@@ -109,5 +109,6 @@ color.b =  clamp(lmx, 0, 0.95);
 color.r =  clamp(lmy, 0, 0.95);
 }
 fragColor = vec4(color.rgb,floor(map(alpha0, 0, 255, 0, 255)) / 255);
+
 
 }
