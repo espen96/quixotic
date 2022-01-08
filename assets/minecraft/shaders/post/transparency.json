@@ -1,5 +1,7 @@
 {
    "targets":[
+      "solid",
+      "solid_shadows",
       "swap1",
       "swap2",
       "trans",
@@ -11,6 +13,10 @@
       "itemEntity",
       "particles",
       "clouds",
+      "translucent_decheckered",
+      "particles_decheckered",
+      "itemEntity_decheckered",
+      "final",
       "weather"
    ],
    "passes":[
@@ -29,6 +35,69 @@
             }
          ]
       },
+      {
+         "name": "de_checkerboard",
+         "intarget": "minecraft:main",
+         "outtarget": "solid",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "minecraft:main:depth"
+             }
+         ]
+     },
+     {
+         "name": "shadows",
+         "intarget": "solid",
+         "outtarget": "solid_shadows",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "solid:depth"
+             },
+             {
+                 "name": "DataSampler",
+                 "id": "minecraft:main"
+             },
+             {
+                 "name": "DataDepthSampler",
+                 "id": "minecraft:main:depth"
+             }
+         ]
+     },
+     {
+         "name": "de_checkerboard",
+         "intarget": "translucent",
+         "outtarget": "translucent_decheckered",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "translucent:depth"
+             }
+         ]
+     },
+     {
+         "name": "de_checkerboard",
+         "intarget": "particles",
+         "outtarget": "particles_decheckered",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "particles:depth"
+             }
+         ]
+     },
+     {
+         "name": "de_checkerboard",
+         "intarget": "itemEntity",
+         "outtarget": "itemEntity_decheckered",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "itemEntity:depth"
+             }
+         ]
+     },
       {
          "name":"shading",
          "intarget":"minecraft:main",
@@ -55,6 +124,10 @@
                "id":"swap1"
             },
             {
+               "name":"shadow_sampler",
+               "id":"solid_shadows"
+            },
+            {
                "name":"TranslucentSampler",
                "id":"translucent"
             },
@@ -71,6 +144,17 @@
             }
          ]
       },
+      {
+         "name": "de_checkerboard",
+         "intarget": "shading",
+         "outtarget": "solid",
+         "auxtargets": [
+             {
+                 "name": "DiffuseDepthSampler",
+                 "id": "minecraft:main:depth"
+             }
+         ]
+     },
       {
          "name":"water",
          "intarget":"minecraft:main",
@@ -90,17 +174,17 @@
             },
             {
                "name":"TerrainCloudsSampler",
-               "id":"shading"
+               "id":"solid"
             },
             {
                "name":"shading",
-               "id":"shading"
+               "id":"solid"
             }
          ]
       },
       {
          "name":"transparency",
-         "intarget":"shading",
+         "intarget":"solid",
          "outtarget":"swap2",
          "auxtargets":[
             {
@@ -112,25 +196,29 @@
                "id":"swap1"
             },
             {
-               "name":"TranslucentDepthSampler",
-               "id":"translucent:depth"
-            },
-            {
-               "name":"ItemEntitySampler",
-               "id":"itemEntity"
-            },
-            {
-               "name":"ItemEntityDepthSampler",
-               "id":"itemEntity:depth"
-            },
-            {
                "name":"ParticlesSampler",
                "id":"particles"
             },
             {
-               "name":"ParticlesDepthSampler",
-               "id":"particles:depth"
-            },
+               "name": "TranslucentDepthSampler",
+               "id": "translucent_decheckered:depth"
+           },
+           {
+               "name": "ItemEntitySampler",
+               "id": "itemEntity_decheckered"
+           },
+           {
+               "name": "ItemEntityDepthSampler",
+               "id": "itemEntity_decheckered:depth"
+           },
+           {
+               "name": "ParticlesSampler",
+               "id": "particles_decheckered"
+           },
+           {
+               "name": "ParticlesDepthSampler",
+               "id": "particles_decheckered:depth"
+           },
             {
                "name":"WeatherSampler",
                "id":"weather"
@@ -152,7 +240,7 @@
             },
             {
                "name":"shading",
-               "id":"shading"
+               "id":"solid"
             },
             {
                "name":"DiffuseDepthSampler",

@@ -1,11 +1,12 @@
 #version 150
 
 #moj_import <light.glsl>
-
+#moj_import <voxelization.glsl>
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
 in ivec2 UV2;
+in vec3 Normal;
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
@@ -14,13 +15,16 @@ out mat4 ProjMat2;
 uniform mat4 ModelViewMat;
 uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
-
+uniform vec2 ScreenSize;
 out float lmx;
 out float lmy;
 out vec4 vertexColor;
 out vec2 texCoord0;
 noperspective out vec3 test;
 out vec4 glpos;
+out vec4 normal;
+out float dataFace;
+out float vertexDistance;
 
 #define WAVY_PLANTS
 #define WAVY_STRENGTH 0.3 
@@ -67,29 +71,79 @@ wind.y += sin((t * 0.48798950513) + (viewPos.z + d2) * 0.5 + (viewPos.x + d3) * 
 
 return wind;
 }
-
+const vec2[] OFFSETS = vec2[](
+    vec2(0, 0),
+    vec2(1, 0),
+    vec2(1, 1),
+    vec2(0, 1)
+);
 void main() {
 vec3 position = Position + ChunkOffset;
-test = texture(Sampler0, UV0).rgb;
-vec3 wave = vec3(0.0);
 
-if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a * 255 >= 17.0) {
-wave = wavingLeaves(mod(Position,16)).xyz;
+    test = texture(Sampler0, UV0).rgb;
+    vec4 textureColor = texture(Sampler0, UV0);
 
-}
-vertexColor = Color;
-texCoord0 = UV0;
-ProjMat2 = ProjMat;
+    if (distance(test.rgb, vec3(1, 0, 1)) < 0.01) {
+        if (Normal.y > 0) {
+            // Data face used for voxelization
+            dataFace = 1.0;
+            bool inside;
+            // TODO: Add gametime
+            ivec2 pixel = positionToPixel(floor(Position + floor(ChunkOffset)), ScreenSize, inside, 0);
+            if (!inside) {
+                gl_Position = vec4(5, 5, 0, 1);
+                return;
+            }
+            gl_Position = vec4(
+                (vec2(pixel) + OFFSETS[imod(gl_VertexID, 4)]) / ScreenSize * 2.0 - 1.0,
+                -1,
+                1
+            );
+            //gl_Position = ProjMat * ModelViewMat * (pos + vec4(0, 0.2, 0, 0));
+            vertexColor = vec4(floor(Position.xz) / 16, 0, 1);
+        } else {
+            // Data face used for chunk offset storage
+            gl_Position = vec4(
+                OFFSETS[imod(gl_VertexID, 4)] * vec2(3, 1) / ScreenSize * 2.0 - 1.0,
+                -1,
+                1
+            );
+            dataFace = 2.0;
+        }
+    } else {
+        dataFace = 0.0;
 
-lmx = clamp((float(UV2.y) / 255), 0, 1);
-lmy = clamp((float(UV2.x) / 255), 0, 1);
-float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
-if(vertexDistance > 64) {
-wave = vec3(0.0);
 
-}
+        vec3 wave = vec3(0.0);
 
-gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
+        if(texture(Sampler0, UV0).a * 255 <= 18.0 && texture(Sampler0, UV0).a * 255 >= 17.0) {
+        wave = wavingLeaves(mod(Position,16)).xyz;
+
+        }
+        vertexColor = Color;
+        texCoord0 = UV0;
+        ProjMat2 = ProjMat;
+
+        lmx = clamp((float(UV2.y) / 255), 0, 1);
+        lmy = clamp((float(UV2.x) / 255), 0, 1);
+        float vertexDistance = length((ModelViewMat * vec4(Position + ChunkOffset, 1.0)).xyz);
+        if(vertexDistance > 64) {
+        wave = vec3(0.0);
+
+        }
+
+        gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
+
+
+
+        normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
+
+
+
+    }
+
+
+
 glpos = gl_Position;
 
 }

@@ -7,14 +7,14 @@
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
-
+in float dataFace;
 uniform vec4 ColorModulator;
 uniform float FogStart;
 uniform float FogEnd;
 uniform vec4 FogColor;
 in vec4 vertexColor;
 in mat4 ProjMat2;
-
+uniform vec3 ChunkOffset;
 noperspective in vec3 test;
 in vec2 texCoord0;
 in vec4 normal;
@@ -35,6 +35,8 @@ float dither64 = Bayer64(gl_FragCoord.xy);
 
 
 void main() {
+
+      if (dataFace < 0.5) {
     vec2 p = texCoord0+fract(GameTime/24000);
 
     bool gui = isGUI( ProjMat2);
@@ -108,7 +110,17 @@ alpha3 = alpha2;
 color.b =  clamp(lmx, 0, 0.95);
 color.r =  clamp(lmy, 0, 0.95);
 }
+
 fragColor = vec4(color.rgb,floor(map(alpha0, 0, 255, 0, 255)) / 255);
+
+    } else if (dataFace < 1.5) {
+        fragColor = vertexColor;
+    } else {
+        vec3 storedChunkOffset = mod(ChunkOffset, vec3(16)) / 16.0;
+        fragColor = vec4(encodeFloat(storedChunkOffset[int(gl_FragCoord.x)]), 1);
+    }
+
+
 
 
 }

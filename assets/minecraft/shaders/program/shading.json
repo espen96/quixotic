@@ -14,6 +14,7 @@
         { "name": "temporals3Sampler" },
         { "name": "TranslucentDepthSampler" },
         { "name": "DiffuseDepthSampler" },
+        { "name": "shadow_sampler" },
         { "name": "noisetex" },
         { "name": "cloudsample" },
         { "name": "FontSampler" },

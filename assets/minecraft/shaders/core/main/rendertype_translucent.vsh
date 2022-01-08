@@ -111,8 +111,8 @@ void main() {
 
 	vec3 posxz = mod(Position,16);
 
-	posxz.x += sin(posxz.z+(GameTime * 500.0))*0.25;
-	posxz.z += cos(posxz.x+(GameTime * 500.0)*0.5)*0.25;
+	posxz.x += sin(posxz.z+(GameTime * 500.0))*0.5;
+	posxz.z += cos(posxz.x+(GameTime * 500.0)*0.5)*0.5;
 
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);

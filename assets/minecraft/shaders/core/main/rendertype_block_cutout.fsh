@@ -8,13 +8,16 @@ uniform sampler2D Sampler0;
 
 uniform vec4 ColorModulator;
 in mat4 ProjMat2;
-
+uniform vec3 ChunkOffset;
 in vec4 vertexColor;
 in vec2 texCoord0;
 noperspective in vec3 test;
 in vec4 glpos;
 in float lmx;
 in float lmy;
+
+in vec4 normal;
+in float dataFace;
 out vec4 fragColor;
 
 vec4 smoothfilter(in sampler2D tex, in vec2 uv) {
@@ -38,6 +41,7 @@ float dither64 = Bayer64(gl_FragCoord.xy);
 
 
 void main() {
+      if (dataFace < 0.5) {
     vec2 p = texCoord0+fract(GameTime/24000);
 
     bool gui = isGUI( ProjMat2);
@@ -122,5 +126,14 @@ color.r =  clamp(lmy, 0, 0.95);
 }
 fragColor = vec4(color.rgb,floor(map(alpha0, 0, 255, 0, 255)) / 255);
 
+
+
+
+    } else if (dataFace < 1.5) {
+        fragColor = vertexColor;
+    } else {
+        vec3 storedChunkOffset = mod(ChunkOffset, vec3(16)) / 16.0;
+        fragColor = vec4(encodeFloat(storedChunkOffset[int(gl_FragCoord.x)]), 1);
+    }
 
 }

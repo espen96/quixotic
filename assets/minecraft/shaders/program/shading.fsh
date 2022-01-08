@@ -10,6 +10,7 @@ vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, in
 }
 
 uniform sampler2D cloudsample;
+uniform sampler2D shadow_sampler;
 uniform sampler2D DiffuseSampler;
 uniform sampler2D DiffuseDepthSampler;
 uniform sampler2D TranslucentDepthSampler;
@@ -960,6 +961,7 @@ vec2 unpackUnorm2x4v2(vec4 pack)
 void main()
 {
     vec4 outcol = vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 shadow = texture(shadow_sampler, texCoord).rgb;
     float depth = texture(TranslucentDepthSampler, texCoord).r;
     float depth2 = texture(DiffuseDepthSampler, texCoord).r;
     float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)), 0, 1);
@@ -1098,14 +1100,14 @@ void main()
 
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
             ao = dbao(TranslucentDepthSampler);
-            /*
+            
                         if (screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0)
                         {
 
                             screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
                         }
-            */
-            screenShadow = clamp(screenShadow, 0.1, 1.0);
+            
+            screenShadow = clamp(screenShadow*shadow.r, 0.0, 1.0);
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
@@ -1182,7 +1184,7 @@ void main()
             outcol.a = clamp(grCol, 0, 1);
 
             ///---------------------------------------------
-             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
+             //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(screenShadow), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
             ///---------------------------------------------
         }

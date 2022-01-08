@@ -1,0 +1,138 @@
+{
+    "targets": [
+        "solid",
+        "solid_shadows",
+        "water",
+        "translucent",
+        "itemEntity",
+        "particles",
+        "clouds",
+        "weather",
+        "translucent_decheckered",
+        "particles_decheckered",
+        "itemEntity_decheckered",
+        "final"
+    ],
+    "passes": [
+        {
+            "name": "de_checkerboard",
+            "intarget": "minecraft:main",
+            "outtarget": "solid",
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "minecraft:main:depth"
+                }
+            ]
+        },
+        {
+            "name": "shadows",
+            "intarget": "solid",
+            "outtarget": "solid_shadows",
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "solid:depth"
+                },
+                {
+                    "name": "DataSampler",
+                    "id": "minecraft:main"
+                },
+                {
+                    "name": "DataDepthSampler",
+                    "id": "minecraft:main:depth"
+                }
+            ]
+        },
+        {
+            "name": "de_checkerboard",
+            "intarget": "translucent",
+            "outtarget": "translucent_decheckered",
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "translucent:depth"
+                }
+            ]
+        },
+        {
+            "name": "de_checkerboard",
+            "intarget": "particles",
+            "outtarget": "particles_decheckered",
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "particles:depth"
+                }
+            ]
+        },
+        {
+            "name": "de_checkerboard",
+            "intarget": "itemEntity",
+            "outtarget": "itemEntity_decheckered",
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "itemEntity:depth"
+                }
+            ]
+        },
+        {
+            "name": "transparency",
+            "intarget": "solid_shadows",
+            "outtarget": "final",
+
+            "auxtargets": [
+                {
+                    "name": "DiffuseDepthSampler",
+                    "id": "solid:depth"
+                },
+                {
+                    "name": "TranslucentSampler",
+                    "id": "translucent_decheckered"
+                },
+                {
+                    "name": "TranslucentDepthSampler",
+                    "id": "translucent_decheckered:depth"
+                },
+                {
+                    "name": "ItemEntitySampler",
+                    "id": "itemEntity_decheckered"
+                },
+                {
+                    "name": "ItemEntityDepthSampler",
+                    "id": "itemEntity_decheckered:depth"
+                },
+                {
+                    "name": "ParticlesSampler",
+                    "id": "particles_decheckered"
+                },
+                {
+                    "name": "ParticlesDepthSampler",
+                    "id": "particles_decheckered:depth"
+                },
+                {
+                    "name": "CloudsSampler",
+                    "id": "clouds"
+                },
+                {
+                    "name": "CloudsDepthSampler",
+                    "id": "clouds:depth"
+                },
+                {
+                    "name": "WeatherSampler",
+                    "id": "weather"
+                },
+                {
+                    "name": "WeatherDepthSampler",
+                    "id": "weather:depth"
+                }
+            ]
+        },
+        {
+            "name": "blit",
+            "intarget": "final",
+            "outtarget": "minecraft:main"
+        }
+    ]
+}
