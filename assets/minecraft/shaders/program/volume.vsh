@@ -72,7 +72,7 @@ float decodeFloat24(vec3 raw) {
 
 #define BASE_FOG_AMOUNT 2.0 
 #define FOG_TOD_MULTIPLIER 1.0 
-#define FOG_RAIN_MULTIPLIER 0.5
+#define FOG_RAIN_MULTIPLIER 0.75
 
 const float pi = 3.141592653589793238462643383279502884197169;
 vec3 rodSample(vec2 Xi) {
@@ -217,7 +217,7 @@ void main() {
     gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);
-    cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
+    cloudy = 1.0;
 
 
 ////////////////////////////////////////////////

@@ -10,15 +10,17 @@ uniform sampler2D ParticlesSampler;
 uniform sampler2D ParticlesDepthSampler;
 uniform sampler2D WeatherSampler;
 uniform sampler2D WeatherDepthSampler;
+uniform sampler2D CloudsSampler;
+uniform sampler2D CloudsDepthSampler;
 
 uniform vec2 ScreenSize;
 in vec2 texCoord;
 
-#define NUM_LAYERS 6
+#define NUM_LAYERS 7
 
 vec4 color_layers[NUM_LAYERS];
 float depth_layers[NUM_LAYERS];
-int index_layers[NUM_LAYERS] = int[NUM_LAYERS] (0, 1, 2, 3, 4, 5);
+int index_layers[NUM_LAYERS] = int[NUM_LAYERS] (0, 1, 2, 3, 4, 5,6);
 int active_layers = 0;
 
 out vec4 fragColor;
@@ -58,6 +60,7 @@ void main() {
     try_insert((texture(ParticlesSampler, texCoord)), ParticlesDepthSampler);
     try_insert(toLinear(texture(WeatherSampler, texCoord)), WeatherDepthSampler);
     try_insert(toLinear(texture(ItemEntitySampler, texCoord)), ItemEntityDepthSampler);
+    try_insert( texture( CloudsSampler, texCoord ),CloudsDepthSampler );
 
     vec3 texelAccum = color_layers[index_layers[0]].rgb;
     for(int ii = 1; ii < active_layers; ++ii) {

@@ -111,7 +111,7 @@ vec3 toClipSpace3(vec3 viewSpacePosition)
 
 #define SSPTBIAS 0.5
 
-#define SSR_STEPS 15 //[10 15 20 25 30 35 40 50 100 200 400]
+#define SSR_STEPS 5 //[10 15 20 25 30 35 40 50 100 200 400]
 
 vec4 textureGood(sampler2D sam, vec2 uv)
 {
@@ -457,15 +457,11 @@ void main()
     float iswater = float(color.a * 255 == 200);
 
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    float noise = mask(gl_FragCoord.xy + (Time * 100));
-    float noisev3 = clamp((fract(dither5x3() - dither64)), 0, 1);
-    float noisev2 = mix(noisev3, noise, 0.5);
+    float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)),0,1);
     vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
-    vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 2.0);
-    vec3 normal2 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5);
-    vec3 normal3 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 10);
-    vec3 normal4 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 20);
-    normal = (normal + normal2 + normal3 + normal4) / 4;
+    vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5.0);
+
+
 
     vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
 
@@ -492,7 +488,7 @@ void main()
                              0.0005, 10.0);
         color.rgb = (color.rgb * ambientLight);
     }
-     //color2.rgb = (color2.rgb * ambientLight);
+
     if (color.a > 0.01 && overworld == 1)
     {
         ////////////////////
@@ -514,26 +510,22 @@ void main()
         vec3 view2 = view;
         view2.y = -view2.y;
 
-        // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
         vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * 0.5) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
 
-        reflection = vec4(SSR(viewPos.xyz, normal, noisev2));
+        reflection = vec4(SSR(viewPos.xyz, normal, noise));
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
         vec3 reflected = reflection.rgb * fresnel;
 
         float alpha0 = color2.a;
         color.a = -color2.a * fresnel + color2.a + fresnel;
-        // color.rgb = clamp((color2.rgb * 6.5) / color.a * alpha0 * (1.0 - fresnel) * 0.1 + (reflected * 7) / color.a *
-        // 0.1, 0.0, 1.0);
+
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
-        // color.rgb = reflection.rgb;
     }
-    // color = vec4(vec3(luminance(color2.rgb)),1);
 
     fragColor = vec4(color.rgba);
 }

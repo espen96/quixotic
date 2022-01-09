@@ -2,9 +2,7 @@
    "targets":[
       "swap1",
       "swap2",
-      "trans",
       "volume",
-      "denoised",
       "previousFrame",
       "shading",
       "translucent",
@@ -112,6 +110,14 @@
                "id":"swap1"
             },
             {
+               "name": "CloudsSampler",
+               "id": "clouds"
+           },
+           {
+               "name": "CloudsDepthSampler",
+               "id": "clouds:depth"
+           },
+            {
                "name":"TranslucentDepthSampler",
                "id":"translucent:depth"
             },
@@ -172,105 +178,12 @@
             }
          ]
       },
-      {
-         "name":"denoiser",
-         "intarget":"volume",
-         "outtarget":"denoised",
-         "auxtargets":[
-            {
-               "name":"CurrentFrameDataSampler",
-               "id":"minecraft:main"
-            },
-            {
-               "name":"PreviousFrameSampler",
-               "id":"previousFrame"
-            },
-            {
-               "name":"DiffuseDepthSampler",
-               "id":"minecraft:main:depth"
-            },
-            {
-               "name":"PreviousFrameDepthSampler",
-               "id":"previousFrame:depth"
-            },
-            {
-               "name":"CurrentFrameDataSampler",
-               "id":"minecraft:main"
-            },
-            {
-               "name":"CurrentFrameDepthSampler",
-               "id":"minecraft:main:depth"
-            },
-            {
-               "name":"PreviousFrameSampler",
-               "id":"previousFrame"
-            },
-            {
-               "name":"PreviousFrameDataSampler",
-               "id":"previousFrame"
-            },
-            {
-               "name":"PreviousFrameDepthSampler",
-               "id":"previousFrame:depth"
-            }
-         ]
-      },
+
+
 
       {
-         "name":"aa",
-         "intarget":"denoised",
-         "outtarget":"shading",
-         "auxtargets":[
-            {
-               "name":"DepthSampler",
-               "id":"minecraft:main:depth"
-            },
-            {
-               "name":"clouds",
-               "id":"clouds"
-            },
-            {
-               "name":"MainSampler",
-               "id":"minecraft:main"
-            }
-         ]
-      },
-      {
-         "name":"blur1",
-         "intarget":"shading",
-         "outtarget":"swap1",
-         "auxtargets":[
-            {
-               "name":"MainSampler",
-               "id":"minecraft:main"
-            }
-         ]
-      },
-      {
-         "name":"blur2",
-         "intarget":"swap1",
-         "outtarget":"swap2",
-         "auxtargets":[
-            {
-               "name":"MainSampler",
-               "id":"minecraft:main"
-            }
-         ]
-      },
-      {
-         "name":"blur3",
-         "intarget":"swap2",
-         "outtarget":"swap1",
-         "auxtargets":[
-            {
-               "name":"MainSampler",
-               "id":"minecraft:main"
-            }
-         ]
-      },
-      {
          "name":"tonemap",
-         "intarget":"shading",
+         "intarget":"volume",
          "outtarget":"swap2",
          "auxtargets":[
             {
@@ -291,32 +204,9 @@
             }
          ]
       },
-      {
-        "name":"dof",
-        "intarget":"swap2",
-        "outtarget":"swap1",
-        "auxtargets":[
-           {
-              "name":"DepthSampler",
-              "id":"minecraft:main:depth"
-           },
-           {
-              "name":"clouds",
-              "id":"clouds"
-           },
-           {
-              "name":"PreviousFrameDepthSampler",
-              "id":"previousFrame:depth"
-           },
-           {
-              "name":"MainSampler",
-              "id":"minecraft:main"
-           }
-        ]
-     },
      {
         "name":"copy_with_depth",
-        "intarget":"shading",
+        "intarget":"volume",
         "outtarget":"previousFrame",
         "auxtargets":[
            {
@@ -335,7 +225,7 @@
      },
       {
          "name":"blit",
-         "intarget":"swap1",
+         "intarget":"swap2",
          "outtarget":"minecraft:main"
       }
    ]

@@ -34,7 +34,7 @@ flat in vec3 sunPosition3;
 flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
 in vec3 suncol;
-#define VL_SAMPLES 6
+#define VL_SAMPLES 3
 #define Ambient_Mult 1.0
 #define SEA_LEVEL 70
 #define ATMOSPHERIC_DENSITY 1.25
@@ -205,7 +205,7 @@ void waterVolumetrics(inout vec3 inColor, vec3 rayEnd, float estEyeDepth, float 
                       vec3 waterCoefs, vec3 scatterCoef, vec3 ambient, vec3 lightSource, float VdotL,
                       float sunElevation, float depth)
 {
-    int spCount = 6;
+    int spCount = 3;
 
     // limit ray length at 32 blocks for performance and reducing integration
     // error you can't see above this anyway
@@ -318,16 +318,14 @@ void main()
     vec3 vl = vec3(0.);
     float estEyeDepth = max(62.90 - cameraPosition.y, 0.0);
 
-    float estEyeDepth2 = clamp((14.0 - (lmx * 240) / 255.0 * 16.0) / 14.0, 0.0, 1.0);
-    estEyeDepth2 *= estEyeDepth2 * estEyeDepth2 * 2.0;
+
     vec3 OutTexel = texture(MainSampler, texCoord).rgb;
     vec2 scaledCoord = 2.0 * (texCoord - vec2(0.5));
     vec3 screenPos = vec3(texCoord, depth);
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
-    //if (isWater && isEyeInWater == 0 && overworld == 1.0)
-    //    depth = mix(depth2, depth, estEyeDepth2);
+
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
     fragColor.rgb = OutTexel;
@@ -359,14 +357,9 @@ void main()
 
         else if (isEyeInWater == 0)
         {
-            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
+            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, 0);
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
-            /*
-            if (luma(texture(TranslucentSampler, texCoord).rgb) > 0.0)
-                lmx = 0.93;
-            lmx += LinearizeDepth(depth) * 0.005;
-            */
             float absorbance = dot(vl[1], vec3(0.22, 0.71, 0.07));
             if (isEyeInWater == 1)
                 absorbance = 1;
@@ -391,5 +384,5 @@ void main()
     {
         fragColor.rgb *= exp(-length(fragpos) * vec3(1.0) * 0.25);
     }
-    //  fragColor = vec4(vec3(lmx),1);
+
 }

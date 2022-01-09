@@ -75,8 +75,6 @@ in float sunElevation;
 
 out vec4 fragColor;
 
-#define AOStrength 1.0
-#define steps 6
 
 #define TORCH_R 1.0
 #define TORCH_G 0.7
@@ -101,12 +99,10 @@ out vec4 fragColor;
 #define Water_Absorb_G 0.03751
 #define Water_Absorb_B 0.01150
 
-#define SSAO_SAMPLES 4
 
-#define NORMDEPTHTOLERANCE 1.0
 const float pi = 3.141592653589793238462643383279502884197169;
 
-#define CLOUDS_QUALITY 0.5
+#define CLOUDS_QUALITY 0.1
 float sqr(float x)
 {
     return x * x;
@@ -834,13 +830,13 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
     float depthB = texture(depthtex, texCoords + offsetB).r;
     float depthC = texture(depthtex, texCoords + offsetC).r;
     vec3 A = getDepthPoint(texCoords, depthA);
-    A += pow4(texture(DiffuseSampler, texCoord).g) * 0.01 * 1 - water;
+    //A += pow4(texture(DiffuseSampler, texCoord).g) * 0.01 * 1 - water;
 
     vec3 B = getDepthPoint(texCoords + offsetB, depthB);
-    B += pow4(texture(DiffuseSampler, texCoord + offsetB * 3.0).g) * 0.01 * 1 - water;
+    //B += pow4(texture(DiffuseSampler, texCoord + offsetB * 3.0).g) * 0.01 * 1 - water;
 
     vec3 C = getDepthPoint(texCoords + offsetC, depthC);
-    C += pow4(texture(DiffuseSampler, texCoord + offsetC * 3.0).g) * 0.01 * 1 - water;
+    //C += pow4(texture(DiffuseSampler, texCoord + offsetC * 3.0).g) * 0.01 * 1 - water;
 
     vec3 AB = normalize(B - A);
     vec3 AC = normalize(C - A);
@@ -851,103 +847,7 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
     return normalize(normal);
 }
 
-float getRawDepth(vec2 uv)
-{
-    return texture(TranslucentDepthSampler, uv).x;
-}
 
-// inspired by keijiro's depth inverse projection
-// https://github.com/keijiro/DepthInverseProjection
-// constructs view space ray at the far clip plane from the screen uv
-// then multiplies that ray by the linear 01 depth
-vec3 viewSpacePosAtScreenUV(vec2 uv)
-{
-    vec3 viewSpaceRay = (gbufferProjectionInverse * vec4(uv * 2.0 - 1.0, 1.0, 1.0) * near).xyz;
-    float rawDepth = getRawDepth(uv);
-    return viewSpaceRay * (linZ(rawDepth) + pow8(luma(texture(DiffuseSampler, uv).xyz)) * 0.00);
-}
-vec3 viewSpacePosAtPixelPosition(vec2 vpos)
-{
-    vec2 uv = vpos * oneTexel.xy;
-    return viewSpacePosAtScreenUV(uv);
-}
-
-vec3 viewNormalAtPixelPosition(vec2 vpos)
-{
-    // get current pixel's view space position
-    vec3 viewSpacePos_c = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 0.0));
-
-    // get view space position at 1 pixel offsets in each major direction
-    vec3 viewSpacePos_l = viewSpacePosAtPixelPosition(vpos + vec2(-1.0, 0.0));
-    vec3 viewSpacePos_r = viewSpacePosAtPixelPosition(vpos + vec2(1.0, 0.0));
-    vec3 viewSpacePos_d = viewSpacePosAtPixelPosition(vpos + vec2(0.0, -1.0));
-    vec3 viewSpacePos_u = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 1.0));
-
-    // get the difference between the current and each offset position
-    vec3 l = viewSpacePos_c - viewSpacePos_l;
-    vec3 r = viewSpacePos_r - viewSpacePos_c;
-    vec3 d = viewSpacePos_c - viewSpacePos_d;
-    vec3 u = viewSpacePos_u - viewSpacePos_c;
-
-    // pick horizontal and vertical diff with the smallest z difference
-    vec3 hDeriv = abs(l.z) < abs(r.z) ? l : r;
-    vec3 vDeriv = abs(d.z) < abs(u.z) ? d : u;
-
-    // get view space normal from the cross product of the two smallest offsets
-    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
-
-    return viewNormal;
-}
-
-vec3 viewNormalAtPixelPosition2(vec2 vpos)
-{
-    // screen uv from vpos
-    vec2 uv = vpos * oneTexel.xy;
-
-    // current pixel's depth
-    float c = getRawDepth(uv);
-
-    // get current pixel's view space position
-    vec3 viewSpacePos_c = viewSpacePosAtScreenUV(uv);
-
-    // get view space position at 1 pixel offsets in each major direction
-    vec3 viewSpacePos_l = viewSpacePosAtScreenUV(uv + vec2(-1.0, 0.0) * oneTexel.xy);
-    vec3 viewSpacePos_r = viewSpacePosAtScreenUV(uv + vec2(1.0, 0.0) * oneTexel.xy);
-    vec3 viewSpacePos_d = viewSpacePosAtScreenUV(uv + vec2(0.0, -1.0) * oneTexel.xy);
-    vec3 viewSpacePos_u = viewSpacePosAtScreenUV(uv + vec2(0.0, 1.0) * oneTexel.xy);
-
-    // get the difference between the current and each offset position
-    vec3 l = viewSpacePos_c - viewSpacePos_l;
-    vec3 r = viewSpacePos_r - viewSpacePos_c;
-    vec3 d = viewSpacePos_c - viewSpacePos_d;
-    vec3 u = viewSpacePos_u - viewSpacePos_c;
-
-    // get depth values at 1 & 2 pixels offsets from current along the horizontal
-    // axis
-    vec4 H = vec4(getRawDepth(uv + vec2(-1.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(1.0, 0.0) * oneTexel.xy),
-                  getRawDepth(uv + vec2(-2.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(2.0, 0.0) * oneTexel.xy));
-
-    // get depth values at 1 & 2 pixels offsets from current along the vertical
-    // axis
-    vec4 V = vec4(getRawDepth(uv + vec2(0.0, -1.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 1.0) * oneTexel.xy),
-                  getRawDepth(uv + vec2(0.0, -2.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 2.0) * oneTexel.xy));
-
-    // current pixel's depth difference from slope of offset depth samples
-    // differs from original article because we're using non-linear depth values
-    // see article's comments
-    vec2 he = abs((2 * H.xy - H.zw) - c);
-    vec2 ve = abs((2 * V.xy - V.zw) - c);
-
-    // pick horizontal and vertical diff with the smallest depth difference from
-    // slopes
-    vec3 hDeriv = he.x < he.y ? l : r;
-    vec3 vDeriv = ve.x < ve.y ? d : u;
-
-    // get view space normal from the cross product of the best derivatives
-    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
-
-    return viewNormal;
-}
 
 vec2 unpackUnorm2x4v2(vec4 pack)
 {
@@ -981,10 +881,8 @@ void main()
     bool edgey = depthgather.y >= 1.0;
     bool edgez = depthgather.z >= 1.0;
     bool edgew = depthgather.w >= 1.0;
-    // if(isWater) sky = depth2 >= 1.0;
     float vdots = dot(view, sunPosition2);
     bool skycheck = abs(float(edgex) + float(edgey) + float(edgez) + float(edgew)) > 0.0;
-    ivec2 texoffsets3[4] = ivec2[](ivec2(0, 2), ivec2(2, 0), -ivec2(0, 2), -ivec2(2, 0));
 
     if (sky && overworld == 1.0)
     {
@@ -995,9 +893,8 @@ void main()
         if (view.y > 0.)
         {
 
-            // atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            // atmosphere += drawSun(vdots, 0, suncol.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
-            // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
+            atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
+            atmosphere += drawSun(vdots, 0, suncol.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
         }
 
         outcol.rgb = lumaBasedReinhardToneMapping(atmosphere);
@@ -1005,44 +902,12 @@ void main()
     else
     {
 
-        float comp = 1.0 - near / far / far; // distances above that are considered as sky
-
-        vec4 tpos = gbufferProjection * vec4((-sunPosition), 1.0);
-        tpos = vec4(tpos.xyz / tpos.w, 1.0);
-        vec2 pos1 = tpos.xy / tpos.z;
-        vec2 lightPos = pos1 * 0.5 + 0.5;
-        vec2 ntc2 = texCoord;
-        vec2 deltatexcoord = vec2(lightPos - ntc2);
-
-        vec2 noisetc = lightPos - deltatexcoord * clamp(noise, 0, 1);
-        float gr = 0.0;
-
-        vec4 Samplee = textureGather(TranslucentDepthSampler, noisetc);
-        gr += dot(step(vec4(comp), Samplee), vec4(0.25));
-
-        float grCol = clamp(gr * 2 - 0.1, 0, 1);
-        grCol = mix(1.0, grCol, clamp(cdist2(noisetc), 0, 1));
-        grCol = mix(1.0, grCol, clamp(vdots * 2 - 1.2, 0, 1));
-
-        grCol = clamp(grCol, 0, 1);
-
         vec2 texCoord = texCoord;
         vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
-        // if(!isWater) normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
 
         vec2 texCoord2 = texCoord;
-        /*
-    if(isWater) {
-        wnormal = normalize(viewToWorld(normal));
 
-        float displ = (wnormal.z / (length(viewPos) / far) / 2000.);
-        vec2 refractedCoord = texCoord + (displ * 0.5);
-        if(texture(TranslucentSampler, refractedCoord).r <= 0.0)
-            refractedCoord = texCoord;
-        texCoord2 = refractedCoord;
-    }
-    */
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
         float res = mod(mod2, 2.0f);
 
@@ -1064,7 +929,6 @@ void main()
 
         float lmtesty = clamp(mix(lmtrans.y, lmtrans10.y / 4, res), 0.0, 1);
 
-        //vec4 pbr = pbr(lmtrans, unpackUnorm2x4(lmgather.x), OutTexel3.rgb);
         vec4 pbr = pbr(OutTexel3.aa, (lmgather.xx), OutTexel3.rgb);
 
         float light = pbr.r;
@@ -1079,33 +943,19 @@ void main()
         if (overworld == 1.0)
         {
             float ao = 1.0;
-            float postlight = 1;
             int isEyeInWater = 0;
             int isEyeInLava = 0;
             if (fogcol.a > 0.078 && fogcol.a < 0.079)
                 isEyeInWater = 1;
             if (fogcol.r == 0.6 && fogcol.b == 0.0)
                 isEyeInLava = 1;
-            /*
-                        if (lmtestx > 0.95 ||lmtesty > 0.95 )
-                        {
-                            lmx = 0.75;
-                            lmy = 0.0;
-                            postlight = 0.0;
-                        }
-                        */
+
             vec3 origin = backProject(vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 
             float screenShadow = clamp((pow32(lmx)) * 100, 0.0, 1.0) * lmx;
-            ao = dbao(TranslucentDepthSampler);
-            /*
-                        if (screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0)
-                        {
+           // ao = dbao(TranslucentDepthSampler);
+            ao = dbao2(TranslucentDepthSampler);
 
-                            screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
-                        }
-            */
-            screenShadow = clamp(screenShadow, 0.1, 1.0);
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
@@ -1116,8 +966,7 @@ void main()
             ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
             ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
-            ambientLight *= 1.0;
-            ambientLight *= (1.0 + rainStrength * 0.2);
+            ambientLight *= (1.0 + rainStrength * 0.5);
 
             ambientLight =
                 clamp(ambientLight * (pow8(lmx) * 1.5) +
@@ -1125,35 +974,9 @@ void main()
                       0.0005, 10.0);
 
             float sssa = pbr.g;
-            float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
+            //float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
 
             vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
-            vec3 reflections = vec3(0.0);
-
-            if (pbr.a * 255 > 1.0 && !isWater)
-            {
-
-                int seed = (int(Time * 1) % 10000) * 1 + 1;
-                vec2 ij = fract(R2_samples2(seed) + vec2(noise));
-                vec3 rayDir = normalize(cosineHemisphereSample2(ij));
-                rayDir = TangentToWorld2(normal3, rayDir);
-                vec3 reflectedVector = reflect(normalize(viewPos.xyz), (mix(normal3, rayDir, (1 - smoothness))));
-
-                // vec3 avgSky = mix(vec3(0.0), ambientLight, lmx);
-                vec3 avgSky = ambientLight;
-                vec4 reflection = vec4(SSR(viewPos.xyz, depth, noise, reflectedVector));
-
-                float normalDotEye = dot(normal, normalize(viewPos));
-                float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
-                fresnel = 0.686 * fresnel + 0.0142;
-
-                reflection = mix(vec4(avgSky, 1), reflection, reflection.a);
-                reflections += ((reflection.rgb) * (fresnel * OutTexel + OutTexel * 0.5));
-                OutTexel *= 0.075;
-                // OutTexel *= 0.5;
-
-                reflections = max(vec3(0.0), reflections);
-            }
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             shadeDir *= screenShadow;
@@ -1161,25 +984,22 @@ void main()
                         (max(0.1, (screenShadow * ao) * 2 - 1));
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
 
-            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
+            //float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
             vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1);
             vec3 shading = (suncol * shadeDir) + ambientLight * ao;
-            shading += (sunSpec * suncol) * shadeDir;
+            //shading += (sunSpec * suncol) * shadeDir;
 
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if (light > 0.001)
                 shading.rgb = vec3(light * 2.0);
-            // shading = max(vec3(0.0005), shading);
-            if (postlight != 1.0)
-                shading = mix(vec3(1.0), shading, 0.75);
+
             if (isWater)
                 shading = ambientLight;
-            vec3 dlight = (OutTexel * shading) + reflections;
-            // dlight = shading;
+            vec3 dlight = (OutTexel * shading);
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);
-            outcol.a = clamp(grCol, 0, 1);
+
 
             ///---------------------------------------------
              //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
