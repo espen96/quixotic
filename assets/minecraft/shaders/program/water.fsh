@@ -44,6 +44,7 @@ in vec3 ambientDown;
 #define TORCH_R 1.0
 #define TORCH_G 0.7
 #define TORCH_B 0.5
+#define SUNBRIGHTNESS 20
 float luminance(vec3 rgb)
 {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
@@ -111,7 +112,7 @@ vec3 toClipSpace3(vec3 viewSpacePosition)
 
 #define SSPTBIAS 0.5
 
-#define SSR_STEPS 15 //[10 15 20 25 30 35 40 50 100 200 400]
+#define SSR_STEPS 20 //[10 15 20 25 30 35 40 50 100 200 400]
 
 vec4 textureGood(sampler2D sam, vec2 uv)
 {

@@ -68,7 +68,7 @@ float facos(float inX)
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
 #define PROJNEAR 0.05
-
+#define SUNBRIGHTNESS 20
 vec2 getControl(int index, vec2 screenSize)
 {
     return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
@@ -596,7 +596,7 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
         surface_normal,     // the camera vector (ray direction of this pixel)
         3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
         light_dir,          // light direction
-        vec3(40.0),         // light intensity, 40 looks nice
+        vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
         PLANET_POS,         // position of the planet
         PLANET_RADIUS,      // radius of the planet in meters
         ATMOS_RADIUS,       // radius of the atmosphere in meters
@@ -709,7 +709,7 @@ void mainImage(out vec3 atmosphere, in vec3 view)
                                 camera_vector,      // the camera vector (ray direction of this pixel)
                                 scene.w,            // max dist, essentially the scene depth
                                 light_dir,          // light direction
-                                vec3(25.0),         // light intensity, 40 looks nice
+                                vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
                                 PLANET_POS,         // position of the planet
                                 PLANET_RADIUS,      // radius of the planet in meters
                                 ATMOS_RADIUS,       // radius of the atmosphere in meters

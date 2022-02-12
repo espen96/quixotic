@@ -9,7 +9,7 @@ out vec4 fragColor;
 
 in vec2 texCoord;
 
-    #define EXPOSURE 1.0
+    #define EXPOSURE 1.1
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 

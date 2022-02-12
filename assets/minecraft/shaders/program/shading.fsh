@@ -1162,7 +1162,7 @@ void main()
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
 
             float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
-            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1);
+            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1)*1.25;
             vec3 shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 
@@ -1194,7 +1194,7 @@ void main()
             float lumC = luma(fogcol.rgb);
             vec3 diff = fogcol.rgb - lumC;
 
-            vec3 ambientLight = clamp((diff) * (0.25) + (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) *
+            vec3 ambientLight = clamp((diff+0.1) * (0.25) + (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) *
                                                                              vec3(TORCH_R, TORCH_G, TORCH_B)),
                                       0.0005, 10.0);
             outcol.rgb = lumaBasedReinhardToneMapping(OutTexel.rgb * ambientLight * ao);

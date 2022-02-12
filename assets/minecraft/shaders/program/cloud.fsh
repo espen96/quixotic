@@ -25,6 +25,8 @@ in vec3 sunPosition3;
 out vec4 fragColor;
 #define CLOUDS_QUALITY 0.5
 #define VOLUMETRIC_CLOUDS
+#define SUNBRIGHTNESS 20
+
 
 float sqr(float x)
 {
@@ -92,7 +94,7 @@ float cloudCov(in vec3 pos, vec3 samplePos)
 {
     float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
     float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-    float coverage = clamp(texture(noisetex, fract(samplePos.xz / CloudSize)).r + 0.2 * rainStrength - 0.2, 0.0, 1.0) /
+    float coverage = clamp(texture(noisetex, fract(samplePos.xz / CloudSize)).r + 1.0 * rainStrength - 0.2, 0.0, 1.0) /
                      (0.2 * rainStrength + 0.8);
 
     float cloud = (coverage * coverage) - 3.0 * (mult * mult * mult) - (mult2 * mult2);
@@ -860,7 +862,7 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
         surface_normal,     // the camera vector (ray direction of this pixel)
         3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
         light_dir,          // light direction
-        vec3(40.0),         // light intensity, 40 looks nice
+        vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
         PLANET_POS,         // position of the planet
         PLANET_RADIUS,      // radius of the planet in meters
         ATMOS_RADIUS,       // radius of the atmosphere in meters
@@ -974,7 +976,7 @@ void mainImage(out vec3 atmosphere, in vec2 fragCoord, vec3 view)
                                 camera_vector,      // the camera vector (ray direction of this pixel)
                                 scene.w,            // max dist, essentially the scene depth
                                 light_dir,          // light direction
-                                vec3(25.0),         // light intensity, 40 looks nice
+                                vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
                                 PLANET_POS,         // position of the planet
                                 PLANET_RADIUS,      // radius of the planet in meters
                                 ATMOS_RADIUS,       // radius of the atmosphere in meters
@@ -1342,10 +1344,10 @@ void main()
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
-            cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
+            cloud = renderClouds(viewPos, avgSky, noise, sc*1.25, sc*1.25, avgSky).rgba;
 
             atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            atmosphere += drawSun(vdots, 0, sc.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            atmosphere += drawSun(vdots, 0, sc.rgb, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
             // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
         }
 

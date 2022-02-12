@@ -47,7 +47,7 @@ in vec3 suncol;
 #define fog_coefficientMieR 3.0
 #define fog_coefficientMieG 3.0
 #define fog_coefficientMieB 3.0
-
+#define SUNBRIGHTNESS 20
 #define Dirt_Amount 0.005 // How much dirt there is in water
 
 #define Dirt_Scatter_R 0.6 // How much dirt diffuses red
