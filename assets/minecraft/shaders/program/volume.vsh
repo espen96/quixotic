@@ -72,7 +72,7 @@ float decodeFloat24(vec3 raw) {
 
 #define BASE_FOG_AMOUNT 3.0 
 #define FOG_TOD_MULTIPLIER 0.5
-#define FOG_RAIN_MULTIPLIER 5.0
+#define FOG_RAIN_MULTIPLIER 0.15
 
 const float pi = 3.141592653589793238462643383279502884197169;
 vec3 rodSample(vec2 Xi) {

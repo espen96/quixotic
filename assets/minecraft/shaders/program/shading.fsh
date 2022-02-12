@@ -106,7 +106,7 @@ out vec4 fragColor;
 #define NORMDEPTHTOLERANCE 1.0
 const float pi = 3.141592653589793238462643383279502884197169;
 
-#define CLOUDS_QUALITY 0.5
+#define CLOUDS_QUALITY 0.75
 float sqr(float x)
 {
     return x * x;
@@ -1105,7 +1105,7 @@ void main()
                             screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
                         }
             */
-            screenShadow = clamp(screenShadow, 0.1, 1.0);
+            screenShadow = clamp(screenShadow, 0.01, 1.0);
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
@@ -1118,7 +1118,9 @@ void main()
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= 1.0;
             ambientLight *= (1.0 + rainStrength * 0.2);
-
+            float lumAC = luma(ambientLight);
+            vec3 diff = ambientLight - lumAC;
+            ambientLight = ambientLight + diff * (-lumAC * 1.0 + 0.5);
             ambientLight =
                 clamp(ambientLight * (pow8(lmx) * 1.5) +
                           (pow3(lmy) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
@@ -1157,12 +1159,11 @@ void main()
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             shadeDir *= screenShadow;
-            shadeDir += max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) * float(sssa) * lmx) *
-                        (max(0.1, (screenShadow * ao) * 2 - 1));
+            shadeDir += clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) * float(sssa) * lmx) *(max(0.01, (screenShadow * ao) * 2 - 1)),0.0,1.0);
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
 
-            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
-            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1)*1.25;
+            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x)*1.15;
+            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1);
             vec3 shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 

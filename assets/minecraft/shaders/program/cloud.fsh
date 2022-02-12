@@ -23,7 +23,7 @@ in vec3 skyCol0;
 
 in vec3 sunPosition3;
 out vec4 fragColor;
-#define CLOUDS_QUALITY 0.5
+#define CLOUDS_QUALITY 0.75
 #define VOLUMETRIC_CLOUDS
 #define SUNBRIGHTNESS 20
 
@@ -1278,7 +1278,7 @@ float noise(float2 uv)
 void main()
 {
     // vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-    float noise = R2_dither();
+    float noise = R2_dither()*dither64;
 
     float depth = 1.0;
 

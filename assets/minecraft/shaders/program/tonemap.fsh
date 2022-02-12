@@ -136,7 +136,7 @@ void main() {
     sum += texture(blursampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
     sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
 
-    vec3 col = sum.rgb * 0.08333333333;
+    vec3 col = (sum.rgb * 0.08333333333)*interleaved_gradientNoise();
 
 
     vec3 fin = col.rgb;
@@ -145,7 +145,7 @@ void main() {
 
     //float VL_abs = texture(BloomSampler, texCoord).a;
     //float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
-    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
+    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.5 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
     //color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
     color = ((color * 1.5) + fin * lightScat);
     getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	

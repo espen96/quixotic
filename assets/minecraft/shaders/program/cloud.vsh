@@ -1,7 +1,7 @@
 #version 150
 const float sunPathRotation = -35.0;
 in vec4 Position;
-#define CLOUDS_QUALITY 0.5
+#define CLOUDS_QUALITY 0.75
 uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D DiffuseSampler;
