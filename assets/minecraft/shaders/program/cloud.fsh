@@ -1344,7 +1344,7 @@ void main()
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
-            cloud = renderClouds(viewPos, avgSky, noise, sc*1.25, sc*1.25, avgSky).rgba;
+            cloud = renderClouds(viewPos, avgSky, noise, sc*1.5, sc*1.5, avgSky).rgba;
 
             atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
             atmosphere += drawSun(vdots, 0, sc.rgb, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);

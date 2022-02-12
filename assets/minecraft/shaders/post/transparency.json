@@ -236,8 +236,23 @@
          ]
       },
       {
-         "name":"blur1",
+         "name":"blur0",
          "intarget":"shading",
+         "outtarget":"swap2",
+         "auxtargets":[
+            {
+               "name":"MainSampler",
+               "id":"minecraft:main"
+            },
+            {
+               "name":"DepthSampler",
+               "id":"minecraft:main:depth"
+            }
+         ]
+      },
+      {
+         "name":"blur1",
+         "intarget":"swap2",
          "outtarget":"swap1",
          "auxtargets":[
             {
