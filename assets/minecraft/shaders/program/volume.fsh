@@ -37,7 +37,7 @@ in vec3 suncol;
 #define VL_SAMPLES 3
 #define Ambient_Mult 1.0
 #define SEA_LEVEL 70
-#define ATMOSPHERIC_DENSITY 1.25
+#define ATMOSPHERIC_DENSITY 1.0
 #define fog_mieg1 0.40
 #define fog_mieg2 0.10
 #define fog_coefficientRayleighR 5.8
@@ -187,7 +187,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
         float sh = 1;
 
         // Water droplets(fog)
-        float density = densityVol * ATMOSPHERIC_DENSITY * 300.;
+        float density = densityVol * ATMOSPHERIC_DENSITY * 600.;
         // Just air
         vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * vec2(6.0, 7.0)) * 6.0;
 

@@ -9,12 +9,12 @@ out vec4 fragColor;
 
 in vec2 texCoord;
 
-#define EXPOSURE 2.0
+#define EXPOSURE 1.65
 #define TONEMAP_WHITE_CURVE 1.7
 #define TONEMAP_LOWER_CURVE 1.2
 #define TONEMAP_UPPER_CURVE 1.3
 #define CROSSTALK 0.25
-#define SATURATION 0.25
+#define SATURATION 0.3
 
 #define ndeSat 7.0
 #define Purkinje_strength 1.0
