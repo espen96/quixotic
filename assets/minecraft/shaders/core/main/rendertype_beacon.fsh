@@ -39,5 +39,5 @@ if(FogStart*0.000001 > 1) color.rgb = color.rgb;
   }
   
 
-  fragColor = vec4(color.rgb, 0.28);
+  fragColor = vec4(color.rgb, 0.22);
 }

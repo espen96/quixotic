@@ -13,7 +13,7 @@ float interleaved_gradientNoise() {
 void main() {
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
     vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
-    float offset = 25.0*interleaved_gradientNoise();
+    float offset = 50.0*interleaved_gradientNoise();
 
     vec4 sum = texture(DiffuseSampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
     

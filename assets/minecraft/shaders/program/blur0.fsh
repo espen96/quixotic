@@ -74,10 +74,10 @@ void main()
     vec4 crgather = textureGatherOffsets(MainSampler, texCoord, texoffsets, 0);
     vec4 pbr = clamp(pbr(OutTexel3.aa, (lmgather.xx), OutTexel3.rgb),0,1);
 
-    float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res), 0.0, 1);
-    float lmy = (clamp(mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res)*2-1, 0.01, 1) );
+    float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res)*2-1, 0.0, 0.5);
+    float lmy = (clamp(   (mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res)*2-1.5)*2.0  , 0.0, 1) );
     if(depth >= 1.0) lmy = 0.6;
-    vec4 sum = texture(DiffuseSampler, texCoord) * (lmy+pbr.x)*2;
+    vec4 sum = texture(DiffuseSampler, texCoord) * clamp((lmy+lmx+pbr.x),0,1);
 
     fragColor = vec4(sum);
 }

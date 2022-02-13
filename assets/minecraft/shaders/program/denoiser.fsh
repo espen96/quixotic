@@ -15,7 +15,11 @@ in mat4 gbufferModelViewInverse;
 in mat4 gbufferPreviousProjection;
 in mat4 gbufferPreviousModelView;
 in vec3 prevPosition;
-
+in float exposure;
+in float rodExposure;
+in float avgBrightness;
+in float exposureF;
+in float avgL2;
 /*
     -- Vertex Engine X --
 
@@ -36,7 +40,7 @@ in vec3 prevPosition;
     OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
     CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
+#define AA
 #define VXAA_TEXTURE_CURRENT DiffuseSampler
 #define VXAA_TEXTURE_PREV PreviousFrameSampler
 
@@ -236,8 +240,15 @@ void main() {
         history2 = ClipAABB(history2, minRounded, avgRounded, maxRounded);
 
     // Average all samples.
-    //fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
-    //if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
+    #ifdef AA
+    fragColor = clamp((vtex[VXAA_NW] + vtex[VXAA_NE] + vtex[VXAA_SW] + vtex[VXAA_SE]) * 0.25f, 0, 1);
+    if(depth >= 1.0) fragColor.rgb = clamp(mix(fragColor.rgb, history2.rgb, 0.7),0,1);
+    #else
     fragColor = texture( VXAA_TEXTURE_CURRENT, texCoord );
+    #endif
+    if (gl_FragCoord.x > 10. && gl_FragCoord.x < 11.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+    fragColor = vec4(exposure,avgBrightness,avgL2,1.0);
+    if (gl_FragCoord.x > 14. && gl_FragCoord.x < 15.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+    fragColor = vec4(rodExposure,1,0.0, 1.0);
 
 }

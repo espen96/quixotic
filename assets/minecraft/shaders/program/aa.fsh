@@ -51,7 +51,7 @@ out vec4 fragColor;
 // Turn on FXAA.
 // #define FXAA 1
 
-
+#define AA
 #define FXAA 1
 
 /*
@@ -629,4 +629,10 @@ void main() {
 
     // Return the sampled pixel.
     fragColor = ToVec4(resultFXAA, 1.0);
+
+        if (gl_FragCoord.x > 10. && gl_FragCoord.x < 11.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+    fragColor = vec4( texture(DiffuseSampler, texCoord).rgb,1.0);
+    if (gl_FragCoord.x > 14. && gl_FragCoord.x < 15.  && gl_FragCoord.y > 19.+18. && gl_FragCoord.y < 19.+18.+1 )
+    fragColor = vec4( texture(DiffuseSampler, texCoord).rgb, 1.0);
+
 }
