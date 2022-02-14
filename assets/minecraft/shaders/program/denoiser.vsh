@@ -10,9 +10,11 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform vec2 ScreenSize;
 uniform sampler2D CurrentFrameDataSampler;
+uniform sampler2D blur;
 uniform sampler2D PreviousFrameDataSampler;
 uniform sampler2D clouds;
 uniform sampler2D prevclouds;
+uniform float Time;
 
 out vec2 texCoord;
 out vec3 currChunkOffset;
@@ -161,9 +163,9 @@ void main() {
 	const int maxITexp = 50;
 	float w = 0.0;
 	for (int i = 0; i < maxITexp; i++){
-			vec2 ij = R2_samples((1%2000)*maxITexp+i);
-			vec2 tc = 0.5 + (ij-0.5) * 0.7;
-			vec3 sp = texture2D(CurrentFrameDataSampler,tc/16. * resScale+vec2(0.375*resScale.x+4.5*oneTexel.x,.0)).rgb;
+			vec2 ij = R2_samples((int(Time*10000)%2000)*maxITexp+i);
+			vec2 tc =(ij);
+			vec3 sp = mix(texture2D(CurrentFrameDataSampler,tc).rgb,texture2D(blur,tc).rgb,0.5);
 			avgExp += log(luma(sp));
 			avgB += log(min(dot(sp,vec3(0.07,0.22,0.71)),8e-2));
 	}
@@ -171,17 +173,14 @@ void main() {
 	avgExp = exp(avgExp/maxITexp);
 	avgB = exp(avgB/maxITexp);
 
-	avgBrightness = clamp(mix(avgExp,texelFetch(PreviousFrameDataSampler,ivec2(10,37),0).g,0.985),0.00003051757,65000.0);
-
+	avgBrightness = clamp(mix(avgExp,texelFetch(PreviousFrameDataSampler,ivec2(10,37),0).g,0.95),0.00003051757,65000.0);
 	float L = max(avgBrightness,1e-8);
-	float keyVal = 1.03-2.0/(log(L*4000/150.*8./3.0+1.0)/log(10.0)+2.0);
-	float expFunc = 0.5+0.5*tanh(log(L));
-	float targetExposure = 0.18/log2(L*2.5+1.045)*0.62;
+	float keyVal = 1.03-2.0/(log(L*0.6+1.0)/log(10.0)+2.0);
+	float targetExposure = 1.0*keyVal/L;
 
 	avgL2 = clamp(mix(avgB,texelFetch(PreviousFrameDataSampler,ivec2(10,37),0).b,0.985),0.00003051757,65000.0);
-	float targetrodExposure = max(0.012/log2(avgL2+1.002)-0.1,0.0)*1.2;
+	float targetrodExposure = clamp(log(targetExposure*2.0+1.0)-0.1,0.0,2.0);
 
-
-	exposure=targetExposure*10.0;
+	exposure=targetExposure*1.0;
 
 }

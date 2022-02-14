@@ -20,7 +20,8 @@ uniform sampler2D noisetex;
 uniform vec2 ScreenSize;
 uniform vec2 OutSize;
 uniform float Time;
-
+in vec4 exposure;
+in vec2 rodExposureDepth;
 in mat4 gbufferModelView;
 in mat4 gbufferProjectionInverse;
 in mat4 gbufferProjection;
@@ -86,6 +87,7 @@ out vec4 fragColor;
 #define NUMCONTROLS 26
 #define THRESH 0.5
 #define FUDGE 32.0
+#define MIN_LIGHT_AMOUNT 1.0 //[0.0 0.5 1.0 1.5 2.0 3.0 4.0 5.0]
 
 #define Dirt_Amount 0.01
 
@@ -462,7 +464,7 @@ float cdist2(vec2 coord)
 
 vec3 rayTrace(vec3 dir, vec3 position, float dither)
 {
-    float stepSize = 200*dither;
+    float stepSize = 25*dither;
     int maxSteps = 15;
     int maxLength = 30;
 
@@ -1109,6 +1111,7 @@ void main()
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
+            float minLight = MIN_LIGHT_AMOUNT * 0.007/ (exposure.x + rodExposureDepth.x/(rodExposureDepth.x+1.0)*exposure.x*1.);
 
             vec3 ambientLight = ambientUp * clamp(ambientCoefs.y, 0., 1.);
             ambientLight += ambientDown * clamp(-ambientCoefs.y, 0., 1.);
@@ -1118,6 +1121,7 @@ void main()
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= 1.0;
             ambientLight *= (1.0 + rainStrength * 0.2);
+            ambientLight += minLight;
             float lumAC = luma(ambientLight);
             vec3 diff = ambientLight - lumAC;
             ambientLight = ambientLight + diff * (-lumAC * 1.0 + 0.5);

@@ -27,7 +27,6 @@ out vec4 fragColor;
 #define VOLUMETRIC_CLOUDS
 #define SUNBRIGHTNESS 20
 
-
 float sqr(float x)
 {
     return x * x;
@@ -858,17 +857,17 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
 
     // and sample the atmosphere
     return calculate_scattering(
-        sample_pos,         // the position of the camera
-        surface_normal,     // the camera vector (ray direction of this pixel)
-        3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
-        light_dir,          // light direction
-        vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
-        PLANET_POS,         // position of the planet
-        PLANET_RADIUS,      // radius of the planet in meters
-        ATMOS_RADIUS,       // radius of the atmosphere in meters
-        RAY_BETA,           // Rayleigh scattering coefficient
-        MIE_BETA,           // Mie scattering coefficient
-        ABSORPTION_BETA,    // Absorbtion coefficient
+        sample_pos,          // the position of the camera
+        surface_normal,      // the camera vector (ray direction of this pixel)
+        3.0 * ATMOS_RADIUS,  // max dist, since nothing will stop the ray here, just use some arbitrary value
+        light_dir,           // light direction
+        vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+        PLANET_POS,          // position of the planet
+        PLANET_RADIUS,       // radius of the planet in meters
+        ATMOS_RADIUS,        // radius of the atmosphere in meters
+        RAY_BETA,            // Rayleigh scattering coefficient
+        MIE_BETA,            // Mie scattering coefficient
+        ABSORPTION_BETA,     // Absorbtion coefficient
         AMBIENT_BETA,      // ambient scattering, turned off. This causes the air to glow a bit when no light reaches it
         G,                 // Mie preferred scattering direction
         HEIGHT_RAY,        // Rayleigh scale height
@@ -972,17 +971,17 @@ void mainImage(out vec3 atmosphere, in vec2 fragCoord, vec3 view)
     vec3 col = vec3(0.0); // scene.xyz;
 
     // get the atmosphere color
-    col += calculate_scattering(camera_position,    // the position of the camera
-                                camera_vector,      // the camera vector (ray direction of this pixel)
-                                scene.w,            // max dist, essentially the scene depth
-                                light_dir,          // light direction
-                                vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
-                                PLANET_POS,         // position of the planet
-                                PLANET_RADIUS,      // radius of the planet in meters
-                                ATMOS_RADIUS,       // radius of the atmosphere in meters
-                                RAY_BETA,           // Rayleigh scattering coefficient
-                                MIE_BETA,           // Mie scattering coefficient
-                                ABSORPTION_BETA,    // Absorbtion coefficient
+    col += calculate_scattering(camera_position,     // the position of the camera
+                                camera_vector,       // the camera vector (ray direction of this pixel)
+                                scene.w,             // max dist, essentially the scene depth
+                                light_dir,           // light direction
+                                vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+                                PLANET_POS,          // position of the planet
+                                PLANET_RADIUS,       // radius of the planet in meters
+                                ATMOS_RADIUS,        // radius of the atmosphere in meters
+                                RAY_BETA,            // Rayleigh scattering coefficient
+                                MIE_BETA,            // Mie scattering coefficient
+                                ABSORPTION_BETA,     // Absorbtion coefficient
                                 AMBIENT_BETA,       // ambient scattering, turned off. This causes the air to glow a bit
                                                     // when no light reaches it
                                 G,                  // Mie preferred scattering direction
@@ -1274,11 +1273,18 @@ float noise(float2 uv)
     return fract(dot(sin(uv.xyx * uv.xyy * 1024.0), float3(341896.483, 891618.637, 602649.7031)));
 }
 
+vec3 cc(vec3 color, float factor, float factor2) // color modifier
+{
+    float w = color.x + color.y + color.z;
+    return mix(color, vec3(w) * factor, w * factor2);
+}
+
 /////////////////////////////////
+
 void main()
 {
     // vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-    float noise = R2_dither()*dither64;
+    float noise = R2_dither() * dither64;
 
     float depth = 1.0;
 
@@ -1344,10 +1350,13 @@ void main()
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
-            cloud = renderClouds(viewPos, avgSky, noise, sc*1.5, sc*1.5, avgSky).rgba;
-
-            atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            atmosphere += drawSun(vdots, 0, sc.rgb, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
+            vec3 atmoplus = vec3(0.0);
+            atmoplus += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
+            atmoplus += drawSun(vdots, 0, sc.rgb*0.1, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            atmoplus += clamp((sc.rgb * pow32(1.0 / ((1 - vdots) * 16.0 + 1.0))),0,1);
+            atmoplus = clamp(atmoplus,0,2);
+            atmosphere += atmoplus;
             // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
         }
 

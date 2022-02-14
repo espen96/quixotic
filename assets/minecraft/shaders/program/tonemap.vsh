@@ -17,7 +17,7 @@ void main() {
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
     gl_Position = vec4(outPos.xy, 0.2, 1.0);
     texCoord = outPos.xy * 0.5 + 0.5;
-    	exposure=vec4(texelFetch(DiffuseSampler,ivec2(10,37),0).r*vec3(FinalR,FinalG,FinalB),texelFetch(DiffuseSampler,ivec2(10,37),0).r)*1.1;
+    exposure=vec4(texelFetch(DiffuseSampler,ivec2(10,37),0).r*vec3(FinalR,FinalG,FinalB),texelFetch(DiffuseSampler,ivec2(10,37),0).r)*4.1;
 	rodExposureDepth = texelFetch(DiffuseSampler,ivec2(14,37),0).rg;
 	rodExposureDepth.y = sqrt(rodExposureDepth.y/65000.0);
 }

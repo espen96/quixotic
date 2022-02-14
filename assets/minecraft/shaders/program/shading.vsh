@@ -7,13 +7,15 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D noisetex;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D PreviousFrameSampler;
 uniform float Time;
 out mat4 gbufferModelView;
 out mat4 wgbufferModelView;
 out mat4 gbufferProjection;
 out mat4 gbufferProjectionInverse;
 out float sunElevation;
-
+out vec4 exposure;
+out vec2 rodExposureDepth;
 out vec3 zenithColor;
 out vec3 ambientUp;
 out vec3 ambientLeft;
@@ -737,7 +739,9 @@ void mainImage(out vec3 atmosphere, in vec3 view)
 
 void main()
 {
-
+    exposure=vec4(texelFetch(PreviousFrameSampler,ivec2(10,37),0).r*vec3(1.0),texelFetch(PreviousFrameSampler,ivec2(10,37),0).r)*10.1;
+	rodExposureDepth = texelFetch(PreviousFrameSampler,ivec2(14,37),0).rg;
+	rodExposureDepth.y = sqrt(rodExposureDepth.y/65000.0);
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 
     texCoord = Position.xy / OutSize;

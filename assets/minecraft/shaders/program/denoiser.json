@@ -15,6 +15,7 @@
     { "name": "PreviousFrameDataSampler" },
     { "name": "PreviousFrameDepthSampler" },
     { "name": "clouds" },
+    { "name": "blur" },
     { "name": "prevclouds" },
     { "name": "PreviousFrameSampler" }
   ],

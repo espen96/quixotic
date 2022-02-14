@@ -578,17 +578,17 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
 
     // and sample the atmosphere
     return calculate_scattering(
-        sample_pos,         // the position of the camera
-        surface_normal,     // the camera vector (ray direction of this pixel)
-        3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
-        light_dir,          // light direction
-        vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
-        PLANET_POS,         // position of the planet
-        PLANET_RADIUS,      // radius of the planet in meters
-        ATMOS_RADIUS,       // radius of the atmosphere in meters
-        RAY_BETA,           // Rayleigh scattering coefficient
-        MIE_BETA,           // Mie scattering coefficient
-        ABSORPTION_BETA,    // Absorbtion coefficient
+        sample_pos,          // the position of the camera
+        surface_normal,      // the camera vector (ray direction of this pixel)
+        3.0 * ATMOS_RADIUS,  // max dist, since nothing will stop the ray here, just use some arbitrary value
+        light_dir,           // light direction
+        vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+        PLANET_POS,          // position of the planet
+        PLANET_RADIUS,       // radius of the planet in meters
+        ATMOS_RADIUS,        // radius of the atmosphere in meters
+        RAY_BETA,            // Rayleigh scattering coefficient
+        MIE_BETA,            // Mie scattering coefficient
+        ABSORPTION_BETA,     // Absorbtion coefficient
         AMBIENT_BETA,      // ambient scattering, turned off. This causes the air to glow a bit when no light reaches it
         G,                 // Mie preferred scattering direction
         HEIGHT_RAY,        // Rayleigh scale height
@@ -673,7 +673,7 @@ vec3 get_camera_vector(vec2 resolution, vec2 coord)
 const vec3 camera_position = vec3(0.0, PLANET_RADIUS + 100.0, 0.0);
 // Finally, draw the atmosphere to screen
 // we first get the camera vector and position, as well as the light dir
-void mainImage(out vec3 atmosphere, in vec3 view)
+void mainImage(in out vec3 atmosphere, in vec3 view)
 {
 
     // get the camera vector
@@ -691,17 +691,17 @@ void mainImage(out vec3 atmosphere, in vec3 view)
     vec3 col = vec3(0.0); // scene.xyz;
 
     // get the atmosphere color
-    col += calculate_scattering(camera_position,    // the position of the camera
-                                camera_vector,      // the camera vector (ray direction of this pixel)
-                                scene.w,            // max dist, essentially the scene depth
-                                light_dir,          // light direction
-                                vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
-                                PLANET_POS,         // position of the planet
-                                PLANET_RADIUS,      // radius of the planet in meters
-                                ATMOS_RADIUS,       // radius of the atmosphere in meters
-                                RAY_BETA,           // Rayleigh scattering coefficient
-                                MIE_BETA,           // Mie scattering coefficient
-                                ABSORPTION_BETA,    // Absorbtion coefficient
+    col += calculate_scattering(camera_position,     // the position of the camera
+                                camera_vector,       // the camera vector (ray direction of this pixel)
+                                scene.w,             // max dist, essentially the scene depth
+                                light_dir,           // light direction
+                                vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+                                PLANET_POS,          // position of the planet
+                                PLANET_RADIUS,       // radius of the planet in meters
+                                ATMOS_RADIUS,        // radius of the atmosphere in meters
+                                RAY_BETA,            // Rayleigh scattering coefficient
+                                MIE_BETA,            // Mie scattering coefficient
+                                ABSORPTION_BETA,     // Absorbtion coefficient
                                 AMBIENT_BETA,       // ambient scattering, turned off. This causes the air to glow a bit
                                                     // when no light reaches it
                                 G,                  // Mie preferred scattering direction
@@ -715,10 +715,10 @@ void mainImage(out vec3 atmosphere, in vec3 view)
 
     // apply exposure, removing this makes the brighter colors look ugly
     // you can play around with removing this
-    col = 1.0 - exp(-col);
 
     // Output to screen
-    atmosphere.xyz = vec4(col, 1.0).xyz;
+    atmosphere.xyz += vec4(col, 1.0).xyz;
+    atmosphere = 1.0 - exp(-atmosphere);
 }
 
 void main()
@@ -857,13 +857,12 @@ void main()
         vec2 ij = R2_samples((int(1.0) % 1000) * maxIT + i);
         vec3 pos = normalize(rodSample(ij));
 
-
         vec3 samplee =
             skyLut2(pos.xyz, sunDir2, pos.y, rainStrength * 0.25, nsunColor, skyIntensity, skyIntensityNight) / maxIT;
         samplee.xyz = vec3(0.0);
-        mainImage(samplee.xyz, clamp(pos,0.1,1));
-        samplee.xyz = (2.2*toLinear(samplee)) / maxIT;
-        avgSky += samplee/2.2;
+        mainImage(samplee.xyz, clamp(pos, 0.1, 1));
+        samplee.xyz = (2.2 * toLinear(samplee)) / maxIT;
+        avgSky += samplee / 2.2;
     }
 
     float moonIntensity = max(0., 1.0 - exp(angMoon));
@@ -885,8 +884,8 @@ void main()
     /*
         lightCol.xyz = get_incident_light(ray);
         lightCol.xyz = (1.0 - exp(-1.0 * lightCol.xyz)) * 2.0;
-    */   
-    lightCol.xyz = vec3(0.0);
+    */
+    // lightCol.xyz = vec3(0.0);
     mainImage(lightCol.xyz, sunPosition3);
     vec3 lightSourceColor = toLinear(lightCol.rgb);
 
@@ -903,11 +902,10 @@ void main()
     // Fake bounced sunlight
     vec3 bouncedSun = lightSourceColor * 1.0 / 5.0 * 0.5 * clamp(lightDir * sunPosition3.y, 0.0, 1.0) *
                       clamp(lightDir * sunPosition3.y, 0.0, 1.0);
-	vec3 cloudAmbientSun = (sunColorCloud)*0.007;
-	vec3 cloudAmbientMoon = (vec3(0.0))*0.007;
+    vec3 cloudAmbientSun = (sunColorCloud)*0.007;
+    vec3 cloudAmbientMoon = (vec3(0.0)) * 0.007;
 
-	avgSky += bouncedSun*5.;
-
+    avgSky += bouncedSun * 5.;
 
     sc = lightSourceColor;
 

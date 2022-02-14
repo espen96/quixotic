@@ -10,7 +10,7 @@ in vec4 exposure;
 in vec2 rodExposureDepth;
 in vec2 texCoord;
 
-    #define EXPOSURE 1.25
+    #define EXPOSURE 1.5
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
@@ -135,29 +135,22 @@ void main() {
     vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
     float offset = 50.0*interleaved_gradientNoise();
 
-    vec4 sum = texture(blursampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
+    vec4 sum = texture(blursampler, texCoord) ;
     vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
 
-    sum += texture(blursampler, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
-    sum += texture(blursampler, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
-    sum += texture(blursampler, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
-    sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
-
-    vec3 col = (sum.rgb * 0.08333333333)*interleaved_gradientNoise();
+    vec3 col = (sum.rgb);
 
 
     vec3 fin = col.rgb;
 
-	float lightScat = clamp(10.0*0.05*pow(exposure.a,0.2),0.0,1.0)*vignette;
+	float lightScat = clamp(5.0*0.05*pow(exposure.a,0.2),0.0,1.0)*vignette;
 
     //float VL_abs = texture(BloomSampler, texCoord).a;
     //float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
     //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.5 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
     //color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
-	color = (color+fin*lightScat)*exposure.rgb;
+	//color = (color+fin*lightScat)*(exposure.rgb*1.5);
+	color = (color+fin*lightScat);
 
     getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
     //color = fin * lightScat;

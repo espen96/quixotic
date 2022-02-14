@@ -55,6 +55,10 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test)
 
     return pbr;
 }
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.299, 0.587, 0.114));
+}
 
 void main()
 {
@@ -76,7 +80,7 @@ void main()
 
     float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res)*2-1, 0.0, 0.5);
     float lmy = (clamp(   (mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res)*2-1.5)*2.0  , 0.0, 1) );
-    if(depth >= 1.0) lmy = 0.6;
+    if(depth >= 1.0) lmy = clamp(luma(texture(DiffuseSampler, texCoord).xyz)*2-1,0,1);
     vec4 sum = texture(DiffuseSampler, texCoord) * clamp((lmy+lmx+pbr.x),0,1);
 
     fragColor = vec4(sum);
