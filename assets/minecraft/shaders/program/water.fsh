@@ -31,6 +31,7 @@ in float overworld;
 in float end;
 in vec4 fogcol;
 in vec3 sunDir;
+in vec3 sunPosition2;
 in mat4 gbufferModelView;
 in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
@@ -41,6 +42,8 @@ in vec3 ambientRight;
 in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
+in vec3 suncol;
+
 #define TORCH_R 1.0
 #define TORCH_G 0.7
 #define TORCH_B 0.5
@@ -438,6 +441,38 @@ vec3 lumaBasedReinhardToneMapping2(vec3 color)
     // color = pow(color, vec3(0.45454545454));
     return color;
 }
+float GGX (vec3 n, vec3 v, vec3 l, float r, float F0) {
+  r*=r;r*=r;
+
+  vec3 h = l + v;
+  float hn = inversesqrt(dot(h, h));
+
+  float dotLH = clamp(dot(h,l)*hn,0.,1.);
+  float dotNH = clamp(dot(h,n)*hn,0.,1.);
+  float dotNL = clamp(dot(n,l),0.,1.);
+  float dotNHsq = dotNH*dotNH;
+
+  float denom = dotNHsq * r - dotNHsq + 1.;
+  float D = r / (3.141592653589793 * denom * denom);
+  float F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
+  float k2 = .25 * r;
+
+  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
+}
+
+vec3 viewToWorld(vec3 viewPos)
+{
+    vec4 pos;
+    pos.xyz = viewPos;
+    pos.w = 0.0;
+    pos = inverse(gbufferModelView) * pos;
+
+    return pos.xyz;
+}
+vec3 normVec(vec3 vec)
+{
+    return vec * inversesqrt(dot(vec, vec));
+}
 
 void main()
 {
@@ -467,6 +502,7 @@ void main()
     vec3 normal3 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 10);
     vec3 normal4 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 20);
     normal = (normal + normal2 + normal3 + normal4) / 4;
+            vec3 normal5 = viewToWorld(normal);
 
     vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
 
@@ -515,15 +551,18 @@ void main()
         vec3 view2 = view;
         view2.y = -view2.y;
 
+    vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
+    vec3 view3 = normVec(p3);
         // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
-        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * 0.5) * lmx;
+        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength)) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
+		vec3 sunSpec = GGX(normal5,-normalize(view3),  sunPosition2, 0.1+0.05, 0.1) *suncol*(lmx-0.1) ;
 
         reflection = vec4(SSR(viewPos.xyz, normal, noisev2));
-        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
-        vec3 reflected = reflection.rgb * fresnel;
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.2;
+        vec3 reflected = reflection.rgb * fresnel+1*sunSpec;
 
         float alpha0 = color2.a;
         color.a = -color2.a * fresnel + color2.a + fresnel;
@@ -532,7 +571,7 @@ void main()
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
-        // color.rgb = reflection.rgb;
+         //color.rgb = vec3(sunSpec);
     }
     // color = vec4(vec3(luminance(color2.rgb)),1);
 

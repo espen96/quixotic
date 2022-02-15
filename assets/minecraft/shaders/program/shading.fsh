@@ -217,7 +217,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test)
             test *= 5.0;
         if (test.r < 0.05)
             test *= 2.0;
-        test = clamp(test * 1.5 - 0.1, 0, 1);
+        test = clamp(test * 2.0 - 0.2, 0, 1);
         pbr.b = clamp(test.r, 0, 1);
     }
 
@@ -1121,7 +1121,7 @@ void main()
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= 1.0;
             ambientLight *= (1.0 + rainStrength * 0.2);
-            ambientLight += minLight;
+            //ambientLight += minLight;
             float lumAC = luma(ambientLight);
             vec3 diff = ambientLight - lumAC;
             ambientLight = ambientLight + diff * (-lumAC * 1.0 + 0.5);
@@ -1167,7 +1167,7 @@ void main()
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
 
             float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x)*1.15;
-            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1);
+            vec3 suncol = (suncol*1.75) * clamp(skyIntensity * 3.0, 0.15, 1);
             vec3 shading = (suncol * shadeDir) + ambientLight * ao;
             shading += (sunSpec * suncol) * shadeDir;
 

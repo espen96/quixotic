@@ -167,8 +167,8 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
 
     vec3 ambientLight = ambientUp;
 
-    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 19.0;
-    vec3 sunColor = (8.0 * lightCol.rgb) / 3.0;
+    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 16.0;
+    vec3 sunColor = (8.0 * lightCol.rgb) / 1.5;
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
@@ -184,7 +184,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
         progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
         // project into biased shadowmap space
         float densityVol = cloudVol(progressW);
-        float sh = 1;
+        float sh = 1.0;
 
         // Water droplets(fog)
         float density = densityVol * ATMOSPHERIC_DENSITY * 600.;
