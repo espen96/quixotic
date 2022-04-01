@@ -70,8 +70,8 @@ float decodeFloat24(vec3 raw) {
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
 
-#define BASE_FOG_AMOUNT 2.0 
-#define FOG_TOD_MULTIPLIER 0.5
+#define BASE_FOG_AMOUNT 10.0 
+#define FOG_TOD_MULTIPLIER 0.15
 #define FOG_RAIN_MULTIPLIER 0.15
 
 const float pi = 3.141592653589793238462643383279502884197169;

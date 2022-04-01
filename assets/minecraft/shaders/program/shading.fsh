@@ -852,7 +852,10 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
 
     return normalize(normal);
 }
-
+float brightnessContrast(float value, float brightness, float contrast)
+{
+    return (value - 0.5) * contrast + 0.5 + brightness;
+}
 float getRawDepth(vec2 uv)
 {
     return texture(TranslucentDepthSampler, uv).x;
@@ -1128,10 +1131,11 @@ void main()
             ambientLight =
                 clamp(ambientLight * (pow8(lmx) * 1.5) +
                           (pow3(lmy) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
-                      0.0005, 10.0);
+                      0.0025, 10.0);
 
             float sssa = pbr.g;
             float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
+            smoothness = clamp(brightnessContrast(smoothness,0.1,0.7),0,1);
 
             vec3 f0 = pbr.a * 255 > 1.0 ? vec3(0.8) : vec3(0.04);
             vec3 reflections = vec3(0.0);
@@ -1163,13 +1167,12 @@ void main()
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             shadeDir *= screenShadow;
-            shadeDir += clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) * float(sssa) * lmx) *(max(0.01, (screenShadow * ao) * 2 - 1)),0.0,1.0);
+            shadeDir += clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) ) *(max(0.005, (screenShadow * ao) * 2 - 1)),0.0,1.0)* (float(sssa*0.25) * lmx);
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
-
-            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x)*1.15;
-            vec3 suncol = (suncol*1.75) * clamp(skyIntensity * 3.0, 0.15, 1);
-            vec3 shading = (suncol * shadeDir) + ambientLight * ao;
-            shading += (sunSpec * suncol) * shadeDir;
+            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
+            vec3 suncol = (suncol) * clamp(skyIntensity * 3.0, 0.15, 1);
+            vec3 shading = ((suncol*3.75) * shadeDir) + ambientLight * ao;
+            shading += (sunSpec * suncol*2.0) * shadeDir;
 
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if (light > 0.001)
@@ -1185,7 +1188,7 @@ void main()
 
             outcol.rgb *= 1.0 + max(0.0, light);
             outcol.a = clamp(grCol, 0, 1);
-
+            //outcol.rgb = vec3(lumaBasedReinhardToneMapping(shading));
             ///---------------------------------------------
              //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);

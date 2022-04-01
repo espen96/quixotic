@@ -256,6 +256,7 @@ vec3 getDepthPoint(vec2 coord, float depth)
 
     return pos.xyz;
 }
+
 vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 noise)
 {
     vec2 offsetB = vec2(0.0, oneTexel.y + (noise.y));
@@ -265,12 +266,15 @@ vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 nois
 
     float depthB = texture(depthtex, texcoords + offsetB).r;
     float depthB2 = texture(depthtex, texcoords + offsetB2).r;
-    depthB = mix(depthB2, depthB, clamp(float(depthB - depthA) * 10000, 0, 1));
+    depthB = mix(depthB2, depthB, clamp(float(depthB - 0) * 10000, 0, 1));
     float depthC = texture(depthtex, texcoords + offsetC).r;
     float depthC2 = texture(depthtex, texcoords + offsetC2).r;
-    depthC = mix(depthC2, depthC, clamp(float(depthC - depthA) * 10000, 0, 1));
+    depthC = mix(depthC2, depthC, clamp(float(depthC - 0) * 10000, 0, 1));
     vec3 A = getDepthPoint(texcoords, depthA);
+    A += pow4(texture(TranslucentSampler, texCoord).g) * 0.01 * 1 - 0;
+
     vec3 B = getDepthPoint(texcoords + offsetB, depthB);
+
     vec3 C = getDepthPoint(texcoords + offsetC, depthC);
 
     vec3 AB = normalize(B - A);
@@ -474,6 +478,28 @@ vec3 normVec(vec3 vec)
     return vec * inversesqrt(dot(vec, vec));
 }
 
+vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float water)
+{
+    vec2 offsetB = vec2(0.0, oneTexel.y);
+    vec2 offsetC = vec2(oneTexel.x, 0.0);
+    float depthB = texture(depthtex, texCoords + offsetB).r;
+    float depthC = texture(depthtex, texCoords + offsetC).r;
+    vec3 A = getDepthPoint(texCoords, depthA);
+    A += pow4(texture(TranslucentSampler, texCoord).g) * 0.01 * 1 - water;
+
+    vec3 B = getDepthPoint(texCoords + offsetB, depthB);
+
+    vec3 C = getDepthPoint(texCoords + offsetC, depthC);
+
+    vec3 AB = normalize(B - A);
+    vec3 AC = normalize(C - A);
+
+    vec3 normal = -cross(AB, AC);
+    // normal.z = -normal.z;
+
+    return normalize(normal);
+}
+
 void main()
 {
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
@@ -495,13 +521,15 @@ void main()
     float depth = texture(TranslucentDepthSampler, texCoord).r;
     float noise = mask(gl_FragCoord.xy + (Time * 100));
     float noisev3 = clamp((fract(dither5x3() - dither64)), 0, 1);
-    float noisev2 = mix(noisev3, noise, 0.5);
-    vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
-    vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 2.0);
+    float noisev2 = mix(noisev3, noise, 0.0);
+        vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
+
+    vec3 normal= constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 2);    
     vec3 normal2 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5);
     vec3 normal3 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 10);
     vec3 normal4 = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 20);
-    normal = (normal + normal2 + normal3 + normal4) / 4;
+    
+    normal = (normal + normal2 +normal3+normal4)/4;
             vec3 normal5 = viewToWorld(normal);
 
     vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
@@ -551,14 +579,16 @@ void main()
         vec3 view2 = view;
         view2.y = -view2.y;
 
-    vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
-    vec3 view3 = normVec(p3);
+        vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
+        vec3 view3 = normVec(p3);
         // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
         vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength)) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
-		vec3 sunSpec = GGX(normal5,-normalize(view3),  sunPosition2, 0.1+0.05, 0.1) *suncol*(lmx-0.1) ;
+		vec3 sunSpec = GGX(normal5,-normalize(view3),  sunPosition2, 0.1+0.05, 0.1) *suncol*(lmx-0.1);
+        //sunSpec = vec3(0.0);
+
 
         reflection = vec4(SSR(viewPos.xyz, normal, noisev2));
         reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.2;
@@ -571,7 +601,7 @@ void main()
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
-         //color.rgb = vec3(sunSpec);
+        // color.rgb = vec3(normal5);
     }
     // color = vec4(vec3(luminance(color2.rgb)),1);
 

@@ -37,7 +37,7 @@ in vec3 suncol;
 #define VL_SAMPLES 6
 #define Ambient_Mult 1.0
 #define SEA_LEVEL 70
-#define ATMOSPHERIC_DENSITY 1.0
+#define ATMOSPHERIC_DENSITY 0.75
 #define fog_mieg1 0.40
 #define fog_mieg2 0.10
 #define fog_coefficientRayleighR 5.8
@@ -326,7 +326,7 @@ void main()
     vec3 clipPos = screenPos * 2.0 - 1.0;
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
-    //if (isWater && isEyeInWater == 0 && overworld == 1.0)
+    // if (isWater && isEyeInWater == 0 && overworld == 1.0)
     //    depth = mix(depth2, depth, estEyeDepth2);
 
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
@@ -360,6 +360,10 @@ void main()
         else if (isEyeInWater == 0)
         {
             mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
+            float lumC = luma(vl[0]);
+            vec3 diff = vl[0] - lumC;
+            vl[0] = vl[0] + diff * (-lumC * 1.5 + 1);
+
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
             /*
