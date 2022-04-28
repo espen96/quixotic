@@ -765,7 +765,10 @@ void main()
                         decodeFloat(texture(DiffuseSampler, start + 13.0 * inc).xyz),
                         decodeFloat(texture(DiffuseSampler, start + 14.0 * inc).xyz),
                         decodeFloat(texture(DiffuseSampler, start + 15.0 * inc).xyz), 0.0);
-
+    ProjMat[0].g = 0;
+    ProjMat[1].rbw = vec3(0.0,0,0);
+    ProjMat[2].rgw = vec3(0.0,0,-1);
+    ProjMat[3].rgw = vec3(0.0,0,0); 
     mat4 ModeViewMat = mat4(decodeFloat(texture(DiffuseSampler, start + 16.0 * inc).xyz),
                             decodeFloat(texture(DiffuseSampler, start + 17.0 * inc).xyz),
                             decodeFloat(texture(DiffuseSampler, start + 18.0 * inc).xyz), 0.0,

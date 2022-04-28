@@ -90,6 +90,10 @@
                "id":"translucent:depth"
             },
             {
+               "name":"PreviousFrameSampler",
+               "id":"previousFrame"
+            },
+            {
                "name":"TerrainCloudsSampler",
                "id":"shading"
             },
