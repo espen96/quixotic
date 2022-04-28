@@ -51,8 +51,6 @@ return result;
 vec2 calculateJitter() {
 return (halton(int(mod((GameTime * 3.0) * 24000.0, 128))) - 0.5) / 1024.0;
 }
-//make it mod 16 or something like that
-//multiply gametime by pi, than it can be multipled with watever as long as it is an int
 vec3 wavingLeaves(vec3 viewPos) {
 float t = pi2wt;
 

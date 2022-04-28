@@ -39,7 +39,7 @@ flat out vec3 sunPosition;
 flat out vec3 sunPosition3;
 flat out float fogAmount;
 flat out vec2 eyeBrightnessSmooth;
-
+#define SUNBRIGHTNESS 20
 float map(float value, float min1, float max1, float min2, float max2) {
     return min2 + (value - min1) * (max2 - min2) / (max1 - min1);
 }
@@ -70,9 +70,9 @@ float decodeFloat24(vec3 raw) {
     return (-float(sign) * 2.0 + 1.0) * (float(mantissa) / 131072.0 + 1.0) * exp2(float(exponent));
 }
 
-#define BASE_FOG_AMOUNT 2.0 
-#define FOG_TOD_MULTIPLIER 1.0 
-#define FOG_RAIN_MULTIPLIER 0.5
+#define BASE_FOG_AMOUNT 10.0 
+#define FOG_TOD_MULTIPLIER 0.15
+#define FOG_RAIN_MULTIPLIER 0.15
 
 const float pi = 3.141592653589793238462643383279502884197169;
 vec3 rodSample(vec2 Xi) {

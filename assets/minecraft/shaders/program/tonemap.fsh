@@ -6,10 +6,11 @@ uniform sampler2D BloomSampler;
 uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
 out vec4 fragColor;
-
+in vec4 exposure;
+in vec2 rodExposureDepth;
 in vec2 texCoord;
 
-    #define EXPOSURE 1.0
+    #define EXPOSURE 1.5
     #define TONEMAP_WHITE_CURVE 1.7 
     #define TONEMAP_LOWER_CURVE 1.2 
     #define TONEMAP_UPPER_CURVE 1.3 
@@ -92,17 +93,25 @@ vec3 LinearTosRGB(in vec3 color)
 vec3 toLinear(vec3 sRGB){
 	return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
 }
-
+vec4 textureGatherOffsets(sampler2D sampler, vec2 texCoord, ivec2[4] offsets, int channel)
+{
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    return vec4(
+        texelFetch(sampler, coord + offsets[0], 0)[channel], texelFetch(sampler, coord + offsets[1], 0)[channel],
+        texelFetch(sampler, coord + offsets[2], 0)[channel], texelFetch(sampler, coord + offsets[3], 0)[channel]);
+}
 void main() {
 
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     vec2 oneTexel = 1 / ScreenSize;
-    vec2 lmtrans = unpackUnorm2x4((texture(MainSampler, texCoord).a));
-    vec2 lmtrans3 = unpackUnorm2x4((texture(MainSampler, texCoord + oneTexel.y).a));
+        ivec2 texoffsets[4] = ivec2[](ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
 
-    float lmy = mix(lmtrans.y, lmtrans3.y, res);
-    float lmx = mix(lmtrans3.y, lmtrans.y, res);
+        vec4 OutTexel3 = (texture(MainSampler, texCoord).rgba);
+        vec4 cbgather = textureGatherOffsets(MainSampler, texCoord, texoffsets, 2);
+        vec4 crgather = textureGatherOffsets(MainSampler, texCoord, texoffsets, 0);
+        float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res), 0.0, 1);
+        float lmy = clamp(mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res), 0.0, 1);
 
 
     vec3 color = texture(DiffuseSampler, texCoord).rgb;
@@ -124,32 +133,27 @@ void main() {
     float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
     vec2 halfpixel = 0.5 / (ScreenSize.xy * 2.0);
-    float offset = 15.0;
+    float offset = 50.0*interleaved_gradientNoise();
 
-    vec4 sum = texture(blursampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
-    
-    sum += texture(blursampler, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
-    sum += texture(blursampler, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
-    sum += texture(blursampler, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
-    sum += texture(blursampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
-    sum += texture(blursampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
+    vec4 sum = texture(blursampler, texCoord) ;
+    vec4 lmgather = textureGatherOffsets(DiffuseSampler, texCoord, texoffsets, 3);
 
-    vec3 col = sum.rgb * 0.08333333333;
+    vec3 col = (sum.rgb);
 
 
     vec3 fin = col.rgb;
 
-    float lightScat = 0.25 * vignette;
+	float lightScat = clamp(5.0*0.05*pow(exposure.a,0.2),0.0,1.0)*vignette;
 
     //float VL_abs = texture(BloomSampler, texCoord).a;
     //float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
-    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.75 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
+    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.5 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
     //color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
-    color = ((color * 1.5) + fin * lightScat);
-    getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
+	//color = (color+fin*lightScat)*(exposure.rgb*1.5);
+	color = (color+fin*lightScat);
 
+    getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
+    //color = fin * lightScat;
     BSLTonemap(color);
     //color = ToneMap_Hejl2015(color);
         //color = LinearTosRGB(color);

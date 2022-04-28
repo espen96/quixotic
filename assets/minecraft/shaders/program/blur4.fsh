@@ -16,7 +16,7 @@ void main() {
     float offset = 50.0*interleaved_gradientNoise();
 
     vec4 sum = texture(DiffuseSampler, uv +vec2(-halfpixel.x * 2.0, 0.0) * offset);
-    
+
     sum += texture(DiffuseSampler, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
     sum += texture(DiffuseSampler, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
     sum += texture(DiffuseSampler, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
@@ -25,6 +25,7 @@ void main() {
     sum += texture(DiffuseSampler, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
     sum += texture(DiffuseSampler, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
 
+    vec3 col = (sum.rgb * 0.08333333333)*interleaved_gradientNoise();
     fragColor = sum / 12.0;
 
 }

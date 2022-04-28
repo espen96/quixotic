@@ -23,8 +23,9 @@ in vec3 skyCol0;
 
 in vec3 sunPosition3;
 out vec4 fragColor;
-#define CLOUDS_QUALITY 0.5
+#define CLOUDS_QUALITY 0.75
 #define VOLUMETRIC_CLOUDS
+#define SUNBRIGHTNESS 25
 
 float sqr(float x)
 {
@@ -77,24 +78,88 @@ int maxIT_clouds = 15;
 #define CloudDensity 0.20 //(0.05)
 
 #define cloudMieG                                                                                                      \
-    0.55 // Values close to 1 will create a strong peak of luminance around the sun and weak elsewhere, values close to
-         // 0 means uniform fog.
+    0.6 // Values close to 1 will create a strong peak of luminance around the sun and weak elsewhere, values close to
+        // 0 means uniform fog.
 #define cloudMieG2                                                                                                     \
-    0.2 // Multiple scattering approximation. Values close to 1 will create a strong peak of luminance around the sun
+    0.4 // Multiple scattering approximation. Values close to 1 will create a strong peak of luminance around the sun
         // and weak elsewhere, values close to 0 means uniform fog.
 
 float frameTimeCounter = (sunElevation * 1000);
 
 float cdensity = CloudDensity;
+#define M_PI 3.14159265358979323846
 
+float rand(vec2 co)
+{
+    return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+float rand(vec2 co, float l)
+{
+    return rand(vec2(rand(co), l));
+}
+float rand(vec2 co, float l, float t)
+{
+    return rand(vec2(rand(co, l), t));
+}
+
+float perlin(vec2 p, float dim, float time)
+{
+    vec2 pos = floor(p * dim);
+    vec2 posx = pos + vec2(1.0, 0.0);
+    vec2 posy = pos + vec2(0.0, 1.0);
+    vec2 posxy = pos + vec2(1.0);
+
+    float c = rand(pos, dim, time);
+    float cx = rand(posx, dim, time);
+    float cy = rand(posy, dim, time);
+    float cxy = rand(posxy, dim, time);
+
+    vec2 d = fract(p * dim);
+    d = -0.5 * cos(d * M_PI) + 0.5;
+
+    float ccx = mix(c, cx, d.x);
+    float cycxy = mix(cy, cxy, d.x);
+    float center = mix(ccx, cycxy, d.y);
+
+    return center * 2.0 - 1.0;
+}
+float perlin(vec2 p, float dim)
+{
+
+    /*vec2 pos = floor(p * dim);
+    vec2 posx = pos + vec2(1.0, 0.0);
+    vec2 posy = pos + vec2(0.0, 1.0);
+    vec2 posxy = pos + vec2(1.0);
+
+    // For exclusively black/white noise
+    /*float c = step(rand(pos, dim), 0.5);
+    float cx = step(rand(posx, dim), 0.5);
+    float cy = step(rand(posy, dim), 0.5);
+    float cxy = step(rand(posxy, dim), 0.5);*/
+
+    /*float c = rand(pos, dim);
+    float cx = rand(posx, dim);
+    float cy = rand(posy, dim);
+    float cxy = rand(posxy, dim);
+
+    vec2 d = fract(p * dim);
+    d = -0.5 * cos(d * M_PI) + 0.5;
+
+    float ccx = mix(c, cx, d.x);
+    float cycxy = mix(cy, cxy, d.x);
+    float center = mix(ccx, cycxy, d.y);
+
+    return center * 2.0 - 1.0;*/
+    return perlin(p, dim, 0.0);
+}
 // Cloud without 3D noise, is used to exit early lighting calculations if there is no cloud
 float cloudCov(in vec3 pos, vec3 samplePos)
 {
     float mult = max(pos.y - 2000.0, 0.0) / 2000.0;
     float mult2 = max(-pos.y + 2000.0, 0.0) / 500.0;
-    float coverage = clamp(texture(noisetex, fract(samplePos.xz / CloudSize)).r + 0.2 * rainStrength - 0.2, 0.0, 1.0) /
+    float coverage = clamp(texture(noisetex, fract(samplePos.xz / CloudSize)).r + 1.0 * rainStrength - 0.2, 0.0, 1.0) /
                      (0.2 * rainStrength + 0.8);
-
+    // coverage = perlin((samplePos.xz / CloudSize), 50);
     float cloud = (coverage * coverage) - 3.0 * (mult * mult * mult) - (mult2 * mult2);
 
     return max(cloud, 0.0);
@@ -106,6 +171,41 @@ float phaseg(float x, float g)
     float gg = g * g;
 
     return (gg * -0.25 / 3.14 + 0.25 / 3.14) * pow(-2.0 * (g * x) + (gg + 1.0), -1.5);
+}
+
+// 3D noise from 2d texture
+float densityAtPos(in vec3 pos)
+{
+
+    pos /= 18.;
+    pos.xz *= 0.5;
+
+    vec3 p = floor(pos);
+    vec3 f = fract(pos);
+
+    f = (f * f) * (3. - 2. * f);
+
+    vec2 uv = p.xz + f.xz + p.y * vec2(0.0, 193.0);
+
+    vec2 coord = uv / 512.0;
+    // The y channel has an offset to avoid using two textures fetches
+    vec2 xy;
+    xy.x = (perlin(coord, 50));
+    xy.y = (perlin(coord + 0.5, 50));
+
+    return mix(xy.r, xy.g, f.y);
+}
+
+float cloudVol(in vec3 pos, in vec3 samplePos, in float cov)
+{
+    // Less erosion on bottom of the cloud
+    float mult2 = (pos.y - 1500) / 2500 + rainStrength * 0.4;
+    float noise = 1.0 - densityAtPos(samplePos * 10.);
+    noise += 0.5 - densityAtPos(samplePos * 31.) * 0.3;
+
+    float cloud = clamp(cov - noise * 0.1 * (0.6 + mult2 * 3.), 0.0, 1.0);
+
+    return cloud;
 }
 
 vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3 moonColor, vec3 avgAmbient)
@@ -168,6 +268,7 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
         if (coverageSP > 0.00)
         {
             float cloud = coverageSP;
+            // float cloud = cloudVol(curvedPos,samplePos,coverageSP);
 
             float mu = cloud * cdensity;
 
@@ -314,7 +415,6 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 
 ////////////////////
 
-const float M_PI = 3.1415926535;
 const float DEGRAD = M_PI / 180.0;
 
 float height = 500.0; // viewer height
@@ -856,17 +956,17 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
 
     // and sample the atmosphere
     return calculate_scattering(
-        sample_pos,         // the position of the camera
-        surface_normal,     // the camera vector (ray direction of this pixel)
-        3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
-        light_dir,          // light direction
-        vec3(40.0),         // light intensity, 40 looks nice
-        PLANET_POS,         // position of the planet
-        PLANET_RADIUS,      // radius of the planet in meters
-        ATMOS_RADIUS,       // radius of the atmosphere in meters
-        RAY_BETA,           // Rayleigh scattering coefficient
-        MIE_BETA,           // Mie scattering coefficient
-        ABSORPTION_BETA,    // Absorbtion coefficient
+        sample_pos,          // the position of the camera
+        surface_normal,      // the camera vector (ray direction of this pixel)
+        3.0 * ATMOS_RADIUS,  // max dist, since nothing will stop the ray here, just use some arbitrary value
+        light_dir,           // light direction
+        vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+        PLANET_POS,          // position of the planet
+        PLANET_RADIUS,       // radius of the planet in meters
+        ATMOS_RADIUS,        // radius of the atmosphere in meters
+        RAY_BETA,            // Rayleigh scattering coefficient
+        MIE_BETA,            // Mie scattering coefficient
+        ABSORPTION_BETA,     // Absorbtion coefficient
         AMBIENT_BETA,      // ambient scattering, turned off. This causes the air to glow a bit when no light reaches it
         G,                 // Mie preferred scattering direction
         HEIGHT_RAY,        // Rayleigh scale height
@@ -970,17 +1070,17 @@ void mainImage(out vec3 atmosphere, in vec2 fragCoord, vec3 view)
     vec3 col = vec3(0.0); // scene.xyz;
 
     // get the atmosphere color
-    col += calculate_scattering(camera_position,    // the position of the camera
-                                camera_vector,      // the camera vector (ray direction of this pixel)
-                                scene.w,            // max dist, essentially the scene depth
-                                light_dir,          // light direction
-                                vec3(25.0),         // light intensity, 40 looks nice
-                                PLANET_POS,         // position of the planet
-                                PLANET_RADIUS,      // radius of the planet in meters
-                                ATMOS_RADIUS,       // radius of the atmosphere in meters
-                                RAY_BETA,           // Rayleigh scattering coefficient
-                                MIE_BETA,           // Mie scattering coefficient
-                                ABSORPTION_BETA,    // Absorbtion coefficient
+    col += calculate_scattering(camera_position,     // the position of the camera
+                                camera_vector,       // the camera vector (ray direction of this pixel)
+                                scene.w,             // max dist, essentially the scene depth
+                                light_dir,           // light direction
+                                vec3(SUNBRIGHTNESS), // light intensity, 40 looks nice
+                                PLANET_POS,          // position of the planet
+                                PLANET_RADIUS,       // radius of the planet in meters
+                                ATMOS_RADIUS,        // radius of the atmosphere in meters
+                                RAY_BETA,            // Rayleigh scattering coefficient
+                                MIE_BETA,            // Mie scattering coefficient
+                                ABSORPTION_BETA,     // Absorbtion coefficient
                                 AMBIENT_BETA,       // ambient scattering, turned off. This causes the air to glow a bit
                                                     // when no light reaches it
                                 G,                  // Mie preferred scattering direction
@@ -1272,11 +1372,21 @@ float noise(float2 uv)
     return fract(dot(sin(uv.xyx * uv.xyy * 1024.0), float3(341896.483, 891618.637, 602649.7031)));
 }
 
+vec3 cc(vec3 color, float factor, float factor2) // color modifier
+{
+    float w = color.x + color.y + color.z;
+    return mix(color, vec3(w) * factor, w * factor2);
+}
+
 /////////////////////////////////
+float luma(vec3 color)
+{
+    return dot(color, vec3(0.299, 0.587, 0.114));
+}
 void main()
 {
     // vec3 rnd = ScreenSpaceDither( gl_FragCoord.xy );
-    float noise = R2_dither();
+    float noise = R2_dither() * dither64;
 
     float depth = 1.0;
 
@@ -1343,9 +1453,18 @@ void main()
         if (view.y > 0.)
         {
             cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
+            float lumC = luma(cloud.rgb);
+            vec3 diff = cloud.rgb - lumC;
+            //cloud.rgb = cloud.rgb + diff * (-lumC * 1.5 + 1);
 
-            atmosphere += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            atmosphere += drawSun(vdots, 0, sc.rgb * 0.006, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            fragColor.rgb *= cloud.rgb;
+            fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb );
+            vec3 atmoplus = vec3(0.0);
+            atmoplus += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
+            atmoplus += drawSun(vdots, 0, sc.rgb * 0.1, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            atmoplus += clamp((sc.rgb * pow32(1.0 / ((1 - vdots) * 16.0 + 1.0))), 0, 1);
+            atmoplus = clamp(atmoplus, 0, 2);
+            atmosphere += atmoplus;
             // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
         }
 

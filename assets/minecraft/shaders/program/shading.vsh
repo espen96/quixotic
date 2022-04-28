@@ -7,13 +7,15 @@ uniform mat4 ProjMat;
 uniform vec2 OutSize;
 uniform sampler2D noisetex;
 uniform sampler2D DiffuseSampler;
+uniform sampler2D PreviousFrameSampler;
 uniform float Time;
 out mat4 gbufferModelView;
 out mat4 wgbufferModelView;
 out mat4 gbufferProjection;
 out mat4 gbufferProjectionInverse;
 out float sunElevation;
-
+out vec4 exposure;
+out vec2 rodExposureDepth;
 out vec3 zenithColor;
 out vec3 ambientUp;
 out vec3 ambientLeft;
@@ -68,7 +70,7 @@ float facos(float inX)
 // moj_import doesn't work in post-process shaders ;_; Felix pls fix
 #define FPRECISION 4000000.0
 #define PROJNEAR 0.05
-
+#define SUNBRIGHTNESS 20
 vec2 getControl(int index, vec2 screenSize)
 {
     return vec2(floor(screenSize.x / 2.0) + float(index) * 2.0 + 0.5, 0.5) / screenSize;
@@ -596,7 +598,7 @@ vec3 skylight(vec3 sample_pos, vec3 surface_normal, vec3 light_dir, vec3 backgro
         surface_normal,     // the camera vector (ray direction of this pixel)
         3.0 * ATMOS_RADIUS, // max dist, since nothing will stop the ray here, just use some arbitrary value
         light_dir,          // light direction
-        vec3(40.0),         // light intensity, 40 looks nice
+        vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
         PLANET_POS,         // position of the planet
         PLANET_RADIUS,      // radius of the planet in meters
         ATMOS_RADIUS,       // radius of the atmosphere in meters
@@ -709,7 +711,7 @@ void mainImage(out vec3 atmosphere, in vec3 view)
                                 camera_vector,      // the camera vector (ray direction of this pixel)
                                 scene.w,            // max dist, essentially the scene depth
                                 light_dir,          // light direction
-                                vec3(25.0),         // light intensity, 40 looks nice
+                                vec3(SUNBRIGHTNESS),         // light intensity, 40 looks nice
                                 PLANET_POS,         // position of the planet
                                 PLANET_RADIUS,      // radius of the planet in meters
                                 ATMOS_RADIUS,       // radius of the atmosphere in meters
@@ -737,7 +739,9 @@ void mainImage(out vec3 atmosphere, in vec3 view)
 
 void main()
 {
-
+    exposure=vec4(texelFetch(PreviousFrameSampler,ivec2(10,37),0).r*vec3(1.0),texelFetch(PreviousFrameSampler,ivec2(10,37),0).r)*10.1;
+	rodExposureDepth = texelFetch(PreviousFrameSampler,ivec2(14,37),0).rg;
+	rodExposureDepth.y = sqrt(rodExposureDepth.y/65000.0);
     vec4 outPos = ProjMat * vec4(Position.xy, 0.0, 1.0);
 
     texCoord = Position.xy / OutSize;
@@ -761,7 +765,10 @@ void main()
                         decodeFloat(texture(DiffuseSampler, start + 13.0 * inc).xyz),
                         decodeFloat(texture(DiffuseSampler, start + 14.0 * inc).xyz),
                         decodeFloat(texture(DiffuseSampler, start + 15.0 * inc).xyz), 0.0);
-
+    ProjMat[0].g = 0;
+    ProjMat[1].rbw = vec3(0.0,0,0);
+    ProjMat[2].rgw = vec3(0.0,0,-1);
+    ProjMat[3].rgw = vec3(0.0,0,0); 
     mat4 ModeViewMat = mat4(decodeFloat(texture(DiffuseSampler, start + 16.0 * inc).xyz),
                             decodeFloat(texture(DiffuseSampler, start + 17.0 * inc).xyz),
                             decodeFloat(texture(DiffuseSampler, start + 18.0 * inc).xyz), 0.0,

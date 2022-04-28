@@ -12,6 +12,7 @@
         { "name": "DiffuseDepthSampler" },
         { "name": "TranslucentSampler" },
         { "name": "TranslucentDepthSampler" },
+        { "name": "PreviousFrameSampler" },
         { "name": "shading" },
         { "name": "TerrainCloudsSampler" },
         { "name": "temporals3Sampler" }

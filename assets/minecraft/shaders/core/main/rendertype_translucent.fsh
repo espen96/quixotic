@@ -76,7 +76,9 @@ void main() {
     color = color * vertexColor * ColorModulator;
 
     if(textureLod(Sampler0, texCoord0,0).a *255 == 200) {
-    color.a = textureLod(Sampler0, texCoord0,0).a;}
+    color.a = textureLod(Sampler0, texCoord0,0).a;
+    color.rgb = mix(color.rgb,vec3(0.0),0.5);
+    }
 
 
 
