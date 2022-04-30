@@ -376,8 +376,10 @@ void main()
                 absorbance = 1;
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
+            /*
             if (depth2 >= 1 && isWater)
                 fragColor.rgb = OutTexel.rgb;
+                */
         }
     }
     else
