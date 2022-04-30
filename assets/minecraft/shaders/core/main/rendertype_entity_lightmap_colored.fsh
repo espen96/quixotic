@@ -25,20 +25,15 @@ in float lmy;
 void main() {
   discardControlGLPos(gl_FragCoord.xy, glpos);
   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
-  //  vec4 color = texture(Sampler0, texCoord0) * 1 * ColorModulator;
 bool gui = isGUI( ProjMat2);
   if(color.a * 255 <= 17.0) {
     discard;
   }
-//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
-
 
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
 
-  float lm = lmx;
   if(res == 0.0f && !gui) {
-    lm = lmy;
     color.b =  clamp(lmx, 0, 0.95);
     color.r =  clamp(lmy, 0, 0.95);
   }

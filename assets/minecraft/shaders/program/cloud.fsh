@@ -24,7 +24,7 @@ in vec3 skyCol0;
 in vec3 sunPosition3;
 out vec4 fragColor;
 #define CLOUDS_QUALITY 0.1
-
+#define SUNBRIGHTNESS 20
 float sqr(float x)
 {
     return x * x;
@@ -68,19 +68,11 @@ const float cloud_height = 1500.;
 const float maxHeight = 1650.;
 int maxIT_clouds = 15;
 
-#define CloudSize                                                                                                      \
-    12500 //(12500) When using low values make sure to also lower the cloud thickness aswell. The highest values will
-          // create clouds the size of continents, if the cloud is not visible at these values it is because it is
-          // currently too far away, increase the speed. Higher values will require a higher quality to minimise
-          // aliasing.
+#define CloudSize 12500
 #define CloudDensity 0.20 //(0.05)
 
-#define cloudMieG                                                                                                      \
-    0.6 // Values close to 1 will create a strong peak of luminance around the sun and weak elsewhere, values close to
-        // 0 means uniform fog.
-#define cloudMieG2                                                                                                     \
-    0.4 // Multiple scattering approximation. Values close to 1 will create a strong peak of luminance around the sun
-        // and weak elsewhere, values close to 0 means uniform fog.
+#define cloudMieG 0.6
+#define cloudMieG2 0.4
 
 float frameTimeCounter = (sunElevation * 1000);
 
@@ -590,16 +582,13 @@ vec3 toLinear(vec3 sRGB)
 #define RAY_BETA vec3(5.5e-6, 13.0e-6, 22.4e-6) /* rayleigh, affects the color of the sky */
 #define MIE_BETA vec3(21e-6) /* mie, affects the color of the blob around the sun */
 #define AMBIENT_BETA vec3(0.0) /* ambient, affects the scattering color when there is no lighting from the sun */
-#define ABSORPTION_BETA                                                                                                \
-    vec3(2.04e-5, 4.97e-5, 1.95e-6) /* what color gets absorbed by the atmosphere (Due to things like ozone) */
+#define ABSORPTION_BETA vec3(2.04e-5, 4.97e-5, 1.95e-6) /* what color gets absorbed by the atmosphere */
 #define G 0.7 /* mie scattering direction, or how big the blob around the sun is */
 // and the heights (how far to go up before the scattering has no effect)
 #define HEIGHT_RAY 8e3 /* rayleigh height */
 #define HEIGHT_MIE 1.2e3 /* and mie */
 #define HEIGHT_ABSORPTION 30e3 /* at what height the absorption is at it's maximum */
-#define ABSORPTION_FALLOFF                                                                                             \
-    4e3 /* how much the absorption decreases the further away it gets from the maximum height                          \
-         */
+#define ABSORPTION_FALLOFF 4e3 /* how much the absorption decreases the further away it gets*/
 // and the steps (more looks better, but is slower)
 // the primary step has the most effect on looks
 #if HW_PERFORMANCE == 0
@@ -1129,14 +1118,6 @@ float stars(vec3 fragpos)
     return StableStarField(uv * 700., 0.999) * 0.5 * 0.3;
 }
 
-//////////////////////////////////
-
-
-vec3 cc(vec3 color, float factor, float factor2) // color modifier
-{
-    float w = color.x + color.y + color.z;
-    return mix(color, vec3(w) * factor, w * factor2);
-}
 
 /////////////////////////////////
 float luma(vec3 color)
@@ -1162,24 +1143,20 @@ void main()
         vec3 view = normVec(p3);
         float vdots = dot(view, sunPosition3);
         vec3 atmosphere = vec3(0.0);
-        // atmosphere = toLinear(generate(view.xyz, sunPosition3).xyz) + (noise / 255);
 
         mainImage(atmosphere, gl_FragCoord.xy, view);
-
 
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
-            cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
-            float lumC = luma(cloud.rgb);
-            vec3 diff = cloud.rgb - lumC;
-            //cloud.rgb = cloud.rgb + diff * (-lumC * 1.5 + 1);
+
+
 
             fragColor.rgb *= cloud.rgb;
-            fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb );
+            fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb);
             vec3 atmoplus = vec3(0.0);
-            atmoplus += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
-            atmoplus += drawSun(vdots, 0, sc.rgb * 0.1, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
+            //atmoplus += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
+            //atmoplus += drawSun(vdots, 0, sc.rgb * 0.1, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
             atmoplus += clamp((sc.rgb * pow32(1.0 / ((1 - vdots) * 16.0 + 1.0))), 0, 1);
             atmoplus = clamp(atmoplus, 0, 2);
             atmosphere += atmoplus;

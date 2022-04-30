@@ -188,17 +188,6 @@
 
 
       {
-         "name":"blur4",
-         "intarget":"swap1",
-         "outtarget":"swap3",
-         "auxtargets":[
-            {
-               "name":"MainSampler",
-               "id":"minecraft:main"
-            }
-         ]
-      },
-      {
          "name":"tonemap",
          "intarget":"volume",
          "outtarget":"swap2",
@@ -210,10 +199,6 @@
             {
                "name":"previousFrame",
                "id":"previousFrame"
-            },
-            {
-               "name":"blursampler",
-               "id":"swap3"
             },
             {
                "name":"BloomSampler",

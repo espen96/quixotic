@@ -2,32 +2,28 @@
 
 uniform sampler2D DiffuseSampler;
 uniform sampler2D MainSampler;
-uniform sampler2D BloomSampler;
-uniform sampler2D blursampler;
 uniform vec2 ScreenSize;
 out vec4 fragColor;
-in vec4 exposure;
-in vec2 rodExposureDepth;
 in vec2 texCoord;
 
-    #define EXPOSURE 1.5
-    #define TONEMAP_WHITE_CURVE 1.7 
-    #define TONEMAP_LOWER_CURVE 1.2 
-    #define TONEMAP_UPPER_CURVE 1.3 
-    #define CROSSTALK 0.25 // Desaturates bright colors and preserves saturation in darker areas (inverted if negative). Helps avoiding almsost fluorescent colors 
-    #define SATURATION 0.25 // Negative values desaturates colors, Positive values saturates color, 0 is no change
+#define EXPOSURE 1.4
+#define TONEMAP_WHITE_CURVE 1.7
+#define TONEMAP_LOWER_CURVE 1.2
+#define TONEMAP_UPPER_CURVE 1.3
+#define CROSSTALK 0.25
+#define SATURATION 0.3
+#define ndeSat 7.0
+#define Purkinje_strength 1.0
+#define Purkinje_R 0.4
+#define Purkinje_G 0.7
+#define Purkinje_B 1.0
+#define Purkinje_Multiplier 0.1
 
-    #define ndeSat 7.0
-    #define Purkinje_strength 1.0	// Simulates how the eye is unable to see colors at low light intensities. 0 = No purkinje effect at low exposures 
-    #define Purkinje_R 0.4
-    #define Purkinje_G 0.7 
-    #define Purkinje_B 1.0
-    #define Purkinje_Multiplier 0.1 // How much the purkinje effect increases brightness
+#define SAMPLE_OFFSET 5.
+#define INTENSITY 0.1
 
-    #define SAMPLE_OFFSET 5.
-    #define INTENSITY 0.1
-
-float luma(vec3 color) {
+float luma(vec3 color)
+{
     return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
@@ -58,13 +54,9 @@ void main()
 
     vec3 color = texture(DiffuseSampler, texCoord).rgb;
 
-    float vignette = (1.5 - dot(texCoord - 0.5, texCoord - 0.5) * 2.);
     vec2 uv = vec2(gl_FragCoord.xy / (ScreenSize.xy * 2.0));
 
     getNightDesaturation(color.rgb);
-
-    getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	
-    //color = fin * lightScat;
     BSLTonemap(color);
 
     float lumC = luma(color);

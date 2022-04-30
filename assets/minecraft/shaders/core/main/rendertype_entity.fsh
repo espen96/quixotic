@@ -25,7 +25,6 @@ in float lmy;
 in vec4 glpos;
 
 void main() {
-  //vec3 rnd = ScreenSpaceDither(gl_FragCoord.xy);
   discardControlGLPos(gl_FragCoord.xy, glpos);
   vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
 bool gui = isGUI( ProjMat2);
@@ -34,24 +33,19 @@ bool gui = isGUI( ProjMat2);
   }
   color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
-//    color *= lightMapColor;
 
-  //color.rgb += rnd / 255;
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
   color.rgb = clamp(color.rgb, 0.01, 1);
 
-  float lm = lmx;
 
 if( vertexDistance < 1.5 && FogStart*0.000001 > 1) color.rgb *= lightMapColor.rgb;
   else if(res == 0.0f && !gui) {
-    lm = lmy;
     color.b =  clamp(lmx, 0, 0.95);
     color.r =  clamp(lmy, 0, 0.95);
   }
-//if( vertexDistance < 1.5) color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
-//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
+
   fragColor = color;
-  //fragColor.rgb = vec3(normal);
+
 
 }

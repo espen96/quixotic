@@ -28,7 +28,6 @@ vec4 color = texture(Sampler0, texCoord0);
 if(color.a * 255 <= 17.0) {
 discard;
 }
-//color.rgb += rnd/255;
 color.rgb = clamp(color.rgb, 0.001, 1);
 
 

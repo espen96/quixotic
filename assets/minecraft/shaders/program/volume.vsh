@@ -217,7 +217,7 @@ void main() {
     gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);
-    cloudy = 1.0;
+    cloudy = 72;
 
 
 ////////////////////////////////////////////////

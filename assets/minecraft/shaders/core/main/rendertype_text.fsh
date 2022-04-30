@@ -33,6 +33,5 @@ if( FogStart*0.000001 > 1) color.rgb = color.rgb;
   }
 
   color.rgb = clamp(color.rgb, 0.01, 1);
-//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
   fragColor = color;
 }

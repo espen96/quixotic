@@ -34,9 +34,7 @@ void main() {
   }
   color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
-  //  color *= lightMapColor;
 
-  //color.rgb += rnd / 255;
   float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
   color.rgb = clamp(color.rgb, 0.0, 1);
@@ -49,16 +47,8 @@ if( vertexDistance < 1.5 && FogStart*0.000001 > 1) color.rgb = color.rgb;
     color.r =  clamp(lmy, 0, 0.95);
   }
 
-    #define sssMin 22
-    #define sssMax 47
-    #define lightMin 48
-    #define lightMax 72
-    #define roughMin 73
-    #define roughMax 157
-    #define metalMin 158
-    #define metalMax 251
 
-//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
+
   fragColor = color;
 
 }

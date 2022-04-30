@@ -214,16 +214,13 @@ vec3 reinhard_jodie(vec3 v)
 #define RAY_BETA vec3(5.5e-6, 13.0e-6, 22.4e-6) /* rayleigh, affects the color of the sky */
 #define MIE_BETA vec3(21e-6) /* mie, affects the color of the blob around the sun */
 #define AMBIENT_BETA vec3(0.0) /* ambient, affects the scattering color when there is no lighting from the sun */
-#define ABSORPTION_BETA                                                                                                \
-    vec3(2.04e-5, 4.97e-5, 1.95e-6) /* what color gets absorbed by the atmosphere (Due to things like ozone) */
+#define ABSORPTION_BETA vec3(2.04e-5, 4.97e-5, 1.95e-6) /* what color gets absorbed */
 #define G 0.7 /* mie scattering direction, or how big the blob around the sun is */
 // and the heights (how far to go up before the scattering has no effect)
 #define HEIGHT_RAY 8e3 /* rayleigh height */
 #define HEIGHT_MIE 1.2e3 /* and mie */
 #define HEIGHT_ABSORPTION 30e3 /* at what height the absorption is at it's maximum */
-#define ABSORPTION_FALLOFF                                                                                             \
-    4e3 /* how much the absorption decreases the further away it gets from the maximum height                          \
-         */
+#define ABSORPTION_FALLOFF 4e3 /* how much the absorption decreases the further away it gets  */
 // and the steps (more looks better, but is slower)
 // the primary step has the most effect on looks
 #if HW_PERFORMANCE == 1

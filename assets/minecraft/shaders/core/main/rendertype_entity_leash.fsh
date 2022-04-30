@@ -15,6 +15,5 @@ out vec4 fragColor;
 
 void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
-//  fragColor = linear_fog(vertexColor, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = vertexColor;
 }

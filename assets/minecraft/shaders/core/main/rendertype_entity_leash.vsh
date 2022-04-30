@@ -22,6 +22,5 @@ void main() {
     glpos = gl_Position;
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);
-//    vertexDistance = length((ModelViewMat * vec4(Position, 1.0)).xyz);
     vertexColor = Color * ColorModulator * minecraft_sample_lightmap(Sampler2, UV2);
 }

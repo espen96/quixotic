@@ -22,7 +22,7 @@ void main() {
     discardControlGLPos(gl_FragCoord.xy, glpos);
     vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;
     color.a = 1;
-        float mod2 = gl_FragCoord.x + gl_FragCoord.y;
+  float mod2 = gl_FragCoord.x + gl_FragCoord.y;
   float res = mod(mod2, 2.0f);
 if( FogStart*0.000001 > 1) color.rgb = color.rgb;
   else if(res == 0.0f ) {
@@ -31,6 +31,5 @@ if( FogStart*0.000001 > 1) color.rgb = color.rgb;
   }
 
     color.rgb = clamp(color.rgb, 0.01, 1);
-//  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
     fragColor = color;
 }
