@@ -1219,7 +1219,7 @@ void main()
                             screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
                         }
             
-            screenShadow = clamp(screenShadow*shadow.r, 0.0, 1.0);
+            screenShadow = clamp(screenShadow, 0.0, 1.0)*clamp(shadow.r,0,1);
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
