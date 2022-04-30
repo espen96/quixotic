@@ -118,9 +118,9 @@ void main() {
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);
     float modif = halton(int(mod((GameTime * 10.0),128))).x;
-    
+    wavea = 0.0;
     if(wtest * 255 == 200)
-        wavea = (waterH(posxz+modif) * clamp((float(UV2.y) / 255), 0.1, 1))*0.5;
+        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1))*0.5;
     vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0)+ vec4(calculateJitter()*0.25,0,0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);
