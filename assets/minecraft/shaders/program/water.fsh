@@ -31,6 +31,7 @@ in float overworld;
 in float end;
 in vec4 fogcol;
 in vec3 sunDir;
+in vec3 sunPosition2;
 in mat4 gbufferModelView;
 in mat4 gbufferProjection;
 in mat4 gbufferProjectionInverse;
@@ -41,9 +42,12 @@ in vec3 ambientRight;
 in vec3 ambientB;
 in vec3 ambientF;
 in vec3 ambientDown;
+in vec3 suncol;
+
 #define TORCH_R 1.0
 #define TORCH_G 0.7
 #define TORCH_B 0.5
+#define SUNBRIGHTNESS 20
 float luminance(vec3 rgb)
 {
     float redness = clamp(dot(rgb, vec3(1.0, -0.25, -0.75)), 0.0, 1.0);
@@ -252,22 +256,21 @@ vec3 getDepthPoint(vec2 coord, float depth)
 
     return pos.xyz;
 }
-vec3 constructNormal(float depthA, vec2 texcoords, sampler2D depthtex, vec2 noise)
-{
-    vec2 offsetB = vec2(0.0, oneTexel.y + (noise.y));
-    vec2 offsetB2 = vec2(0.0, oneTexel.y);
-    vec2 offsetC = vec2(oneTexel.x + (noise.x), 0.0);
-    vec2 offsetC2 = vec2(oneTexel.x, 0.0);
 
-    float depthB = texture(depthtex, texcoords + offsetB).r;
-    float depthB2 = texture(depthtex, texcoords + offsetB2).r;
-    depthB = mix(depthB2, depthB, clamp(float(depthB - depthA) * 10000, 0, 1));
-    float depthC = texture(depthtex, texcoords + offsetC).r;
-    float depthC2 = texture(depthtex, texcoords + offsetC2).r;
-    depthC = mix(depthC2, depthC, clamp(float(depthC - depthA) * 10000, 0, 1));
-    vec3 A = getDepthPoint(texcoords, depthA);
-    vec3 B = getDepthPoint(texcoords + offsetB, depthB);
-    vec3 C = getDepthPoint(texcoords + offsetC, depthC);
+vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float water)
+{
+    vec2 offsetB = vec2(0.0, oneTexel.y);
+    vec2 offsetC = vec2(oneTexel.x, 0.0);
+    float depthB = texture(depthtex, texCoords + offsetB).r;
+    float depthC = texture(depthtex, texCoords + offsetC).r;
+    vec3 A = getDepthPoint(texCoords, depthA);
+    A += pow4(texture(TranslucentSampler, texCoord).g) * 0.01 * 1 * water;
+
+    vec3 B = getDepthPoint(texCoords + offsetB, depthB);
+    B += pow4(texture(TranslucentSampler, texCoord + offsetB * water).g) * 0.01 * 1 * 1;
+
+    vec3 C = getDepthPoint(texCoords + offsetC, depthC);
+    C += pow4(texture(TranslucentSampler, texCoord + offsetC * water).g) * 0.01 * 1 * 1;
 
     vec3 AB = normalize(B - A);
     vec3 AC = normalize(C - A);
@@ -437,6 +440,40 @@ vec3 lumaBasedReinhardToneMapping2(vec3 color)
     // color = pow(color, vec3(0.45454545454));
     return color;
 }
+float GGX (vec3 n, vec3 v, vec3 l, float r, float F0) {
+  r*=r;r*=r;
+
+  vec3 h = l + v;
+  float hn = inversesqrt(dot(h, h));
+
+  float dotLH = clamp(dot(h,l)*hn,0.,1.);
+  float dotNH = clamp(dot(h,n)*hn,0.,1.);
+  float dotNL = clamp(dot(n,l),0.,1.);
+  float dotNHsq = dotNH*dotNH;
+
+  float denom = dotNHsq * r - dotNHsq + 1.;
+  float D = r / (3.141592653589793 * denom * denom);
+  float F = F0 + (1. - F0) * exp2((-5.55473*dotLH-6.98316)*dotLH);
+  float k2 = .25 * r;
+
+  return dotNL * D * F / (dotLH*dotLH*(1.0-k2)+k2);
+}
+
+vec3 viewToWorld(vec3 viewPos)
+{
+    vec4 pos;
+    pos.xyz = viewPos;
+    pos.w = 0.0;
+    pos = inverse(gbufferModelView) * pos;
+
+    return pos.xyz;
+}
+vec3 normVec(vec3 vec)
+{
+    return vec * inversesqrt(dot(vec, vec));
+}
+
+
 
 void main()
 {
@@ -457,11 +494,14 @@ void main()
     float iswater = float(color.a * 255 == 200);
 
     float depth = texture(TranslucentDepthSampler, texCoord).r;
-    float noise = clamp(mask(gl_FragCoord.xy + (Time * 100)),0,1);
-    vec2 multiplier = vec2(0.0 + (2.0 * iswater)) * oneTexel;
-    vec3 normal = constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier * 5.0);
+    float noise = mask(gl_FragCoord.xy + (Time * 100));
 
+    float multiplier = (0.0 + ((noise+0.01) * iswater)) ;
 
+    vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier));
+
+    
+            vec3 normal5 = viewToWorld(normal);
 
     vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
 
@@ -510,14 +550,20 @@ void main()
         vec3 view2 = view;
         view2.y = -view2.y;
 
+        vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
+        vec3 view3 = normVec(p3);
+        // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
-        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength) * 0.5) * lmx;
+        vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength)) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
+		vec3 sunSpec = GGX(normal5,-normalize(view3),  sunPosition2, 0.1+0.05, 0.1) *suncol*(lmx-0.1);
+        //sunSpec = vec3(0.0);
+
 
         reflection = vec4(SSR(viewPos.xyz, normal, noise));
-        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a);
-        vec3 reflected = reflection.rgb * fresnel;
+        reflection.rgb = mix(sky_c.rgb, reflection.rgb, reflection.a)*1.2;
+        vec3 reflected = reflection.rgb * fresnel+1*sunSpec;
 
         float alpha0 = color2.a;
         color.a = -color2.a * fresnel + color2.a + fresnel;
@@ -525,6 +571,7 @@ void main()
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
+        // color.rgb = vec3(normal5);
     }
 
     fragColor = vec4(color.rgba);

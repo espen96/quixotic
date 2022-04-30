@@ -2,6 +2,8 @@
    "targets":[
       "swap1",
       "swap2",
+      "swap3",    
+      "trans",
       "volume",
       "previousFrame",
       "shading",
@@ -85,6 +87,10 @@
             {
                "name":"TranslucentDepthSampler",
                "id":"translucent:depth"
+            },
+            {
+               "name":"PreviousFrameSampler",
+               "id":"previousFrame"
             },
             {
                "name":"TerrainCloudsSampler",
@@ -182,6 +188,17 @@
 
 
       {
+         "name":"blur4",
+         "intarget":"swap1",
+         "outtarget":"swap3",
+         "auxtargets":[
+            {
+               "name":"MainSampler",
+               "id":"minecraft:main"
+            }
+         ]
+      },
+      {
          "name":"tonemap",
          "intarget":"volume",
          "outtarget":"swap2",
@@ -196,7 +213,7 @@
             },
             {
                "name":"blursampler",
-               "id":"swap1"
+               "id":"swap3"
             },
             {
                "name":"BloomSampler",

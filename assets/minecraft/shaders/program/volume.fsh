@@ -37,7 +37,7 @@ in vec3 suncol;
 #define VL_SAMPLES 3
 #define Ambient_Mult 1.0
 #define SEA_LEVEL 70
-#define ATMOSPHERIC_DENSITY 1.0
+#define ATMOSPHERIC_DENSITY 0.75
 #define fog_mieg1 0.40
 #define fog_mieg2 0.10
 #define fog_coefficientRayleighR 5.8
@@ -47,7 +47,7 @@ in vec3 suncol;
 #define fog_coefficientMieR 3.0
 #define fog_coefficientMieG 3.0
 #define fog_coefficientMieB 3.0
-
+#define SUNBRIGHTNESS 20
 #define Dirt_Amount 0.005 // How much dirt there is in water
 
 #define Dirt_Scatter_R 0.6 // How much dirt diffuses red
@@ -167,8 +167,8 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
 
     vec3 ambientLight = ambientUp;
 
-    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 19.0;
-    vec3 sunColor = (8.0 * lightCol.rgb) / 3.0;
+    vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 16.0;
+    vec3 sunColor = (8.0 * lightCol.rgb) / 1.5;
 
     vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
     vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
@@ -184,7 +184,7 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
         progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
         // project into biased shadowmap space
         float densityVol = cloudVol(progressW);
-        float sh = 1;
+        float sh = 1.0;
 
         // Water droplets(fog)
         float density = densityVol * ATMOSPHERIC_DENSITY * 600.;
@@ -326,7 +326,6 @@ void main()
     vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
     vec3 viewPos = tmp.xyz / tmp.w;
 
-
     vec3 fragpos = backProject(vec4(scaledCoord, depth, 1.0)).xyz;
     fragColor.rgb = OutTexel;
 
@@ -357,7 +356,11 @@ void main()
 
         else if (isEyeInWater == 0)
         {
-            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, 0);
+            mat2x3 vl = getVolumetricRays(noise, fragpos, avgSky, sunElevation, texture(MainSampler, texCoord).a);
+            float lumC = luma(vl[0]);
+            vec3 diff = vl[0] - lumC;
+            vl[0] = vl[0] + diff * (-lumC * 1.5 + 1);
+
             fragColor.rgb *= vl[1];
             fragColor.rgb += lumaBasedReinhardToneMapping(vl[0]);
             float absorbance = dot(vl[1], vec3(0.22, 0.71, 0.07));

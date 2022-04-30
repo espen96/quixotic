@@ -20,7 +20,8 @@ uniform sampler2D noisetex;
 uniform vec2 ScreenSize;
 uniform vec2 OutSize;
 uniform float Time;
-
+in vec4 exposure;
+in vec2 rodExposureDepth;
 in mat4 gbufferModelView;
 in mat4 gbufferProjectionInverse;
 in mat4 gbufferProjection;
@@ -84,6 +85,7 @@ out vec4 fragColor;
 #define NUMCONTROLS 26
 #define THRESH 0.5
 #define FUDGE 32.0
+#define MIN_LIGHT_AMOUNT 1.0 //[0.0 0.5 1.0 1.5 2.0 3.0 4.0 5.0]
 
 #define Dirt_Amount 0.01
 
@@ -211,7 +213,7 @@ vec4 pbr(vec2 in1, vec2 in2, vec3 test)
             test *= 5.0;
         if (test.r < 0.05)
             test *= 2.0;
-        test = clamp(test * 1.5 - 0.1, 0, 1);
+        test = clamp(test * 2.0 - 0.2, 0, 1);
         pbr.b = clamp(test.r, 0, 1);
     }
 
@@ -458,7 +460,7 @@ float cdist2(vec2 coord)
 
 vec3 rayTrace(vec3 dir, vec3 position, float dither)
 {
-    float stepSize = 200*dither;
+    float stepSize = 25*dither;
     int maxSteps = 15;
     int maxLength = 30;
 
@@ -542,7 +544,116 @@ vec4 SSR(vec3 fragpos, float fragdepth, float noise, vec3 reflectedVector)
 
     return color;
 }
+////////////////////////////////
 
+
+uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
+
+
+        const float FXS = 0.02;         // font/screen resolution ratio
+        const float FYS = 0.02;         // font/screen resolution ratio
+
+        const int TEXT_BUFFER_LENGTH = 32;
+        int text[TEXT_BUFFER_LENGTH];
+        int textIndex;
+        vec4 colour;                    // color interface for printTextAt()
+
+        void floatToDigits(float x) {
+            float y, a;
+            const float base = 10.0;
+
+            // Handle sign
+            if (x < 0.0) { 
+                text[textIndex] = '-'; textIndex++; x = -x; 
+            } else { 
+                text[textIndex] = '+'; textIndex++; 
+            }
+
+            // Get integer (x) and fractional (y) part of number
+            y = x; 
+            x = floor(x); 
+            y -= x;
+
+            // Handle integer part
+            int i = textIndex;  // Start of integer part
+            while (textIndex < TEXT_BUFFER_LENGTH) {
+                // Get last digit, scale x down by 10 (or other base)
+                a = x;
+                x = floor(x / base);
+                a -= base * x;
+                // Add last digit to text array (results in reverse order)
+                text[textIndex] = int(a) + '0'; textIndex++;
+                if (x <= 0.0) break;
+            }
+            int j = textIndex - 1;  // End of integer part
+
+            // In-place reverse integer digits
+            while (i < j) {
+                int chr = text[i]; 
+                text[i] = text[j];
+                text[j] = chr;
+                i++; j--;
+            }
+
+            text[textIndex] = '.'; textIndex++;
+
+            // Handle fractional part
+            while (textIndex < TEXT_BUFFER_LENGTH) {
+                // Get first digit, scale y up by 10 (or other base)
+                y *= base;
+                a = floor(y);
+                y -= a;
+                // Add first digit to text array
+                text[textIndex] = int(a) + '0'; textIndex++;
+                if (y <= 0.0) break;
+            }
+
+            // Terminante string
+            text[textIndex] = 0;
+        }
+
+        void printTextAt(float x0, float y0) {
+            // Fragment position **in char-units**, relative to x0, y0
+            float x = texCoord.x/FXS; x -= x0;
+            float y = 0.5*(1.0 - texCoord.y)/FYS; y -= y0;
+
+            // Stop if not inside bbox
+            if ((x < 0.0) || (x > float(textIndex)) || (y < 0.0) || (y > 1.0)) return;
+            
+            int i = int(x); // Char index of this fragment in text
+            x -= float(i); // Fraction into this char
+
+            // Grab pixel from correct char texture
+            i = text[i];
+            x += float(int(i - ((i/16)*16)));
+            y += float(int(i/16));
+            x /= 16.0; y /= 16.0; // Divide by character-sheet size (in chars)
+
+            vec4 fontPixel = texture(FontSampler, vec2(x,y));
+
+            colour = vec4(fontPixel.rgb*fontPixel.a + colour.rgb*colour.a*(1 - fontPixel.a), 1.0);
+        }
+
+        void clearTextBuffer() {
+            for (int i = 0; i < TEXT_BUFFER_LENGTH; i++) {
+                text[i] = 0;
+            }
+            textIndex = 0;
+        }
+
+        void c(int character) {
+            // Adds character to text buffer, increments index for next character
+            // Short name for convenience
+            text[textIndex] = character; 
+            textIndex++;
+        }
+
+
+
+
+
+
+///////////////////////
 vec3 reinhard_jodie(vec3 v)
 {
     float l = luma(v);
@@ -715,8 +826,6 @@ float rayTraceShadow(vec3 dir, vec3 position, float dither, float depth)
                           : 1.73205080757 * far;
 
     vec3 end = toClipSpace3(position + dir * rayLength);
-    // vec3 end = nvec3(gbufferProjection * nvec4(position + dir * rayLength)) *
-    // 0.5 + 0.5;
     vec3 direction = end - clipPosition;
 
     float len = max(abs(direction.x) / oneTexel.x, abs(direction.y) / oneTexel.y) / stepSize;
@@ -846,7 +955,35 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
 
     return normalize(normal);
 }
+float brightnessContrast(float value, float brightness, float contrast)
+{
+    return (value - 0.5) * contrast + 0.5 + brightness;
+}
+float getRawDepth(vec2 uv)
+{
+    return texture(TranslucentDepthSampler, uv).x;
+}
 
+// inspired by keijiro's depth inverse projection
+// https://github.com/keijiro/DepthInverseProjection
+// constructs view space ray at the far clip plane from the screen uv
+// then multiplies that ray by the linear 01 depth
+vec3 viewSpacePosAtScreenUV(vec2 uv)
+{
+    vec3 viewSpaceRay = (gbufferProjectionInverse * vec4(uv * 2.0 - 1.0, 1.0, 1.0) * near).xyz;
+    float rawDepth = getRawDepth(uv);
+    return viewSpaceRay * (linZ(rawDepth) + pow8(luma(texture(DiffuseSampler, uv).xyz)) * 0.00);
+}
+vec3 viewSpacePosAtPixelPosition(vec2 vpos)
+{
+    vec2 uv = vpos * oneTexel.xy;
+    return viewSpacePosAtScreenUV(uv);
+}
+
+vec3 viewNormalAtPixelPosition(vec2 vpos)
+{
+    // get current pixel's view space position
+    vec3 viewSpacePos_c = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 0.0));
 
 
 vec2 unpackUnorm2x4v2(vec4 pack)
@@ -959,6 +1096,7 @@ void main()
             vec3 normal3 = (normal);
             normal = viewToWorld(normal3);
             vec3 ambientCoefs = normal / dot(abs(normal), vec3(1.0));
+            float minLight = MIN_LIGHT_AMOUNT * 0.007/ (exposure.x + rodExposureDepth.x/(rodExposureDepth.x+1.0)*exposure.x*1.);
 
             vec3 ambientLight = ambientUp * clamp(ambientCoefs.y, 0., 1.);
             ambientLight += ambientDown * clamp(-ambientCoefs.y, 0., 1.);
@@ -966,12 +1104,16 @@ void main()
             ambientLight += ambientLeft * clamp(-ambientCoefs.x, 0., 1.);
             ambientLight += ambientB * clamp(ambientCoefs.z, 0., 1.);
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
-            ambientLight *= (1.0 + rainStrength * 0.5);
-
+            ambientLight *= 1.0;
+            ambientLight *= (1.0 + rainStrength * 0.2);
+            //ambientLight += minLight;
+            float lumAC = luma(ambientLight);
+            vec3 diff = ambientLight - lumAC;
+            ambientLight = ambientLight + diff * (-lumAC * 1.0 + 0.5);
             ambientLight =
                 clamp(ambientLight * (pow8(lmx) * 1.5) +
                           (pow3(lmy) * 3.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) * vec3(TORCH_R, TORCH_G, TORCH_B)),
-                      0.0005, 10.0);
+                      0.0025, 10.0);
 
             float sssa = pbr.g;
             //float smoothness = pbr.a * 255 > 1.0 ? pbr.a : pbr.b;
@@ -980,14 +1122,12 @@ void main()
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             shadeDir *= screenShadow;
-            shadeDir += max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) * float(sssa) * lmx) *
-                        (max(0.1, (screenShadow * ao) * 2 - 1));
+            shadeDir += clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) ) *(max(0.005, (screenShadow * ao) * 2 - 1)),0.0,1.0)* (float(sssa*0.25) * lmx);
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
-
-            //float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
-            vec3 suncol = suncol * clamp(skyIntensity * 3.0, 0.15, 1);
-            vec3 shading = (suncol * shadeDir) + ambientLight * ao;
-            //shading += (sunSpec * suncol) * shadeDir;
+            float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
+            vec3 suncol = (suncol) * clamp(skyIntensity * 3.0, 0.15, 1);
+            vec3 shading = ((suncol*3.75) * shadeDir) + ambientLight * ao;
+            shading += (sunSpec * suncol*2.0) * shadeDir;
 
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if (light > 0.001)
@@ -999,8 +1139,8 @@ void main()
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);
-
-
+            outcol.a = clamp(grCol, 0, 1);
+            //outcol.rgb = vec3(lumaBasedReinhardToneMapping(shading));
             ///---------------------------------------------
              //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
@@ -1014,7 +1154,7 @@ void main()
             float lumC = luma(fogcol.rgb);
             vec3 diff = fogcol.rgb - lumC;
 
-            vec3 ambientLight = clamp((diff) * (0.25) + (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) *
+            vec3 ambientLight = clamp((diff+0.1) * (0.25) + (pow3(lmy) * 2.0) * (vec3(TORCH_R, TORCH_G, TORCH_B) *
                                                                              vec3(TORCH_R, TORCH_G, TORCH_B)),
                                       0.0005, 10.0);
             outcol.rgb = lumaBasedReinhardToneMapping(OutTexel.rgb * ambientLight * ao);
@@ -1033,4 +1173,26 @@ void main()
         outcol.rgb *= exp(-length(viewPos) * totEpsilon);
     }
     fragColor = outcol + (noise / 128);
+    /*
+    vec4 numToPrint = vec4(gbufferProjection[2].xyzw);
+
+	// Define text to draw
+    clearTextBuffer();
+    c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
+    printTextAt(1.0, 1.0);
+
+    clearTextBuffer();
+    c('G'); c(':'); c(' '); floatToDigits(numToPrint.g);
+    printTextAt(1.0, 2.0);
+
+    clearTextBuffer();
+    c('B'); c(':'); c(' '); floatToDigits(numToPrint.b);
+    printTextAt(1.0, 3.0);
+
+    clearTextBuffer();
+    c('A'); c(':'); c(' '); floatToDigits(numToPrint.a);
+    printTextAt(1.0, 4.0);
+
+    fragColor += colour;
+    */
 }
