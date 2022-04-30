@@ -29,6 +29,7 @@ in float rainStrength;
 in float far;
 in float overworld;
 in float end;
+in float time2;
 in vec4 fogcol;
 in vec3 sunDir;
 in vec3 sunPosition2;
@@ -259,8 +260,8 @@ vec3 getDepthPoint(vec2 coord, float depth)
 
 vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float water)
 {
-    vec2 offsetB = vec2(0.0, oneTexel.y);
-    vec2 offsetC = vec2(oneTexel.x, 0.0);
+    vec2 offsetB = vec2(0.0, oneTexel.y*2.0);
+    vec2 offsetC = vec2(oneTexel.x*2.0, 0.0);
     float depthB = texture(depthtex, texCoords + offsetB).r;
     float depthC = texture(depthtex, texCoords + offsetC).r;
     vec3 A = getDepthPoint(texCoords, depthA);
@@ -472,7 +473,127 @@ vec3 normVec(vec3 vec)
 {
     return vec * inversesqrt(dot(vec, vec));
 }
+float invLinZ(float lindepth)
+{
+    return -((2.0 * near / lindepth) - far - near) / (far - near);
+}
+float linZ(float depth)
+{
+    if (overworld != 1.0)
+        return (2.0 * near * far) / (far + near - depth * (far - near));
 
+    if (overworld == 1.0)
+        return (2.0 * near) / (far + near - depth * (far - near));
+}
+
+float brightnessContrast(float value, float brightness, float contrast)
+{
+    return (value - 0.5) * contrast + 0.5 + brightness;
+}
+float getRawDepth(vec2 uv)
+{
+    return texture(TranslucentDepthSampler, uv).x;
+}
+vec3 viewSpacePosAtScreenUV(vec2 uv)
+{
+    vec3 viewSpaceRay = (gbufferProjectionInverse * vec4(uv * 2.0 - 1.0, 1.0, 1.0) * near).xyz;
+    float rawDepth = getRawDepth(uv);
+    return viewSpaceRay * (linZ(rawDepth) + pow8(luma(texture(TranslucentSampler, uv).xyz)) * 0.00);
+}
+vec3 viewSpacePosAtPixelPosition(vec2 vpos)
+{
+    vec2 uv = vpos * oneTexel.xy;
+    return viewSpacePosAtScreenUV(uv);
+}
+
+vec3 viewNormalAtPixelPosition2(vec2 vpos)
+{
+    // screen uv from vpos
+    vec2 uv = vpos * oneTexel.xy;
+
+    // current pixel's depth
+    float c = getRawDepth(uv);
+
+    // get current pixel's view space position
+    vec3 viewSpacePos_c = viewSpacePosAtScreenUV(uv);
+
+    // get view space position at 1 pixel offsets in each major direction
+    vec3 viewSpacePos_l = viewSpacePosAtScreenUV(uv + vec2(-1.0, 0.0) * oneTexel.xy);
+    vec3 viewSpacePos_r = viewSpacePosAtScreenUV(uv + vec2(1.0, 0.0) * oneTexel.xy);
+    vec3 viewSpacePos_d = viewSpacePosAtScreenUV(uv + vec2(0.0, -1.0) * oneTexel.xy);
+    vec3 viewSpacePos_u = viewSpacePosAtScreenUV(uv + vec2(0.0, 1.0) * oneTexel.xy);
+
+    // get the difference between the current and each offset position
+    vec3 l = viewSpacePos_c - viewSpacePos_l;
+    vec3 r = viewSpacePos_r - viewSpacePos_c;
+    vec3 d = viewSpacePos_c - viewSpacePos_d;
+    vec3 u = viewSpacePos_u - viewSpacePos_c;
+
+    // get depth values at 1 & 2 pixels offsets from current along the horizontal
+    // axis
+    vec4 H = vec4(getRawDepth(uv + vec2(-1.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(1.0, 0.0) * oneTexel.xy),
+                  getRawDepth(uv + vec2(-2.0, 0.0) * oneTexel.xy), getRawDepth(uv + vec2(2.0, 0.0) * oneTexel.xy));
+
+    // get depth values at 1 & 2 pixels offsets from current along the vertical
+    // axis
+    vec4 V = vec4(getRawDepth(uv + vec2(0.0, -1.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 1.0) * oneTexel.xy),
+                  getRawDepth(uv + vec2(0.0, -2.0) * oneTexel.xy), getRawDepth(uv + vec2(0.0, 2.0) * oneTexel.xy));
+
+    // current pixel's depth difference from slope of offset depth samples
+    // differs from original article because we're using non-linear depth values
+    // see article's comments
+    vec2 he = abs((2 * H.xy - H.zw) - c);
+    vec2 ve = abs((2 * V.xy - V.zw) - c);
+
+    // pick horizontal and vertical diff with the smallest depth difference from
+    // slopes
+    vec3 hDeriv = he.x < he.y ? l : r;
+    vec3 vDeriv = ve.x < ve.y ? d : u;
+
+    // get view space normal from the cross product of the best derivatives
+    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
+
+    return viewNormal;
+}
+float waterH(vec3 posxz) {
+
+float wave = 0.0;
+
+float time2 = time2*0.01;
+float factor = 0.5;
+float amplitude = 0.01;
+float speed = 0.01;
+float size = 0.1;
+
+float px = posxz.x/50.0 + 250.0;
+float py = posxz.z/50.0  + 250.0;
+
+float fpx = abs(fract(px*20.0)-0.5)*2.0;
+float fpy = abs(fract(py*20.0)-0.5)*2.0;
+
+float d = length(vec2(fpx,fpy));
+
+for (int i = 0; i < 3; i++) {
+wave -= d*factor*cos( (1/factor)*px*py*size + 1.0*(time2 * 500.0)*speed);
+factor /= 2;
+}
+
+factor = 1.0;
+px = -posxz.x/50.0 + 250.0;
+py = -posxz.z/150.0 - 250.0;
+
+fpx = abs(fract(px*20.0)-0.5)*2.0;
+fpy = abs(fract(py*20.0)-0.5)*2.0;
+
+d = length(vec2(fpx,fpy));
+float wave2 = 0.0;
+for (int i = 0; i < 3; i++) {
+wave2 -= d*factor*cos( (1/factor)*px*py*size + 1.0*(time2 * 500.0)*speed);
+factor /= 2;
+}
+
+return amplitude*wave2+amplitude*wave;
+}
 
 
 void main()
@@ -484,8 +605,10 @@ void main()
     ivec2 texoffsets[4] = ivec2[](ivec2(0, 1), ivec2(1, 0), -ivec2(0, 1), -ivec2(1, 0));
     vec4 OutTexel3 = (texture(TranslucentSampler, texCoord).rgba);
     vec4 cbgather = textureGatherOffsets(TranslucentSampler, texCoord, texoffsets, 2);
+    vec4 cggather = textureGatherOffsets(TranslucentSampler, texCoord, texoffsets, 1);
     vec4 crgather = textureGatherOffsets(TranslucentSampler, texCoord, texoffsets, 0);
     float lmx = clamp(mix(OutTexel3.b, dot(cbgather, vec4(1.0)) / 4, res), 0.0, 1);
+    float waves = clamp(mix(OutTexel3.g, dot(cbgather, vec4(1.0)) / 4, res), 0.0, 1);
     float lmy = clamp(mix(OutTexel3.r, dot(crgather, vec4(1.0)) / 4, res), 0.0, 1);
     OutTexel3.r = clamp(mix(dot(crgather, vec4(1.0)) / 4, OutTexel3.r, res), 0.0, 1);
     OutTexel3.b = clamp(mix(dot(cbgather, vec4(1.0)) / 4, OutTexel3.b, res), 0.0, 1);
@@ -496,10 +619,21 @@ void main()
     float depth = texture(TranslucentDepthSampler, texCoord).r;
     float noise = mask(gl_FragCoord.xy + (Time * 100));
 
-    float multiplier = (0.0 + ((noise+0.01) * iswater)) ;
+
+        vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
+        vec3 screenPos2 = vec3(texCoord, depth);
+        vec3 clipPos = screenPos2 * 2.0 - 1.0;
+        vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
+        vec3 viewPos = tmp.xyz / tmp.w;
+        vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
+        vec3 view3 = normVec(p3);
+        float test = waterH(p3)*waves-(noise*0.02);  
+        float multiplier = (0.0 + ((test) * iswater)) ;
+
 
     vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, multiplier));
 
+        normal += test+(noise*0.01);  
     
             vec3 normal5 = viewToWorld(normal);
 
@@ -532,11 +666,7 @@ void main()
     if (color.a > 0.01 && overworld == 1)
     {
         ////////////////////
-        vec3 fragpos3 = toScreenSpace(vec3(texCoord, depth));
-        vec3 screenPos2 = vec3(texCoord, depth);
-        vec3 clipPos = screenPos2 * 2.0 - 1.0;
-        vec4 tmp = gbufferProjectionInverse * vec4(clipPos, 1.0);
-        vec3 viewPos = tmp.xyz / tmp.w;
+    
 
         float normalDotEye = dot(normal, normalize(fragpos3));
         float fresnel = pow5(clamp(1.0 + normalDotEye, 0.0, 1.0));
@@ -549,16 +679,16 @@ void main()
         vec3 view = normalize((wgbufferModelViewInverse * screenPos).xyz);
         vec3 view2 = view;
         view2.y = -view2.y;
+        
 
-        vec3 p3 = mat3(inverse(gbufferModelView)) * viewPos;
-        vec3 view3 = normVec(p3);
+
         // vec3 suncol = decodeColor(texelFetch(temporals3Sampler, ivec2(8, 37), 0));
 
         vec3 sky_c = lumaBasedReinhardToneMapping(skyLut2(view2.xyz, sunDir, view2.y, rainStrength)) * lmx;
 
         vec4 reflection = vec4(sky_c.rgb, 0.);
-		vec3 sunSpec = GGX(normal5,-normalize(view3),  sunPosition2, 0.1+0.05, 0.1) *suncol*(lmx-0.1);
-        //sunSpec = vec3(0.0);
+		vec3 sunSpec = GGX(normalize(normal5),-normalize(view3),  sunPosition2, 0.1, 0.1) *suncol*(lmx-0.1);
+        sunSpec = vec3(0.0);
 
 
         reflection = vec4(SSR(viewPos.xyz, normal, noise));
@@ -572,7 +702,7 @@ void main()
 
         color.rgb = clamp(
             (-0.65 * color2.rgb * alpha0 * fresnel + 0.65 * color2.rgb * alpha0 + 1.0 * reflected) / color.a, 0.0, 1.0);
-        // color.rgb = vec3(normal5);
+        //color.rgb = vec3(waves);
     }
     // color = vec4(vec3(luminance(color2.rgb)),1);
 

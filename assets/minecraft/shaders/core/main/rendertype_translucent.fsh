@@ -12,6 +12,7 @@ uniform vec4 FogColor;
 
 in float vertexDistance;
 in float water;
+in float wavea;
 in vec4 vertexColor;
 in vec3 noise;
 in vec3 color2;
@@ -86,6 +87,7 @@ void main() {
 if( FogStart*0.000001 > 1) color.rgb = color.rgb;
   else if(res == 0.0f ) {
     color.b =  clamp(lmx, 0, 0.95);
+    color.g = wavea; 
     color.r =  clamp(lmy, 0, 0.95);
   }
 

@@ -19,6 +19,7 @@ uniform mat4 ProjMat;
 uniform vec3 ChunkOffset;
 
 out float water;
+out float wavea;
 out vec4 vertexColor;
 out vec2 texCoord0;
 out vec4 normal;
@@ -49,8 +50,8 @@ float waterH(vec3 posxz) {
 float wave = 0.0;
 
 
-float factor = 1.5;
-float amplitude = 0.01;
+float factor = 1.1;
+float amplitude = 0.02;
 float speed = 4.0;
 float size = 0.2;
 
@@ -116,10 +117,10 @@ void main() {
 
     lmx = clamp((float(UV2.y) / 255), 0, 1);
     lmy = clamp((float(UV2.x) / 255), 0, 1);
-
-    float wavea = 0.0;
+    float modif = halton(int(mod((GameTime * 10.0),128))).x;
+    
     if(wtest * 255 == 200)
-        wavea = (waterH(posxz) * clamp((float(UV2.y) / 255), 0.1, 1));
+        wavea = (waterH(posxz+modif) * clamp((float(UV2.y) / 255), 0.1, 1))*0.5;
     vec4 viewPos = ModelViewMat * vec4(Position + vec3(0, wavea, 0) + ChunkOffset, 1.0)+ vec4(calculateJitter()*0.25,0,0);
     gl_Position = ProjMat * viewPos;
     noise = vec3(wavea);

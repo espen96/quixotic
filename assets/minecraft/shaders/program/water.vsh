@@ -20,6 +20,7 @@ out vec3 nsunColor;
 out float skyIntensityNight;
 out float near;
 out float overworld;
+out float time2;
 out float end;
 out float far;
 out float rainStrength;
@@ -674,7 +675,7 @@ void main() {
     float time7 = mix(time6, time5, time8);
 
     float worldTime = time7;
-
+    time2 = worldTime;
     const vec2 sunRotationData =
         vec2(cos(sunPathRotation * 0.01745329251994),
              -sin(sunPathRotation * 0.01745329251994)); // radians() is not a const function on some
