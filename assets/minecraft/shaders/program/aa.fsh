@@ -52,7 +52,7 @@ out vec4 fragColor;
 // #define FXAA 1
 
 #define AA
-#define FXAA 1
+#define FXAA 0
 
 /*
 /	FXAA setting, defined via preprocessor variables

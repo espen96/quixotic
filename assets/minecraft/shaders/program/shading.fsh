@@ -1113,12 +1113,14 @@ void main()
         }
 
         outcol.rgb = lumaBasedReinhardToneMapping(atmosphere);
+       // outcol.rgb = texture(DiffuseSampler, texCoord).rgb;
+        
     }
     else
     {
 
         float comp = 1.0 - near / far / far; // distances above that are considered as sky
-
+        /*
         vec4 tpos = gbufferProjection * vec4((-sunPosition), 1.0);
         tpos = vec4(tpos.xyz / tpos.w, 1.0);
         vec2 pos1 = tpos.xy / tpos.z;
@@ -1137,23 +1139,12 @@ void main()
         grCol = mix(1.0, grCol, clamp(vdots * 2 - 1.2, 0, 1));
 
         grCol = clamp(grCol, 0, 1);
-
+        */
         vec2 texCoord = texCoord;
-        vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
 
         vec2 texCoord2 = texCoord;
-        /*
-    if(isWater) {
-        wnormal = normalize(viewToWorld(normal));
 
-        float displ = (wnormal.z / (length(viewPos) / far) / 2000.);
-        vec2 refractedCoord = texCoord + (displ * 0.5);
-        if(texture(TranslucentSampler, refractedCoord).r <= 0.0)
-            refractedCoord = texCoord;
-        texCoord2 = refractedCoord;
-    }
-    */
         float mod2 = gl_FragCoord.x + gl_FragCoord.y;
         float res = mod(mod2, 2.0f);
 
@@ -1287,7 +1278,9 @@ void main()
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);
-            outcol.a = clamp(grCol, 0, 1);
+
+            //outcol.a = clamp(grCol, 0, 1);
+
             //outcol.rgb = vec3(lumaBasedReinhardToneMapping(shading));
             ///---------------------------------------------
              //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));

@@ -88,6 +88,7 @@ void main()
     albedo.a = textureLod(Sampler0, texCoord0, 0).a;
     float avgBlockLum = luma4(test * vertexColor.rgb * ColorModulator.rgb);
 
+#ifdef pom
     // Based on code from Balint
     // get view space normal from position derivative,
     // since normals for flowing water in vertex, are not always surface aligned.
@@ -157,6 +158,7 @@ void main()
 
         gl_FragDepth = mix(toClipSpace3(truePos).z, gl_FragDepth, parallaxFade);
     }
+#endif
 
     vec4 color = albedo * vertexColor * ColorModulator;
     // Fake directional derivative-based lighting to bring out the surface a little more.
