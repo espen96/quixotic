@@ -128,9 +128,8 @@ albedo.a = textureLod(Sampler0, texCoord0, 0).a;
 
     }
  */
-vec4 color = albedo;
+    vec4 color = albedo * vertexColor * ColorModulator;
 
-//  color.rgb = clamp(color.rgb*clamp(pow(avgBlockLum,-0.33)*0.85,-0.2,1.2),0.0,1.0);
 
 float alpha = color.a;
 float lightm = 0;
