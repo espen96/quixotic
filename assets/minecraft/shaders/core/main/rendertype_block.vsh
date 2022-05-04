@@ -6,6 +6,8 @@ in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
 in ivec2 UV2;
+in vec3 Normal;
+
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler2;
@@ -18,13 +20,22 @@ out float lmx;
 out float lmy;
 out vec4 vertexColor;
 out vec4 vertexColor2;
+out vec4 color2;
 noperspective out vec3 test;
 out vec2 texCoord0;
 out vec2 texCoord2;
-
+out vec3 cornerTex1;
+out vec3 cornerTex2;
+out vec3 cornerTex3;
+out vec3 viewPos;
 out vec4 glpos;
 out mat4 ProjMat2;
 const vec2 COPRIMES = vec2(2, 3);
+out vec4 normal;
+
+
+
+
 
 vec2 halton(int index) {
 vec2 f = vec2(1);
@@ -44,6 +55,14 @@ return (halton(int(mod((GameTime * 3.0) * 24000.0, 128))) - 0.5) / 1024.0;
 }
 
 void main() {
+
+    cornerTex1 = vec3(0.0);
+    cornerTex2 = vec3(0.0);
+    cornerTex3 = vec3(0.0);
+    if (gl_VertexID % 4 == 0) cornerTex1 = vec3(UV0, 1.0);
+    if (gl_VertexID % 4 == 2) cornerTex2 = vec3(UV0, 1.0);
+    if (gl_VertexID % 2 == 1) cornerTex3 = vec3(UV0, 1.0);
+
 vec3 position = Position + ChunkOffset;
 float animation = GameTime * 4000.0;
 test = textureLod(Sampler0, UV0, 100).rgb;
@@ -66,7 +85,10 @@ lmx = clamp((float(UV2.y) / 255), 0, 1);
 lmy = clamp((float(UV2.x) / 255), 0, 1);
 ProjMat2 = ProjMat;
 
+color2 = texture(Sampler0, UV0);
 gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(xs / 32.0, 0.0, zs / 32.0, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
-
+    viewPos = (ModelViewMat * vec4(position, 1.0)).xyz;
 glpos = gl_Position;
+    normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
+
 }

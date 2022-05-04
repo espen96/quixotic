@@ -115,6 +115,11 @@ void main() {
 
 
     vec3 color = texture(DiffuseSampler, texCoord).rgb;
+
+
+
+
+    
     /*
     //Weights : 1 in the center, 0.5 middle, 0.25 corners
     vec3 albedoCurrent1 = texture2D(DiffuseSampler, texCoord + vec2(oneTexel.x,oneTexel.y)/1*0.5).rgb;
@@ -145,11 +150,7 @@ void main() {
 
 	float lightScat = clamp(5.0*0.05*pow(exposure.a,0.2),0.0,1.0)*vignette;
 
-    //float VL_abs = texture(BloomSampler, texCoord).a;
-    //float purkinje = 1 / (1.0 + 1) * Purkinje_strength;
-    //VL_abs = clamp((1.0 - VL_abs) * 1.0 * 0.5 * (1.0 - purkinje), 0.0, 1.0) * clamp(1.0 - pow(cdist(texCoord.xy), 15.0), 0.0, 1.0);
-    //color = (mix(color * 1.5, col, VL_abs) + fin * lightScat);
-	//color = (color+fin*lightScat)*(exposure.rgb*1.5);
+
 	color = (color+fin*lightScat);
 
     getNightDesaturation(color.rgb, clamp((lmx + lmy), 0.0, 5));	

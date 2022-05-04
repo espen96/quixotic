@@ -22,6 +22,12 @@ out vec2 texCoord0;
 noperspective out vec3 test;
 out vec4 glpos;
 
+out vec3 cornerTex1;
+out vec3 cornerTex2;
+out vec3 cornerTex3;
+out vec3 viewPos;
+
+
 #define WAVY_PLANTS
 #define WAVY_STRENGTH 0.3 
 #define WAVY_SPEED 12.0 
@@ -89,5 +95,14 @@ wave = vec3(0.0);
 
 gl_Position = ProjMat * ModelViewMat * (vec4(position, 1.0) + vec4(wave * lmx, 0.0) + vec4(calculateJitter() * 0.0, 0, 0));
 glpos = gl_Position;
+    cornerTex1 = vec3(0.0);
+    cornerTex2 = vec3(0.0);
+    cornerTex3 = vec3(0.0);
+    if (gl_VertexID % 4 == 0) cornerTex1 = vec3(UV0, 1.0);
+    if (gl_VertexID % 4 == 2) cornerTex2 = vec3(UV0, 1.0);
+    if (gl_VertexID % 2 == 1) cornerTex3 = vec3(UV0, 1.0);
+    viewPos = (ModelViewMat * vec4(position, 1.0)).xyz;
+
+
 
 }

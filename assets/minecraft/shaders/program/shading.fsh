@@ -943,13 +943,13 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
     float depthB = texture(depthtex, texCoords + offsetB).r;
     float depthC = texture(depthtex, texCoords + offsetC).r;
     vec3 A = getDepthPoint(texCoords, depthA);
-    A += pow4(texture(DiffuseSampler, texCoord).g) * 0.01 * 1 - water;
+    //A += pow4(texture(DiffuseSampler, texCoord).g) * 0.01 * 1 - water;
 
     vec3 B = getDepthPoint(texCoords + offsetB, depthB);
-    B += pow4(texture(DiffuseSampler, texCoord + offsetB * 3.0).g) * 0.01 * 1 - water;
+    //B += pow4(texture(DiffuseSampler, texCoord + offsetB * 3.0).g) * 0.01 * 1 - water;
 
     vec3 C = getDepthPoint(texCoords + offsetC, depthC);
-    C += pow4(texture(DiffuseSampler, texCoord + offsetC * 3.0).g) * 0.01 * 1 - water;
+    //C += pow4(texture(DiffuseSampler, texCoord + offsetC * 3.0).g) * 0.01 * 1 - water;
 
     vec3 AB = normalize(B - A);
     vec3 AC = normalize(C - A);
@@ -1141,7 +1141,6 @@ void main()
         vec2 texCoord = texCoord;
         vec3 wnormal = vec3(0.0);
         vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
-        // if(!isWater) normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
 
         vec2 texCoord2 = texCoord;
         /*
@@ -1176,7 +1175,6 @@ void main()
 
         float lmtesty = clamp(mix(lmtrans.y, lmtrans10.y / 4, res), 0.0, 1);
 
-        //vec4 pbr = pbr(lmtrans, unpackUnorm2x4(lmgather.x), OutTexel3.rgb);
         vec4 pbr = pbr(OutTexel3.aa, (lmgather.xx), OutTexel3.rgb);
 
         float light = pbr.r;
@@ -1214,7 +1212,7 @@ void main()
                         if (screenShadow > 0.0 && lmy < 0.9 && !isWater && isEyeInWater == 0)
                         {
 
-                            screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
+                            //screenShadow *= rayTraceShadow(sunVec + (origin * 0.1), viewPos, noise, depth) + lmy;
                         }
             
             screenShadow = clamp(screenShadow, 0.01, 1.0);
@@ -1231,7 +1229,6 @@ void main()
             ambientLight += ambientF * clamp(-ambientCoefs.z, 0., 1.);
             ambientLight *= 1.0;
             ambientLight *= (1.0 + rainStrength * 0.2);
-            //ambientLight += minLight;
             float lumAC = luma(ambientLight);
             vec3 diff = ambientLight - lumAC;
             ambientLight = ambientLight + diff * (-lumAC * 1.0 + 0.5);
@@ -1256,7 +1253,6 @@ void main()
                 rayDir = TangentToWorld2(normal3, rayDir);
                 vec3 reflectedVector = reflect(normalize(viewPos.xyz), (mix(normal3, rayDir, (1 - smoothness))));
 
-                // vec3 avgSky = mix(vec3(0.0), ambientLight, lmx);
                 vec3 avgSky = ambientLight;
                 vec4 reflection = vec4(SSR(viewPos.xyz, depth, noise, reflectedVector));
 
@@ -1267,7 +1263,6 @@ void main()
                 reflection = mix(vec4(avgSky, 1), reflection, reflection.a);
                 reflections += ((reflection.rgb) * (fresnel * OutTexel + OutTexel * 0.5));
                 OutTexel *= 0.075;
-                // OutTexel *= 0.5;
 
                 reflections = max(vec3(0.0), reflections);
             }
@@ -1284,13 +1279,11 @@ void main()
             shading = mix(ambientLight, shading, 1 - (rainStrength * lmx));
             if (light > 0.001)
                 shading.rgb = vec3(light * 2.0);
-            // shading = max(vec3(0.0005), shading);
             if (postlight != 1.0)
                 shading = mix(vec3(1.0), shading, 0.75);
             if (isWater)
                 shading = ambientLight;
             vec3 dlight = (OutTexel * shading) + reflections;
-            // dlight = shading;
             outcol.rgb = lumaBasedReinhardToneMapping(dlight);
 
             outcol.rgb *= 1.0 + max(0.0, light);

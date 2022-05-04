@@ -16,6 +16,10 @@ in vec4 glpos;
 in float lmx;
 in float lmy;
 out vec4 fragColor;
+in vec3 cornerTex1;
+in vec3 cornerTex2;
+in vec3 cornerTex3;
+in vec3 viewPos;
 
 vec4 smoothfilter(in sampler2D tex, in vec2 uv) {
 vec2 textureResolution = (textureSize(tex, 0).xy);
@@ -35,6 +39,22 @@ float dither5x3() {
 }
 
 float dither64 = Bayer64(gl_FragCoord.xy);
+
+#define Depth_Write_POM	// POM adjusts the actual position, so screen space shadows can cast shadows on POM
+
+#define POM_DEPTH 0.1 // [0.025 0.05 0.075 0.1 0.125 0.15 0.20 0.25 0.30 0.50 0.75 1.0] //Increase to increase POM strength
+#define MAX_ITERATIONS 50 // [5 10 15 20 25 30 40 50 60 70 80 90 100 125 150 200 400] //Improves quality at grazing angles (reduces performance)
+#define MAX_DIST 30.0 // [5.0 10.0 15.0 20.0 25.0 30.0 40.0 50.0 60.0 70.0 80.0 90.0 100.0 125.0 150.0 200.0 400.0] //Increases distance at which POM is calculated
+
+const float mincoord = 1.0/4096.0;
+const float maxcoord = 1.0-mincoord;
+
+const float MAX_OCCLUSION_DISTANCE = MAX_DIST;
+const float MIX_OCCLUSION_DISTANCE = MAX_DIST*0.7;
+const int   MAX_OCCLUSION_POINTS   = MAX_ITERATIONS;
+
+#define POM_MAP_RES 128.0 // [16.0 32.0 64.0 128.0 256.0 512.0 1024.0] Increase to improve POM quality
+const vec3 intervalMult = vec3(1.0, 1.0, 1.0/POM_DEPTH)/POM_MAP_RES * 1.0;
 
 
 void main() {
@@ -56,7 +76,60 @@ float mipmapLevel = textureQueryLod(Sampler0, texCoord0).x;
 if(atest < 0.01) albedo =textureLod(Sampler0, texCoord0, 0); 
 albedo.a = textureLod(Sampler0, texCoord0, 0).a;
 //  float avgBlockLum = luma4(test*vertexColor.rgb * ColorModulator.rgb);
-vec4 color = albedo * vertexColor * ColorModulator;
+
+/*
+    // get view space normal from position derivative, 
+    // since normals for flowing water in vertex, are not always surface aligned.
+    vec3 vertex_normal = normalize(cross(dFdx(viewPos), dFdy(viewPos)));
+
+    // get tbn matrix
+    vec3 dp1 = dFdx(viewPos);
+    vec3 dp2 = dFdy(viewPos);
+    vec2 duv1 = dFdx(texCoord0);
+    vec2 duv2 = dFdy(texCoord0);   // solve the linear system
+    vec3 dp2perp = cross(dp2, vertex_normal);
+    vec3 dp1perp = cross(vertex_normal, dp1);
+    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;   // construct a scale-invariant frame
+    float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
+    mat3 tbnMatrix = mat3(T * invmax, B * invmax, vertex_normal);
+    vec2 cornerUV1 = cornerTex1.xy / cornerTex1.z;
+    vec2 cornerUV2 = cornerTex2.xy / cornerTex2.z;
+    vec2 cornerUV3 = cornerTex3.xy / cornerTex3.z;
+    vec2 minUV = min(cornerUV1, min(cornerUV2, cornerUV3));
+    vec2 maxUV = max(cornerUV1, max(cornerUV2, cornerUV3));
+    // get offset direction from viewPos, with tbn matrix
+    vec3 viewDirection = (normalize(viewPos) * tbnMatrix);
+    viewDirection.xy = viewDirection.xy / (-viewDirection.z ) * 0.000005;
+    vec2 texCoord0B = texCoord0;
+    float lum0 = luma4(textureLod(Sampler0, texCoord0,100).rgb);
+
+        for (float i = 0.0; luma4(albedo.rgb)/lum0*0.5 + i < 1 && i < MAX_OCCLUSION_POINTS; i+=0.01) {
+        albedo = texture(Sampler0, texCoord0B);
+        // use offset direction for offset
+        texCoord0B.x += viewDirection.x;
+        texCoord0B.y += viewDirection.y;
+        // albedo.rgb =  (viewDirection);
+        if (texCoord0B.x < minUV.x) {
+
+            texCoord0B.x += maxUV.x - minUV.x;
+        }
+        if (texCoord0B.y < minUV.y) {
+            texCoord0B.y += maxUV.y - minUV.y;
+        }
+        if (texCoord0B.x > maxUV.x) {
+            texCoord0B.x += minUV.x - maxUV.x;
+        }
+        if (texCoord0B.y > maxUV.y) {
+            texCoord0B.y += minUV.y - maxUV.y;
+        }
+
+
+
+    }
+ */
+vec4 color = albedo;
+
 //  color.rgb = clamp(color.rgb*clamp(pow(avgBlockLum,-0.33)*0.85,-0.2,1.2),0.0,1.0);
 
 float alpha = color.a;
@@ -112,9 +185,7 @@ if(alpha0 >= 128) alpha2 = floor(map(alpha0, 128, 255, 0, 255)) / 255;
   //  fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
 float alpha3 = alpha1;
-float lm = lmx;
   if(res == 0.0f && !gui) {
-lm = lmy + ((rnd.x * clamp(lmy * 100, 0, 1)));
 alpha3 = alpha2;
 color.b =  clamp(lmx, 0, 0.95);
 color.r =  clamp(lmy, 0, 0.95);
