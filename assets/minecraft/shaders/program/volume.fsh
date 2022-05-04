@@ -64,7 +64,7 @@ in vec3 suncol;
 
 #define Dirt_Mie_Phase 0.4
 
-vec3 cameraPosition = vec3(0, abs((cloudy)), 0);
+vec3 cameraPosition = vec3(0, 64, 0);
 
 out vec4 fragColor;
 const float pi = 3.141592653589793238462643383279502884197169;

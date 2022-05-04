@@ -217,7 +217,7 @@ void main() {
     gbufferProjectionInverse = inverse(ProjMat);
     gbufferModelViewInverse = inverse(ProjMat * ModeViewMat);
     gbufferModelViewInverse2 = inverse(ProjMat * ModeViewMat);
-    cloudy = decodeFloat24((texture(clouds, start + 51.0 * inc).rgb));
+
 
 
 ////////////////////////////////////////////////
