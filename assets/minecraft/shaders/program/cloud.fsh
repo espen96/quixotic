@@ -415,166 +415,7 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 
 ////////////////////
 
-const float DEGRAD = M_PI / 180.0;
 
-float height = 500.0; // viewer height
-
-// rendering quality
-const int steps2 = 16; // 16 is fast, 128 or 256 is extreme high
-const int stepss = 8;  // 8 is fast, 16 or 32 is high
-
-float haze = rainStrength; // 0.2
-
-const float I = 10.0; // sun light power, 10.0 is normal
-const float g = 0.76; // light concentration .76 //.45 //.6  .76 is normaL
-const float g2 = g * g;
-
-// Reyleigh scattering (sky color, atmospheric up to 8km)
-// vec3 bR = vec3(5.8e-6, 13.5e-6, 33.1e-6); // normal earth
-// vec3 bR = vec3(5.7e-6, 13.3e-6, 33.0e-6); // normal earth2
-vec3 bR = vec3(3.8e-6f, 13.5e-6f, 33.1e-6f); // normal earth3
-// vec3 bR = vec3(5.8e-6, 33.1e-6, 13.5e-6); //purple
-// vec3 bR = vec3( 63.5e-6, 13.1e-6, 50.8e-6 ); //green
-// vec3 bR = vec3( 13.5e-6, 23.1e-6, 115.8e-6 ); //yellow
-// vec3 bR = vec3( 5.5e-6, 15.1e-6, 355.8e-6 ); //yeellow
-// vec3 bR = vec3(3.5e-6, 333.1e-6, 235.8e-6 ); //red-purple
-
-// Mie scattering (water particles up to 1km)
-vec3 bM = vec3(21e-6); // normal mie
-// vec3 bM = vec3(50e-6); //high mie
-
-//-----
-// positions
-
-const float Hr = 7994.0; // Reyleight scattering top
-const float Hm = 1200.0; // Mie scattering top
-
-const float R0 = 6360e3;      // planet radius
-const float Ra = 6420e3;      // atmosphere radius
-vec3 C = vec3(0.0, -R0, 0.0); // planet center
-
-//--------------------------------------------------------------------------
-// scattering
-
-void densities(in vec3 pos, out float rayleigh, out float mie)
-{
-    float h = length(pos - C) - R0;
-    rayleigh = exp(-h / Hr);
-    vec3 d = pos;
-    d.y = 0.0;
-    float dist = length(d);
-    mie = exp(-h / Hm) + haze;
-}
-
-float escape(in vec3 p, in vec3 d, in float R)
-{
-    vec3 v = p - C;
-    float b = dot(v, d);
-    float c = dot(v, v) - R * R;
-    float det2 = b * b - c;
-    if (det2 < 0.)
-        return -1.0;
-    float det = sqrt(det2);
-    float t1 = -b - det, t2 = -b + det;
-    return (t1 >= 0.0) ? t1 : t2;
-}
-// No intersection if returned y component is < 0.0
-vec2 rsi(vec3 position, vec3 direction, float radius)
-{
-    float PoD = dot(position, direction);
-    float radiusSquared = radius * radius;
-
-    float delta = PoD * PoD + radiusSquared - dot(position, position);
-    if (delta < 0.0)
-        return vec2(-1.0);
-    delta = sqrt(delta);
-
-    return -PoD + vec2(-delta, delta);
-}
-// this can be explained:
-// http://www.scratchapixel.com/lessons/3d-advanced-lessons/simulating-the-colors-of-the-sky/atmospheric-scattering/
-void scatter(vec3 o, vec3 d, out vec3 col, out float scat, vec3 Ds)
-{
-    float L = escape(o, d, Ra);
-    float mu = dot(d, Ds);
-    float opmu2 = 1.0 + mu * mu;
-    float phaseR = 0.0596831 * opmu2;
-    float phaseM = 0.1193662 * (1.0 - g2) * opmu2 / ((2.0 + g2) * pow(1.0 + g2 - 2.0 * g * mu, 1.5));
-
-    float depthR = 0.0, depthM = 0.0;
-    vec3 R = vec3(0.0), M = vec3(0.0);
-
-    float dl = L / float(steps2);
-    for (int i = 0; i < steps2; ++i)
-    {
-        float l = float(i) * dl;
-        vec3 p = d * l + o;
-
-        float dR, dM;
-        densities(p, dR, dM);
-        dR *= dl;
-        dM *= dl;
-        depthR += dR;
-        depthM += dM;
-
-        float Ls = escape(p, Ds, Ra);
-        if (Ls > 0.)
-        {
-            float dls = Ls / float(stepss);
-            float depthRs = 0., depthMs = 0.;
-            for (int j = 0; j < stepss; ++j)
-            {
-                float ls = float(j) * dls;
-                vec3 ps = Ds * ls * p;
-                float dRs, dMs;
-                densities(ps, dRs, dMs);
-                depthRs += dRs * dls;
-                depthMs += dMs * dls;
-            }
-
-            vec3 A = exp(-(bR * (depthRs + depthR) + (depthMs + depthM) * bM));
-            R += A * dR;
-            M += A * dM;
-        }
-    }
-
-    col = I * (R * bR * phaseR + M * bM * phaseM);
-    scat = 1.0 - clamp(depthM * 1e-5, 0.0, 1.0);
-}
-
-//--------------------------------------------------------------------------
-// ray casting
-
-vec4 generate(in vec3 view, in vec3 sunpos)
-{
-
-    // moon
-    float att = 1.0;
-    float staratt = 0.0;
-    if (sunpos.y < -0.20)
-    {
-        sunpos = -sunpos;
-        att = 0.01;
-    }
-
-    vec3 O = vec3(0.0, height, 0.0);
-
-    vec3 D = view;
-
-    if (D.y <= -0.15)
-    {
-        D.y = -0.3 - D.y;
-    }
-
-    vec3 Ds = normalize(sunpos);
-    float scat = 0.0;
-    vec3 color = vec3(0.);
-    scatter(O, clamp(D, 0.0, 1.0), color, scat, Ds);
-    color *= att;
-
-    float env = 1.0;
-    return (vec4(env * pow(color, vec3(.7)), 1.0));
-}
 vec3 toLinear(vec3 sRGB)
 {
     return sRGB * (sRGB * (sRGB * 0.305306011 + 0.682171111) + 0.012522878);
@@ -1418,44 +1259,11 @@ void main()
 
         mainImage(atmosphere, gl_FragCoord.xy, view);
 
-        //////////////////////
-        /*
-                float3 V = vec3(view.x, clamp(view.y, 0.05, 1), view.z);
-                float3 L = sunPosition3;
 
-                ScatteringParams setting;
-                setting.sunRadius = 2500.0;
-                setting.sunRadiance = 20.0;
-                setting.mieG = 0.76;
-                setting.mieHeight = 1200.0;
-                setting.rayleighHeight = 8000.0;
-                setting.earthRadius = 6360000.0;
-                setting.earthAtmTopRadius = 6420000.0;
-                setting.earthCenter = float3(0, -setting.earthRadius, 0);
-                setting.waveLambdaMie = float3(2e-7);
-
-                // wavelength with 680nm, 550nm, 450nm
-                setting.waveLambdaRayleigh = ComputeWaveLambdaRayleigh(float3(680e-9, 550e-9, 450e-9));
-
-                // see https://www.shadertoy.com/view/MllBR2
-                setting.waveLambdaOzone = float3(1.36820899679147, 3.31405330400124, 0.13601728252538) * 0.6e-6 * 2.504;
-
-                float3 eye = float3(0, 1000.0, 0);
-                float4 sky = ComputeSkyInscattering(setting, eye, V, L);
-                sky.rgb = TonemapACES(sky.rgb * 2.0);
-                 sky.rgb = pow(sky.rgb, float3(1.0 / 2.2)); // gamma
-                // sky.rgb += noise(uv*iTime) / 255.0; // dither
-                atmosphere = vec3(toLinear(sky.xyz));
-        */
-
-        /////////////////////
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
             cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
-            float lumC = luma(cloud.rgb);
-            vec3 diff = cloud.rgb - lumC;
-            //cloud.rgb = cloud.rgb + diff * (-lumC * 1.5 + 1);
 
             fragColor.rgb *= cloud.rgb;
             fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb );
@@ -1465,7 +1273,6 @@ void main()
             atmoplus += clamp((sc.rgb * pow32(1.0 / ((1 - vdots) * 16.0 + 1.0))), 0, 1);
             atmoplus = clamp(atmoplus, 0, 2);
             atmosphere += atmoplus;
-            // atmosphere = atmosphere.xyz * cloud.a + (cloud.rgb);
         }
 
         fragColor.rgb = toLinear(atmosphere.xyz + (noise / 255)) * cloud.a + (cloud.rgb);
