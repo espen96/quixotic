@@ -1260,7 +1260,7 @@ void main()
 
             float shadeDir = max(0.0, dot(normal, sunPosition2));
             shadeDir *= screenShadow;
-            shadeDir += clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) ) *(max(0.005, (screenShadow * ao) * 2 - 1)),0.0,1.0)* (float(sssa*0.25) * lmx);
+            shadeDir += clamp(clamp(max(0.0, (max(phaseg(vdots, 0.5) * 2.0, phaseg(vdots, 0.1)) * pi * 1.6) ) *(max(0.005, (screenShadow * ao) * 2 - 1)),0.0,1.0)* (float(sssa*0.25) * lmx),0,1);
             shadeDir = clamp(shadeDir * pow3(lmx) * ao, 0, 1);
             float sunSpec = GGX(normal, -(view), sunPosition2, (1 - smoothness) + 0.05 * 0.95, f0.x);
             vec3 suncol = (suncol) * clamp(skyIntensity * 3.0, 0.15, 1);
@@ -1281,7 +1281,7 @@ void main()
 
             //outcol.a = clamp(grCol, 0, 1);
 
-            //outcol.rgb = vec3(lumaBasedReinhardToneMapping(shading));
+            //outcol.rgb = vec3(lumaBasedReinhardToneMapping(vec3(shadeDir)));
             ///---------------------------------------------
              //outcol.rgb = lumaBasedReinhardToneMapping(clamp(vec3(pbr.rgb), 0.01, 1));
             // if(luma(ambientLight )>1.0) outcol.rgb = vec3(1.0,0,0);
