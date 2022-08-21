@@ -91,9 +91,7 @@ out vec4 fragColor;
 
 #define Dirt_Amount 0.01
 
-#define Dirt_Mie_Phase                                                                                                 \
-    0.4 // Values close to 1 will create a strong peak around the sun and weak \
-        // elsewhere, values close to 0 means uniform fog.
+#define Dirt_Mie_Phase 0.4 
 
 #define Dirt_Absorb_R 0.65
 #define Dirt_Absorb_G 0.85
@@ -550,7 +548,7 @@ vec4 SSR(vec3 fragpos, float fragdepth, float noise, vec3 reflectedVector)
 }
 ////////////////////////////////
 
-
+/*
 uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
 
@@ -568,7 +566,7 @@ uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
             // Handle sign
             if (x < 0.0) { 
-                text[textIndex] = '-'; textIndex++; x = -x; 
+               text[textIndex] = '-'; textIndex++; x = -x; 
             } else { 
                 text[textIndex] = '+'; textIndex++; 
             }
@@ -656,7 +654,7 @@ uniform sampler2D FontSampler;  // ASCII 32x8 characters font texture unit
 
 
 
-
+*/
 ///////////////////////
 vec3 reinhard_jodie(vec3 v)
 {
@@ -668,13 +666,8 @@ vec3 reinhard_jodie(vec3 v)
 
 #define tau 6.2831853071795864769252867665590
 
-#define AOQuality                                                                                                      \
-    0 //[0 1 2] Increases the quality of Ambient Occlusion from 0 to 2, 0 is \
-        // default
-#define AORadius                                                                                                       \
-    2.0 //[0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8                                       \
-        // 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0] //Changes the radius \
-        // of Ambient Occlusion to be larger or smaller, 1.0 is default
+#define AOQuality 0 
+#define AORadius 2.0 
 
 float dither5x3()
 {
@@ -959,56 +952,18 @@ vec3 constructNormal(float depthA, vec2 texCoords, sampler2D depthtex, float wat
 
     return normalize(normal);
 }
-float brightnessContrast(float value, float brightness, float contrast)
-{
-    return (value - 0.5) * contrast + 0.5 + brightness;
-}
+
+
 float getRawDepth(vec2 uv)
 {
-    return texture(TranslucentDepthSampler, uv).x;
+    return texture(DiffuseDepthSampler, uv).x;
 }
 
-// inspired by keijiro's depth inverse projection
-// https://github.com/keijiro/DepthInverseProjection
-// constructs view space ray at the far clip plane from the screen uv
-// then multiplies that ray by the linear 01 depth
 vec3 viewSpacePosAtScreenUV(vec2 uv)
 {
     vec3 viewSpaceRay = (gbufferProjectionInverse * vec4(uv * 2.0 - 1.0, 1.0, 1.0) * near).xyz;
     float rawDepth = getRawDepth(uv);
-    return viewSpaceRay * (linZ(rawDepth) + pow8(luma(texture(DiffuseSampler, uv).xyz)) * 0.00);
-}
-vec3 viewSpacePosAtPixelPosition(vec2 vpos)
-{
-    vec2 uv = vpos * oneTexel.xy;
-    return viewSpacePosAtScreenUV(uv);
-}
-
-vec3 viewNormalAtPixelPosition(vec2 vpos)
-{
-    // get current pixel's view space position
-    vec3 viewSpacePos_c = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 0.0));
-
-    // get view space position at 1 pixel offsets in each major direction
-    vec3 viewSpacePos_l = viewSpacePosAtPixelPosition(vpos + vec2(-1.0, 0.0));
-    vec3 viewSpacePos_r = viewSpacePosAtPixelPosition(vpos + vec2(1.0, 0.0));
-    vec3 viewSpacePos_d = viewSpacePosAtPixelPosition(vpos + vec2(0.0, -1.0));
-    vec3 viewSpacePos_u = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 1.0));
-
-    // get the difference between the current and each offset position
-    vec3 l = viewSpacePos_c - viewSpacePos_l;
-    vec3 r = viewSpacePos_r - viewSpacePos_c;
-    vec3 d = viewSpacePos_c - viewSpacePos_d;
-    vec3 u = viewSpacePos_u - viewSpacePos_c;
-
-    // pick horizontal and vertical diff with the smallest z difference
-    vec3 hDeriv = abs(l.z) < abs(r.z) ? l : r;
-    vec3 vDeriv = abs(d.z) < abs(u.z) ? d : u;
-
-    // get view space normal from the cross product of the two smallest offsets
-    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
-
-    return viewNormal;
+    return viewSpaceRay * (linZ(rawDepth) + pow(luma(texture(DiffuseSampler, uv).xyz), 8) * 0.00);
 }
 
 vec3 viewNormalAtPixelPosition2(vec2 vpos)
@@ -1061,6 +1016,49 @@ vec3 viewNormalAtPixelPosition2(vec2 vpos)
     return viewNormal;
 }
 
+float brightnessContrast(float value, float brightness, float contrast)
+{
+    return (value - 0.5) * contrast + 0.5 + brightness;
+}
+
+
+// inspired by keijiro's depth inverse projection
+// https://github.com/keijiro/DepthInverseProjection
+// constructs view space ray at the far clip plane from the screen uv
+// then multiplies that ray by the linear 01 depth
+
+vec3 viewSpacePosAtPixelPosition(vec2 vpos)
+{
+    vec2 uv = vpos * oneTexel.xy;
+    return viewSpacePosAtScreenUV(uv);
+}
+
+vec3 viewNormalAtPixelPosition(vec2 vpos)
+{
+    // get current pixel's view space position
+    vec3 viewSpacePos_c = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 0.0));
+
+    // get view space position at 1 pixel offsets in each major direction
+    vec3 viewSpacePos_l = viewSpacePosAtPixelPosition(vpos + vec2(-1.0, 0.0));
+    vec3 viewSpacePos_r = viewSpacePosAtPixelPosition(vpos + vec2(1.0, 0.0));
+    vec3 viewSpacePos_d = viewSpacePosAtPixelPosition(vpos + vec2(0.0, -1.0));
+    vec3 viewSpacePos_u = viewSpacePosAtPixelPosition(vpos + vec2(0.0, 1.0));
+
+    // get the difference between the current and each offset position
+    vec3 l = viewSpacePos_c - viewSpacePos_l;
+    vec3 r = viewSpacePos_r - viewSpacePos_c;
+    vec3 d = viewSpacePos_c - viewSpacePos_d;
+    vec3 u = viewSpacePos_u - viewSpacePos_c;
+
+    // pick horizontal and vertical diff with the smallest z difference
+    vec3 hDeriv = abs(l.z) < abs(r.z) ? l : r;
+    vec3 vDeriv = abs(d.z) < abs(u.z) ? d : u;
+
+    // get view space normal from the cross product of the two smallest offsets
+    vec3 viewNormal = normalize(cross(hDeriv, vDeriv));
+
+    return viewNormal;
+}
 vec2 unpackUnorm2x4v2(vec4 pack)
 {
     vec2 xy;
@@ -1141,7 +1139,8 @@ void main()
         grCol = clamp(grCol, 0, 1);
         */
         vec2 texCoord = texCoord;
-        vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
+        //vec3 normal = normalize(constructNormal(depth, texCoord, TranslucentDepthSampler, float(isWater)));
+        vec3 normal = viewNormalAtPixelPosition2(gl_FragCoord.xy);
 
         vec2 texCoord2 = texCoord;
 
@@ -1314,10 +1313,10 @@ void main()
         outcol.rgb *= exp(-length(viewPos) * totEpsilon);
     }
     fragColor = outcol + (noise / 128);
-    /*
-    vec4 numToPrint = vec4(gbufferProjection[2].xyzw);
+    
+    vec4 numToPrint = vec4(fogcol);
 
-	// Define text to draw
+/*	// Define text to draw
     clearTextBuffer();
     c('R'); c(':'); c(' '); floatToDigits(numToPrint.r);
     printTextAt(1.0, 1.0);
