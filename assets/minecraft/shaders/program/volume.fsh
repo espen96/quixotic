@@ -299,10 +299,15 @@ void main()
     bool isWater = (texture(TranslucentSampler, texCoord).a * 255 == 200);
     int isEyeInWater = 0;
     int isEyeInLava = 0;
+    int isEyeInSnow = 0;
     if (fogcol.a > 0.078 && fogcol.a < 0.079)
         isEyeInWater = 1;
     if (fogcol.r == 0.6 && fogcol.b == 0.0)
         isEyeInLava = 1;
+    if (fogcol.r > 0.623 && fogcol.g > 0.733  && fogcol.b > 0.784 && fogcol.r < 0.63 && fogcol.g < 0.74  && fogcol.b < 0.79 )
+        isEyeInSnow = 1;
+
+
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
     vec2 lmtrans = unpackUnorm2x4((texture(MainSampler, texCoord2).a));
@@ -395,7 +400,20 @@ void main()
     }
     if (fogcol.r == 0 && fogcol.g == 0 && fogcol.b == 0)
     {
-        fragColor.rgb *= exp(-length(fragpos) * vec3(1.0) * 0.25);
-    }
-    //  fragColor = vec4(vec3(lmx),1);
+        fragColor.rgb *= vec3((texture(TranslucentDepthSampler, texCoord).r)*0.2);
+    }    
+    
+    if (isEyeInSnow == 1)
+    {
+        fragColor.rgb *= exp(-length(fragpos) *10);
+        fragColor.rgb += vec3(0.6, 0.7, 0.78) * 0.5;
+    }   
+
+    
+
+    /*if (fogcol.r == 0 && fogcol.g == 0 && fogcol.b == 0 && fogcol.a ==0)
+    {
+        fragColor.rgb *= (vec3((texture(TranslucentDepthSampler, texCoord).r)*Time)*(1-Time))*Time;
+    }*/
+    //  fragColor = vec4(vec3(isEyeInSnow),1);
 }
