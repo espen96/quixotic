@@ -34,7 +34,7 @@ flat in vec3 sunPosition3;
 flat in float fogAmount;
 flat in vec2 eyeBrightnessSmooth;
 in vec3 suncol;
-#define VL_SAMPLES 6
+#define VL_SAMPLES 1
 #define Ambient_Mult 1.0
 #define SEA_LEVEL 70
 #define ATMOSPHERIC_DENSITY 0.75
@@ -138,9 +138,9 @@ float phaseg(float x, float g)
     float gg = g * g;
     return (gg * -0.25 + 0.25) * pow(-2.0 * (g * x) + (gg + 1.0), -1.5) / 3.1415;
 }
-float cloudVol(in vec3 pos)
+float cloudVol(in float pos)
 {
-    float unifCov = exp2(-max(pos.y - SEA_LEVEL, 0.0) / 50.);
+    float unifCov = exp2(-max(pos - SEA_LEVEL, 0.0) / 50.);
     float cloud = unifCov * 60. * fogAmount;
     return cloud;
 }
@@ -153,14 +153,13 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
     float maxLength = min(length(dVWorld), far) / length(dVWorld);
     dVWorld *= maxLength;
 
-    vec3 progressW = gbufferModelViewInverse[3].xyz + cameraPosition;
+    float progressW = gbufferModelViewInverse[3].y + cameraPosition.y + dVWorld.y;
     vec3 vL = vec3(0.);
 
     float SdotV = dot(sunPosition, normalize(fragpos)) * lightCol.a;
     float dL = length(dVWorld);
-    // Mie phase + somewhat simulates multiple scattering (Horizon zero down cloud
-    // approx)
-    float mie = max(phaseg(SdotV, fog_mieg1), 0.07692307692);
+
+    float mie = max(phaseg(SdotV, 0.4), 0.076);
     float rayL = phaseRayleigh(SdotV);
 
     vec3 ambientCoefs = dVWorld / dot(abs(dVWorld), vec3(1.));
@@ -170,34 +169,21 @@ mat2x3 getVolumetricRays(float dither, vec3 fragpos, vec3 ambientUp, float fogv,
     vec3 skyCol0 = (8.0 * ambientLight * Ambient_Mult) / 16.0;
     vec3 sunColor = (8.0 * lightCol.rgb) / 1.5;
 
-    vec3 rC = vec3(fog_coefficientRayleighR * 1e-6, fog_coefficientRayleighG * 1e-5, fog_coefficientRayleighB * 1e-5);
-    vec3 mC = vec3(fog_coefficientMieR * 1e-6, fog_coefficientMieG * 1e-6, fog_coefficientMieB * 1e-6);
+    vec3 rC = (vec3(0.0000058, 0.0000135, 0.0000331));
 
     vec3 absorbance = vec3(1.0);
-    float expFactor = 11.0;
-    for (int i = 0; i < VL_SAMPLES; i++)
-    {
-        float d = (pow(expFactor, float(i + dither) / float(VL_SAMPLES)) / expFactor - 1.0 / expFactor) /
-                  (1 - 1.0 / expFactor);
-        float dd = pow(expFactor, float(i + dither) / float(VL_SAMPLES)) * log(expFactor) / float(VL_SAMPLES) /
-                   (expFactor - 1.0);
-        progressW = gbufferModelViewInverse[3].xyz + cameraPosition + d * dVWorld;
-        // project into biased shadowmap space
-        float densityVol = cloudVol(progressW);
-        float sh = 1.0;
 
-        // Water droplets(fog)
-        float density = densityVol * ATMOSPHERIC_DENSITY * 600.;
-        // Just air
-        vec2 airCoef = exp2(-max(progressW.y - SEA_LEVEL, 0.0) / vec2(8.0e3, 1.2e3) * vec2(6.0, 7.0)) * 6.0;
+    float densityVol = cloudVol(progressW);
 
-        // Pbr for air, yolo mix between mie and rayleigh for water droplets
-        vec3 rL = rC * airCoef.x;
-        vec3 m = (airCoef.y + density) * mC;
-        vec3 vL0 = sunColor * sh * (rayL * rL + m * mie) + skyCol0 * (rL + m);
-        vL += (vL0 - vL0 * exp(-(rL + m) * dd * dL)) / ((rL + m) + 0.00000001) * absorbance;
-        absorbance *= clamp(exp(-(rL + m) * dd * dL), 0.0, 1.0);
-    }
+    float density = densityVol * 0.75 * 300.0;
+    vec2 airCoef = exp2(-max(progressW - SEA_LEVEL, 0.0) / vec2(48000, 8400)) * 6.0;
+
+    vec3 rL = rC * airCoef.x;
+    vec3 m = (airCoef.y + density) * vec3(0.0000030);
+    vec3 vL0 = sunColor * (rayL * rL + m * mie) + skyCol0 * (rL + m);
+    vL = (vL0 - vL0 * exp(-(rL + m) * 2.6 * dL)) / ((rL + m));
+    absorbance = clamp(exp(-(rL + m) * 2.6 * dL), 0.0, 1.0);
+
     return mat2x3(vL, absorbance);
 }
 
@@ -304,9 +290,9 @@ void main()
         isEyeInWater = 1;
     if (fogcol.r == 0.6 && fogcol.b == 0.0)
         isEyeInLava = 1;
-    if (fogcol.r > 0.623 && fogcol.g > 0.733  && fogcol.b > 0.784 && fogcol.r < 0.63 && fogcol.g < 0.74  && fogcol.b < 0.79 )
+    if (fogcol.r > 0.623 && fogcol.g > 0.733 && fogcol.b > 0.784 && fogcol.r < 0.63 && fogcol.g < 0.74 &&
+        fogcol.b < 0.79)
         isEyeInSnow = 1;
-
 
     float mod2 = gl_FragCoord.x + gl_FragCoord.y;
     float res = mod(mod2, 2.0f);
@@ -400,16 +386,14 @@ void main()
     }
     if (fogcol.r == 0 && fogcol.g == 0 && fogcol.b == 0)
     {
-        fragColor.rgb *= vec3((texture(TranslucentDepthSampler, texCoord).r)*0.2);
-    }    
-    
+        fragColor.rgb *= vec3((texture(TranslucentDepthSampler, texCoord).r) * 0.2);
+    }
+
     if (isEyeInSnow == 1)
     {
-        fragColor.rgb *= exp(-length(fragpos) *10);
+        fragColor.rgb *= exp(-length(fragpos) * 10);
         fragColor.rgb += vec3(0.6, 0.7, 0.78) * 0.5;
-    }   
-
-    
+    }
 
     /*if (fogcol.r == 0 && fogcol.g == 0 && fogcol.b == 0 && fogcol.a ==0)
     {

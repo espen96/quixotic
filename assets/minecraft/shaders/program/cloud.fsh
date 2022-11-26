@@ -265,20 +265,14 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
         curvedPos.y -= sqrt(pow(6731e3, 2.0) - dot(xz, xz)) - 6731e3;
         vec3 samplePos = curvedPos * vec3(1.0, 0.03125, 1.0) / 4 + frameTimeCounter * vec3(0.5, 0.0, 0.5);
         float coverageSP = cloudCov(curvedPos, samplePos);
-        if (coverageSP > 0.00)
+        if (coverageSP > 0.1)
         {
             float cloud = coverageSP;
-            // float cloud = cloudVol(curvedPos,samplePos,coverageSP);
-
             float mu = cloud * cdensity;
-
-            // fake multiple scattering approx 2  (from horizon zero down clouds)
-            float h = 0.5 - 0.5 * clamp((progress_view.y - 1500) / 4000, 0.0, 1.0);
             float powder = 1.0 - exp(-mu * mult);
-            float sunShadow = max(exp(-0.0), 0.7 * exp(-0.25 * 0.0)) * mix(1.0, powder, h);
-            float moonShadow = max(exp2(-0.0), 0.7 * exp(-0.25 * 0.0)) * mix(1.0, powder, h);
-            float ambientPowder = mix(1.0, powder, h * ambientMult);
-            vec3 S = vec3(sunContribution * sunShadow + moonShadow * moonContribution + skyCol0 * ambientPowder);
+            float sunShadow = 1.0 * powder;
+            float ambientPowder = powder;
+            vec3 S = vec3((sunContribution * sunShadow) + (sunShadow * moonContribution) + (skyCol0 * ambientPowder));
 
             vec3 Sint = (S - S * exp(-mult * mu)) / (mu);
             color += mu * Sint * total_extinction;
@@ -291,14 +285,8 @@ vec4 renderClouds(vec3 fragpositi, vec3 color, float dither, vec3 sunColor, vec3
         progress_view += dV_view;
     }
 
-    // high altitude clouds
-    progress_view = progress_view + (5500.0 - progress_view.y) * dV_view / dV_view.y;
-    mult = 400.0 * inversesqrt(abs(normalize(dV_view).y));
-
-    float cosY = normalize(dV_view).y;
-
     return mix(vec4(color, clamp((251 * total_extinction - 1) / 250, 0.0, 1.0)), vec4(0.0, 0.0, 0.0, 1.0),
-               1 - smoothstep(0.02, 0.50, cosY));
+               1 - smoothstep(0.02, 0.50, normalize(dV_view).y));
 }
 
 float R2_dither()
@@ -414,7 +402,6 @@ vec3 lumaBasedReinhardToneMapping(vec3 color)
 #define PI 3.141592
 
 ////////////////////
-
 
 vec3 toLinear(vec3 sRGB)
 {
@@ -1259,14 +1246,13 @@ void main()
 
         mainImage(atmosphere, gl_FragCoord.xy, view);
 
-
         vec4 cloud = vec4(0.0, 0.0, 0.0, 1.0);
         if (view.y > 0.)
         {
             cloud = renderClouds(viewPos, avgSky, noise, sc, sc, avgSky).rgba;
 
             fragColor.rgb *= cloud.rgb;
-            fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb );
+            fragColor.rgb += lumaBasedReinhardToneMapping(cloud.rgb);
             vec3 atmoplus = vec3(0.0);
             atmoplus += ((stars(view) * 2.0) * clamp(1 - (rainStrength * 1), 0, 1)) * 0.05;
             atmoplus += drawSun(vdots, 0, sc.rgb * 0.1, vec3(0.0)) * clamp(1 - (rainStrength * 1), 0, 1);
